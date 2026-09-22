@@ -336,13 +336,16 @@
       <p class="day-note" id="orderDayNote"></p>
       <div id="shopGrid" class="shop-grid"></div>
       <div id="myOrdersToday"></div>
+      <button class="btn ghost small" id="openMyArchiveBtn" style="margin-top:14px;">📜 Lịch sử đặt hàng của tôi</button>
     </section>
     <section class="view" id="view-agg">
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
+        <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
         <button class="btn ghost small print-btn" id="printAggBtn">🖨️ In danh sách</button></div>
       <div id="dailyStrip" class="daily-strip"></div>
       <div id="aggSummary" class="agg-summary"></div>
+      <button class="btn ghost small" id="openArchiveBtn" style="margin-bottom:14px;">📜 Xem lịch sử đã lưu</button>
       <div id="aggProducts"></div>
     </section>
     <section class="view" id="view-manage"><div id="manageContent"></div></section>
@@ -353,6 +356,7 @@
 <div class="toast" id="toast"></div>
 <div class="lightbox hidden" id="lightbox"><button class="lb-close" id="lbClose">✕</button><img id="lightboxImg" src="" alt=""></div>
 <div class="modal-overlay hidden" id="productModal"></div>
+<div class="modal-overlay hidden" id="archiveModal"></div>
 <div id="printArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -377,6 +381,7 @@
   var products = {};
   var orders = {};
   var printStatus = {};
+  var printArchive = {};
   var users = {};
   var usersLoaded = false;
   var currentUser = null;
@@ -757,10 +762,13 @@
     strip.querySelectorAll('.daily-chip').forEach(function (btn) { btn.addEventListener('click', function () { selectedAggDate = btn.dataset.date; renderAgg(); }); });
 
     var toggleLabel = $('printOnlyUnprinted').closest('label');
+    var resetLabel = $('printResetAfter').closest('label');
     var isSingle = selectedAggDate !== 'all';
     toggleLabel.classList.toggle('disabled', !isSingle);
     $('printOnlyUnprinted').disabled = !isSingle;
-    if (!isSingle) $('printOnlyUnprinted').checked = false;
+    resetLabel.classList.toggle('disabled', !isSingle);
+    $('printResetAfter').disabled = !isSingle;
+    if (!isSingle) { $('printOnlyUnprinted').checked = false; $('printResetAfter').checked = false; }
   }
 
   function renderAgg() {
@@ -892,15 +900,40 @@
       '<div class="pr-grand"><span>Tổng cộng</span><span>' + runningTotal + ' áo</span></div>';
 
     var pendingMarkIds = singleDate ? list.filter(function (p) { return !isPrinted(p.id); }).map(function (p) { return p.id; }) : [];
+    var doResetAfter = singleDate && $('printResetAfter').checked;
 
     window.onafterprint = function () {
       window.onafterprint = null;
-      if (pendingMarkIds.length && confirm('Đánh dấu ' + pendingMarkIds.length + ' mẫu vừa in là "Đã in" để tránh in trùng lần sau?')) {
-        var updates = {};
-        pendingMarkIds.forEach(function (pid) {
-          updates['printStatus/' + singleDate + '/' + pid] = { printed: true, printedAt: Date.now(), printedBy: currentUser.name };
+      if (!singleDate) return;
+
+      if (doResetAfter) {
+        if (!confirm('In xong! Lưu ' + list.length + ' mẫu vào lịch sử và đặt lại số lượng về 0 cho ngày ' + snap.dateLabel + '?\n\nKhông thể hoàn tác — nhân viên sẽ đặt lại từ đầu cho các mẫu này.')) return;
+        var archiveKey = db.ref('printArchive').push().key;
+        var archiveItems = list.map(function (p) {
+          return { productId: p.id, name: p.name, imageUrl: p.imageUrl || null, byColor: snap.byProduct[p.id].byColor, totalQty: snap.byProduct[p.id].totalQty, byPerson: snap.byProduct[p.id].byPerson };
         });
-        db.ref().update(updates).then(function () { toast('Đã đánh dấu ' + pendingMarkIds.length + ' mẫu là đã in.'); })
+        var archiveTotal = archiveItems.reduce(function (s, i) { return s + i.totalQty; }, 0);
+        var updates = {};
+        updates['printArchive/' + archiveKey] = {
+          date: singleDate, dateLabel: snap.dateLabel, printedAt: Date.now(), printedBy: currentUser.name,
+          items: archiveItems, grandTotal: archiveTotal
+        };
+        list.forEach(function (p) {
+          updates['orders/' + singleDate + '/' + p.id] = null;
+          updates['printStatus/' + singleDate + '/' + p.id] = null;
+        });
+        db.ref().update(updates)
+          .then(function () { toast('Đã lưu vào lịch sử và đặt lại ' + list.length + ' mẫu về 0.'); })
+          .catch(function () { toast('Lỗi khi lưu/đặt lại.'); });
+        return;
+      }
+
+      if (pendingMarkIds.length && confirm('Đánh dấu ' + pendingMarkIds.length + ' mẫu vừa in là "Đã in" để tránh in trùng lần sau?')) {
+        var markUpdates = {};
+        pendingMarkIds.forEach(function (pid) {
+          markUpdates['printStatus/' + singleDate + '/' + pid] = { printed: true, printedAt: Date.now(), printedBy: currentUser.name };
+        });
+        db.ref().update(markUpdates).then(function () { toast('Đã đánh dấu ' + pendingMarkIds.length + ' mẫu là đã in.'); })
           .catch(function () { toast('Không cập nhật được trạng thái đã in.'); });
       }
     };
@@ -908,6 +941,65 @@
   }
   var printAggBtnEl = $('printAggBtn');
   if (printAggBtnEl) printAggBtnEl.addEventListener('click', printAggregateReport);
+
+  var archiveModalMode = 'all';
+  function openArchiveModal(mode) { archiveModalMode = mode || 'all'; renderArchiveModal(); $('archiveModal').classList.remove('hidden'); }
+  function closeArchiveModal() { $('archiveModal').classList.add('hidden'); $('archiveModal').innerHTML = ''; }
+  var openArchiveBtnEl = $('openArchiveBtn');
+  if (openArchiveBtnEl) openArchiveBtnEl.addEventListener('click', function () { openArchiveModal('all'); });
+  var openMyArchiveBtnEl = $('openMyArchiveBtn');
+  if (openMyArchiveBtnEl) openMyArchiveBtnEl.addEventListener('click', function () { openArchiveModal('mine'); });
+  $('archiveModal').addEventListener('click', function (e) { if (e.target === $('archiveModal')) closeArchiveModal(); });
+
+  function renderArchiveModal() {
+    var isMine = archiveModalMode === 'mine';
+    var allEntries = Object.keys(printArchive).map(function (id) { return Object.assign({ id: id }, printArchive[id]); })
+      .sort(function (a, b) { return (b.printedAt || 0) - (a.printedAt || 0); });
+
+    var entries = allEntries;
+    if (isMine) {
+      entries = allEntries.map(function (en) {
+        var myItems = (en.items || []).filter(function (it) { return it.byPerson && it.byPerson[currentUser.id]; })
+          .map(function (it) {
+            var mine = it.byPerson[currentUser.id];
+            return { name: it.name, byColor: mine.quantities, totalQty: mine.total };
+          });
+        if (!myItems.length) return null;
+        var myTotal = myItems.reduce(function (s, i) { return s + i.totalQty; }, 0);
+        return Object.assign({}, en, { items: myItems, grandTotal: myTotal });
+      }).filter(Boolean);
+    }
+
+    var bodyHtml;
+    if (!entries.length) {
+      bodyHtml = '<div class="empty">' + (isMine ? 'Bạn chưa có đơn nào trong lịch sử đã lưu.' : 'Chưa có đợt in nào được lưu lại.') + '</div>';
+    } else {
+      bodyHtml = entries.map(function (en) {
+        var when = en.printedAt ? new Date(en.printedAt).toLocaleString('vi-VN') : '';
+        var itemsHtml = (en.items || []).map(function (it) {
+          var colorsText = Object.keys(it.byColor || {}).map(function (c) { return esc(c) + ': ' + it.byColor[c]; }).join(' · ');
+          return '<div class="cd-row"><span class="cd-name">' + esc(it.name) + '</span><span class="cd-meta">' + colorsText + ' · <b>' + it.totalQty + '</b></span></div>';
+        }).join('');
+        return '<div class="agg-product" data-aid="' + esc(en.id) + '">' +
+          '<div class="agg-product-head"><div class="apn"><div class="name">' + esc(en.dateLabel || en.date) + ' · ' + (en.items || []).length + ' mẫu · <b>' + (en.grandTotal || 0) + '</b> áo</div>' +
+          '<div class="sub">' + (isMine ? '' : 'In bởi ' + esc(en.printedBy || '') + ' · ') + when + '</div></div>' +
+          '<button class="btn ghost small" data-action="toggle-archive-detail">Xem chi tiết</button></div>' +
+          '<div class="cust-detail hidden" id="archive-detail-' + esc(en.id) + '">' + itemsHtml + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    $('archiveModal').innerHTML = '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>' + (isMine ? 'Lịch sử đặt hàng của tôi' : 'Lịch sử các đợt đã in &amp; lưu') + '</h2><button class="ms-close" id="archiveCloseBtn">✕</button></div>' +
+      bodyHtml + '</div>';
+    $('archiveCloseBtn').addEventListener('click', closeArchiveModal);
+    $('archiveModal').querySelectorAll('[data-action="toggle-archive-detail"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var box = btn.closest('.agg-product').querySelector('.cust-detail');
+        box.classList.toggle('hidden');
+        btn.textContent = box.classList.contains('hidden') ? 'Xem chi tiết' : 'Ẩn chi tiết';
+      });
+    });
+  }
 
   function renderManage() {
     if (!canManageProducts()) return;
@@ -1115,6 +1207,9 @@
     db.ref('printStatus').on('value', function (snap) {
       printStatus = snap.val() || {};
       if (currentUser) renderCurrentTab();
+    });
+    db.ref('printArchive').on('value', function (snap) {
+      printArchive = snap.val() || {};
     });
   } else {
     $('authScreen').classList.remove('hidden');
