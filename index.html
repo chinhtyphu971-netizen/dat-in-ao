@@ -964,7 +964,7 @@
         var myItems = (en.items || []).filter(function (it) { return it.byPerson && it.byPerson[currentUser.id]; })
           .map(function (it) {
             var mine = it.byPerson[currentUser.id];
-            return { name: it.name, byColor: mine.quantities, totalQty: mine.total };
+            return { name: it.name, imageUrl: it.imageUrl, byColor: mine.quantities, totalQty: mine.total };
           });
         if (!myItems.length) return null;
         var myTotal = myItems.reduce(function (s, i) { return s + i.totalQty; }, 0);
