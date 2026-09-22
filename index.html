@@ -145,6 +145,25 @@
   .agg-date-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .agg-date-bar label { font-size: 13px; color: var(--ink-soft); }
   .agg-date-bar select { font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .agg-date-bar .print-btn { margin-left: auto; }
+
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 16px; }
+    .pr-header { margin-bottom: 18px; }
+    .pr-header h1 { font-family: var(--font-display); font-size: 20px; margin: 0 0 2px; }
+    .pr-header p { font-size: 12px; color: #555; margin: 0; }
+    .pr-row { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #ccc; break-inside: avoid; }
+    .pr-row img { width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; flex-shrink: 0; }
+    .pr-row .pr-noimg { width: 70px; height: 70px; border: 1px dashed #ccc; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #999; text-align: center; }
+    .pr-row .pr-info { flex: 1; }
+    .pr-row .pr-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .pr-row .pr-colors { font-size: 12.5px; color: #333; }
+    .pr-row .pr-total { font-weight: 700; font-size: 15px; white-space: nowrap; }
+    .pr-grand { display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; padding-top: 12px; margin-top: 6px; border-top: 2px solid #000; }
+  }
   .daily-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px; }
   .daily-chip { flex-shrink: 0; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; text-align: left; font-family: var(--font-body); }
   .daily-chip.active { border-color: var(--stitch); background: var(--thread-soft); }
@@ -315,7 +334,7 @@
       <div id="myOrdersToday"></div>
     </section>
     <section class="view" id="view-agg">
-      <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select></div>
+      <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select><button class="btn ghost small print-btn" id="printAggBtn">🖨️ In danh sách</button></div>
       <div id="dailyStrip" class="daily-strip"></div>
       <div id="aggSummary" class="agg-summary"></div>
       <div id="aggProducts"></div>
@@ -328,6 +347,7 @@
 <div class="toast" id="toast"></div>
 <div class="lightbox hidden" id="lightbox"><button class="lb-close" id="lbClose">✕</button><img id="lightboxImg" src="" alt=""></div>
 <div class="modal-overlay hidden" id="productModal"></div>
+<div id="printArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -358,6 +378,7 @@
   var openBreakdowns = {};
   var editingProductId = null;
   var selectedAggDate = null;
+  var lastAggSnapshot = null;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -760,12 +781,13 @@
       '<div class="agg-stat"><div class="num">' + Object.keys(byProduct).length + '</div><div class="lbl">Mẫu có đơn</div></div>' +
       '<div class="agg-stat"><div class="num">' + Object.keys(peopleSet).length + '</div><div class="lbl">Sale đã đặt</div></div>';
 
-    if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
-
     var filteredList = plist.filter(function (p) { return byProduct[p.id]; });
     filteredList.sort(function (a, b) {
       return (byProduct[b.id].totalQty || 0) - (byProduct[a.id].totalQty || 0);
     });
+    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate) };
+
+    if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
     var html = '';
     filteredList.forEach(function (p) {
@@ -825,6 +847,29 @@
       .then(function () { toast(!cur ? 'Đã đánh dấu: đã in.' : 'Đã bỏ đánh dấu.'); })
       .catch(function () { toast('Không cập nhật được.'); });
   }
+
+  function printAggregateReport() {
+    if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có đơn hàng nào để in.'); return; }
+    var snap = lastAggSnapshot;
+    var rowsHtml = snap.filteredList.map(function (p) {
+      var pdata = snap.byProduct[p.id];
+      var colors = colorsOf(p);
+      var colorsText = colors.filter(function (c) { return pdata.byColor[c]; })
+        .map(function (c) { return esc(c) + ': ' + pdata.byColor[c]; }).join(' · ');
+      return '<div class="pr-row">' +
+        (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pr-noimg">Không ảnh</div>') +
+        '<div class="pr-info"><div class="pr-name">' + esc(p.name) + '</div><div class="pr-colors">' + colorsText + '</div></div>' +
+        '<div class="pr-total">' + pdata.totalQty + ' áo</div>' +
+        '</div>';
+    }).join('');
+    $('printArea').innerHTML =
+      '<div class="pr-header"><h1>Bảng tổng hợp đặt may</h1><p>' + esc(snap.dateLabel) + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
+      rowsHtml +
+      '<div class="pr-grand"><span>Tổng cộng</span><span>' + snap.grandTotal + ' áo</span></div>';
+    setTimeout(function () { window.print(); }, 50);
+  }
+  var printAggBtnEl = $('printAggBtn');
+  if (printAggBtnEl) printAggBtnEl.addEventListener('click', printAggregateReport);
 
   function renderManage() {
     if (!canManageProducts()) return;
