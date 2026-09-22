@@ -92,7 +92,6 @@
   section.view.active { display: block; }
 
   .empty { padding: 40px 20px; text-align: center; color: var(--ink-soft); border: 1.5px dashed var(--line); border-radius: var(--radius-tag); font-size: 14.5px; line-height: 1.6; }
-
   .day-note { font-size: 13px; color: var(--ink-soft); margin: -4px 0 14px; }
   .day-note b { color: var(--ink); }
 
@@ -182,6 +181,25 @@
   .field-row input[type=text] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .img-hint { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; line-height: 1.5; }
 
+  /* Khung preview ảnh bên trái */
+  .product-form-layout { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+  .img-preview-side {
+    width: 110px; height: 110px; border-radius: 10px; border: 1.5px dashed var(--line);
+    background: var(--paper); flex-shrink: 0; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 6px; cursor: pointer;
+  }
+  .img-preview-side img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
+  .img-preview-side .pv-placeholder { font-size: 11px; color: var(--ink-soft); line-height: 1.35; }
+  .img-preview-side .pv-error { font-size: 10.5px; color: var(--stitch); font-weight: 600; line-height: 1.25; }
+  .form-fields-side { flex: 1; min-width: 0; }
+  .form-fields-side .field-row:last-child { margin-bottom: 0; }
+
+  @media (max-width: 480px) {
+    .product-form-layout { flex-direction: column; }
+    .img-preview-side { width: 100%; height: 130px; }
+  }
+
   .manage-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
   .manage-list-item:last-child { border-bottom: none; }
   .manage-list-item img { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line); }
@@ -242,24 +260,6 @@
   .qty-color-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
   .qty-color-row:last-child { border-bottom: none; }
   .qty-color-row .col-label { flex: 1; font-size: 14px; color: var(--ink); }
-
-  .cart-fab { position: fixed; right: 18px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 50%; background: var(--denim); color: #fff; border: none; box-shadow: 0 10px 24px -8px rgba(0,0,0,0.45); font-size: 24px; cursor: pointer; z-index: 60; display: flex; align-items: center; justify-content: center; }
-  .cart-fab .cart-badge { position: absolute; top: -3px; right: -3px; background: var(--stitch); color: #fff; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
-  .cart-list { display: flex; flex-direction: column; }
-  .cart-item { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
-  .cart-item:last-child { border-bottom: none; }
-  .cart-item img, .cart-item .pc-thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; }
-  .cart-item .ci-info { flex: 1; min-width: 0; }
-  .cart-item .ci-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cart-item .ci-meta { font-size: 12px; color: var(--ink-soft); }
-  .cart-item .ci-qty-stepper { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .cart-item .ci-qty-stepper button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); cursor: pointer; font-size: 14px; line-height: 1; }
-  .cart-item .ci-qty-stepper span { font-family: var(--font-display); font-weight: 700; min-width: 16px; text-align: center; }
-  .cart-item .ci-remove { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 16px; flex-shrink: 0; }
-  .cart-item .ci-remove:hover { color: var(--stitch); }
-  .cart-footer { position: sticky; bottom: 0; background: var(--paper-raised); padding-top: 14px; margin-top: 4px; }
-  .cart-total-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 12px; color: var(--ink-soft); }
-  .cart-total-row b { font-family: var(--font-display); font-size: 19px; color: var(--ink); }
 
   .pc-thumb, .agg-product-head img, .manage-list-item img { cursor: zoom-in; }
   .lightbox { position: fixed; inset: 0; background: rgba(20,18,14,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); cursor: zoom-out; }
@@ -324,16 +324,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script>
 (function () {
-  // ============================================================
-  // DÁN CONFIG FIREBASE CỦA ANH VÀO ĐÂY (Project Settings > Your apps > SDK setup)
-  // ============================================================
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDMWR-sbWSE6rCakn9p6v5WBVaEwvD4Q6U",
     authDomain: "dat-in-ao.firebaseapp.com",
     databaseURL: "https://dat-in-ao-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "dat-in-ao",
   };
-  // ============================================================
 
   var DEFAULT_COLORS = ['Đen', 'Trắng', 'Vàng', 'Xanh'];
   var COLOR_SWATCH = { 'Đen': '#1a1a1a', 'Trắng': '#f5f5f0', 'Vàng': '#f0c14b', 'Xanh': '#3d6fa8', 'Đỏ': '#b0523f', 'Xám': '#8a8579', 'Hồng': '#e3a8b8', 'Nâu': '#6b4a2f' };
@@ -346,9 +342,9 @@
   var products = {};
   var orders = {};
   var printStatus = {};
-  var users = {};           // userId -> {name, nameKey, pin, role, createdAt}
+  var users = {};
   var usersLoaded = false;
-  var currentUser = null;   // {id, name, role}
+  var currentUser = null;
   var currentTab = 'order';
   var openBreakdowns = {};
   var editingProductId = null;
@@ -379,10 +375,6 @@
   }
   function isManager() { return !!(currentUser && currentUser.role === 'manager'); }
 
-  // ============================================================
-  // AUTH: tự đăng ký (tên chưa có -> tạo mới, mặc định "staff";
-  // tài khoản ĐẦU TIÊN của cả hệ thống tự động thành "manager")
-  // ============================================================
   function userList() { return Object.keys(users).map(function (id) { return Object.assign({ id: id }, users[id]); }); }
   function findByNameKey(nameKey) { return userList().find(function (u) { return u.nameKey === nameKey; }); }
 
@@ -472,7 +464,6 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
-  // ---------- account management (manager only) ----------
   function renderAccounts() {
     if (!isManager()) return;
     var el = $('accountsContent');
@@ -530,7 +521,6 @@
   }
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
-  // ---------- order tab: shop-style browse, quantity per color (no customer name) ----------
   var modalProduct = null;
 
   function renderOrderList() {
@@ -591,7 +581,6 @@
       }).join('') + '</div><p class="img-hint">Bấm vào mẫu áo ở trên để sửa lại số lượng.</p></div>';
   }
 
-  // ---- product quantity modal ----
   function openProductModal(pid) {
     if (!products[pid]) return;
     modalProduct = Object.assign({ id: pid }, products[pid]);
@@ -651,13 +640,12 @@
 
   $('productModal').addEventListener('click', function (e) { if (e.target === $('productModal')) closeProductModal(); });
 
-  // ---------- aggregate tab (manager only) ----------
   function availableDates() {
     var dates = Object.keys(orders).sort().reverse();
     return dates.length ? dates : [todayStr()];
   }
   function mergedProductOrders(productId, dates) {
-    var out = {}; // employeeKey -> {employeeName, quantities}
+    var out = {};
     dates.forEach(function (d) {
       var dayNode = (orders[d] && orders[d][productId]) || {};
       Object.keys(dayNode).forEach(function (empKey) {
@@ -712,7 +700,7 @@
     var singleDate = dates.length === 1 ? dates[0] : null;
 
     var grandTotal = 0, peopleSet = {};
-    var byProduct = {}; // productId -> { byColor: {c: qty}, byPerson: {empKey: {employeeName, total, quantities}} }
+    var byProduct = {};
     plist.forEach(function (p) {
       var merged = mergedProductOrders(p.id, dates);
       var colors = colorsOf(p);
@@ -791,7 +779,6 @@
       .catch(function () { toast('Không cập nhật được.'); });
   }
 
-  // ---------- manage products tab (manager only) ----------
   function renderManage() {
     if (!isManager()) return;
     var el = $('manageContent');
@@ -799,14 +786,40 @@
     var plist = productList();
     el.innerHTML =
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
-      '<div class="field-row"><label>Link ảnh mẫu</label>' +
-      '<input type="text" id="imgUrlInput" placeholder="https://..."><p class="img-hint">Dán link ảnh có sẵn (imgur, postimages, Facebook, Drive...). Nếu chưa có link, tải ảnh lên imgur.com hoặc postimages.org trước rồi copy "Direct link" dán vào đây.</p>' +
+      '<div class="product-form-layout">' +
+        '<div class="img-preview-side" id="newImgPreviewBox">' +
+          '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>' +
+        '</div>' +
+        '<div class="form-fields-side">' +
+          '<div class="field-row">' +
+            '<label>Link ảnh mẫu</label>' +
+            '<input type="text" id="imgUrlInput" placeholder="Dán link ảnh https://...">' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<label>Tên mẫu</label>' +
+            '<input type="text" id="nameInput" placeholder="VD: Áo hoodie gấu bông">' +
+          '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="field-row"><label>Tên mẫu</label><input type="text" id="nameInput" placeholder="VD: Áo hoodie gấu bông"></div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
       '<button class="btn primary" id="addProductBtn">Thêm mẫu</button>' +
+      '<p class="img-hint" style="margin-top:10px;">Link ảnh từ Imgur, Postimages, Google Drive, Shopee, Facebook... vừa dán vào ô là hình sẽ hiện ngay ở khung bên trái.</p>' +
       '</div>' +
       '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2><div id="productListManage"></div></div>';
+
+    var imgInput = $('imgUrlInput');
+    function updateNewPreview() {
+      var url = imgInput.value.trim();
+      var box = $('newImgPreviewBox');
+      if (url) {
+        box.innerHTML = '<img src="' + esc(url) + '" data-lightbox="' + esc(url) + '" onerror="this.outerHTML=\'<div class=\\\'pv-error\\\'>❌ Link ảnh lỗi hoặc không tải được</div>\'">';
+        bindLightboxes(box);
+      } else {
+        box.innerHTML = '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>';
+      }
+    }
+    imgInput.addEventListener('input', updateNewPreview);
+    imgInput.addEventListener('change', updateNewPreview);
 
     $('addProductBtn').addEventListener('click', addProduct);
 
@@ -839,10 +852,21 @@
   function renderEditProductForm(p) {
     var colors = colorsOf(p);
     return '<div class="manage-form edit-product-form" data-editing-pid="' + esc(p.id) + '" style="margin:10px 0;">' +
-      '<div class="field-row"><label>Link ảnh mẫu</label>' +
-      '<input type="text" id="editImgUrlInput" placeholder="https://..." value="' + esc(p.imageUrl || '') + '">' +
+      '<div class="product-form-layout">' +
+        '<div class="img-preview-side" id="editImgPreviewBox">' +
+          (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" data-lightbox="' + esc(p.imageUrl) + '">' : '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>') +
+        '</div>' +
+        '<div class="form-fields-side">' +
+          '<div class="field-row">' +
+            '<label>Link ảnh mẫu</label>' +
+            '<input type="text" id="editImgUrlInput" placeholder="https://..." value="' + esc(p.imageUrl || '') + '">' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<label>Tên mẫu</label>' +
+            '<input type="text" id="editNameInput" value="' + esc(p.name) + '">' +
+          '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="field-row"><label>Tên mẫu</label><input type="text" id="editNameInput" value="' + esc(p.name) + '"></div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="editColorsInput" value="' + esc(colors.join(', ')) + '"></div>' +
       '<div style="display:flex; gap:8px;">' +
       '<button class="btn primary" id="saveEditBtn" data-pid="' + esc(p.id) + '">Lưu thay đổi</button>' +
@@ -853,6 +877,21 @@
   function bindEditFormEvents(listEl) {
     var form = listEl.querySelector('.edit-product-form');
     if (!form) return;
+    
+    var editImgInput = $('editImgUrlInput');
+    function updateEditPreview() {
+      var url = editImgInput.value.trim();
+      var box = $('editImgPreviewBox');
+      if (url) {
+        box.innerHTML = '<img src="' + esc(url) + '" data-lightbox="' + esc(url) + '" onerror="this.outerHTML=\'<div class=\\\'pv-error\\\'>❌ Link ảnh lỗi</div>\'">';
+        bindLightboxes(box);
+      } else {
+        box.innerHTML = '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>';
+      }
+    }
+    editImgInput.addEventListener('input', updateEditPreview);
+    editImgInput.addEventListener('change', updateEditPreview);
+
     $('cancelEditBtn').addEventListener('click', function () { editingProductId = null; renderManage(); });
     $('saveEditBtn').addEventListener('click', function () { saveEditProduct(form.dataset.editingPid); });
   }
@@ -907,10 +946,9 @@
   }
 
   function setupWarningHtml() {
-    return '<div class="setup-warning">⚠️ Chưa cấu hình Firebase. Mở file <code>index.html</code>, tìm dòng <code>FIREBASE_CONFIG</code> gần cuối file và dán config từ Firebase Console (Project settings → SDK setup) vào, rồi lưu &amp; upload lại lên GitHub.</div>';
+    return '<div class="setup-warning">⚠️ Chưa cấu hình Firebase. Mở file <code>index.html</code>, tìm dòng <code>FIREBASE_CONFIG</code> gần cuối file và dán config từ Firebase Console vào.</div>';
   }
 
-  // ---------- boot ----------
   if (configOk) {
     db.ref('users').on('value', function (snap) {
       users = snap.val() || {};
@@ -924,7 +962,6 @@
         currentUser.name = users[currentUser.id].name;
         currentUser.role = users[currentUser.id].role;
       } else {
-        // current account was deleted remotely
         currentUser = null;
         localStorage.removeItem('mm_uid');
       }
