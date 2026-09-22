@@ -533,7 +533,7 @@
 
   function productList() {
     return Object.keys(products).map(function (id) { return Object.assign({ id: id }, products[id]); })
-      .sort(function (a, b) { return (a.createdAt || '').localeCompare(b.createdAt || ''); });
+      .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
   }
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
