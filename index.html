@@ -195,6 +195,8 @@
   .cust-detail .cd-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 13px; align-items: center; }
   .cust-detail .cd-row:last-child { border-bottom: none; }
   .cust-detail .cd-name { flex: 1; font-weight: 500; }
+  .cust-detail .cd-thumb { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; cursor: zoom-in; }
+  .cust-detail .cd-thumb-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: 10px; background: var(--paper); cursor: default; }
   .cust-detail .cd-meta { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
 
   .manage-form { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 18px; margin-bottom: 22px; box-shadow: var(--shadow-card); }
@@ -978,7 +980,8 @@
         var when = en.printedAt ? new Date(en.printedAt).toLocaleString('vi-VN') : '';
         var itemsHtml = (en.items || []).map(function (it) {
           var colorsText = Object.keys(it.byColor || {}).map(function (c) { return esc(c) + ': ' + it.byColor[c]; }).join(' · ');
-          return '<div class="cd-row"><span class="cd-name">' + esc(it.name) + '</span><span class="cd-meta">' + colorsText + ' · <b>' + it.totalQty + '</b></span></div>';
+          return '<div class="cd-row">' + (it.imageUrl ? '<img class="cd-thumb" data-lightbox="' + esc(it.imageUrl) + '" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="cd-thumb cd-thumb-empty">–</div>') +
+            '<span class="cd-name">' + esc(it.name) + '</span><span class="cd-meta">' + colorsText + ' · <b>' + it.totalQty + '</b></span></div>';
         }).join('');
         return '<div class="agg-product" data-aid="' + esc(en.id) + '">' +
           '<div class="agg-product-head"><div class="apn"><div class="name">' + esc(en.dateLabel || en.date) + ' · ' + (en.items || []).length + ' mẫu · <b>' + (en.grandTotal || 0) + '</b> áo</div>' +
@@ -992,6 +995,7 @@
       '<div class="modal-head"><h2>' + (isMine ? 'Lịch sử đặt hàng của tôi' : 'Lịch sử các đợt đã in &amp; lưu') + '</h2><button class="ms-close" id="archiveCloseBtn">✕</button></div>' +
       bodyHtml + '</div>';
     $('archiveCloseBtn').addEventListener('click', closeArchiveModal);
+    bindLightboxes($('archiveModal'));
     $('archiveModal').querySelectorAll('[data-action="toggle-archive-detail"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var box = btn.closest('.agg-product').querySelector('.cust-detail');
