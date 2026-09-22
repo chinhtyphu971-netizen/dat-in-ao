@@ -196,6 +196,9 @@
   .manage-list-item .mli-info { flex: 1; min-width: 0; }
   .manage-list-item .mli-name { font-weight: 600; font-size: 14px; }
   .manage-list-item .mli-colors { font-size: 12px; color: var(--ink-soft); }
+  .manage-list-item.is-hidden { opacity: 0.55; }
+  .manage-list-item .mli-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+  .hidden-tag { font-size: 10px; font-weight: 700; color: var(--ink-soft); background: var(--paper); border: 1px solid var(--line); padding: 2px 7px; border-radius: var(--radius-pill); vertical-align: middle; }
 
   .acct-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 13.5px; flex-wrap: wrap; }
   .acct-row:last-child { border-bottom: none; }
@@ -359,6 +362,10 @@
   var pendingImageDataUrl = null;
   var pendingImageSizeKB = 0;
   var imageMode = 'url';
+  var editingProductId = null;
+  var editImageMode = 'url';
+  var editPendingImageDataUrl = null;
+  var editPendingImageSizeKB = 0;
   var selectedAggDate = null;
 
   function $(id) { return document.getElementById(id); }
@@ -542,7 +549,7 @@
 
   function renderOrderList() {
     if (!configOk) { $('shopGrid').innerHTML = setupWarningHtml(); return; }
-    var plist = productList();
+    var plist = productList().filter(function (p) { return !p.hidden; });
     var today = todayStr();
     $('orderDayNote').innerHTML = 'Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.';
     if (!plist.length) {
@@ -838,15 +845,97 @@
     if (!plist.length) { listEl.innerHTML = '<div class="empty">Chưa có mẫu nào.</div>'; }
     else {
       listEl.innerHTML = plist.map(function (p) {
+        if (p.id === editingProductId) return renderEditProductForm(p);
         var colors = colorsOf(p);
-        return '<div class="manage-list-item">' +
+        var hidden = !!p.hidden;
+        return '<div class="manage-list-item' + (hidden ? ' is-hidden' : '') + '">' +
           (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;font-size:9px;">–</div>') +
-          '<div class="mli-info"><div class="mli-name">' + esc(p.name) + '</div><div class="mli-colors">' + colors.join(', ') + '</div></div>' +
-          '<button class="btn danger" data-pid="' + esc(p.id) + '">Xoá</button></div>';
+          '<div class="mli-info"><div class="mli-name">' + esc(p.name) + (hidden ? ' <span class="hidden-tag">Đang ẩn</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div></div>' +
+          '<div class="mli-actions">' +
+          '<button class="btn ghost small" data-action="edit" data-pid="' + esc(p.id) + '">Sửa</button>' +
+          '<button class="btn ghost small" data-action="toggle-hide" data-pid="' + esc(p.id) + '">' + (hidden ? 'Hiện lại' : 'Ẩn') + '</button>' +
+          '<button class="btn danger small" data-action="delete" data-pid="' + esc(p.id) + '">Xoá</button>' +
+          '</div></div>';
       }).join('');
-      listEl.querySelectorAll('button[data-pid]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
+      listEl.querySelectorAll('[data-action="delete"]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
+      listEl.querySelectorAll('[data-action="edit"]').forEach(function (btn) { btn.addEventListener('click', function () { startEditProduct(btn.dataset.pid); }); });
+      listEl.querySelectorAll('[data-action="toggle-hide"]').forEach(function (btn) {
+        btn.addEventListener('click', function () { toggleProductHidden(btn.dataset.pid, products[btn.dataset.pid].hidden); });
+      });
+      bindEditFormEvents(listEl);
       bindLightboxes(listEl);
     }
+  }
+
+  function renderEditProductForm(p) {
+    var colors = colorsOf(p);
+    var previewHtml = editPendingImageDataUrl
+      ? '<img src="' + editPendingImageDataUrl + '" alt=""><div class="img-size-note">~' + editPendingImageSizeKB + ' KB sau khi nén</div>'
+      : (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : 'Chọn ảnh mẫu áo');
+    return '<div class="manage-form edit-product-form" data-editing-pid="' + esc(p.id) + '" style="margin:10px 0;">' +
+      '<div class="field-row"><label>Ảnh mẫu</label>' +
+      '<div class="img-mode-toggle">' +
+      '<button data-emode="url" class="' + (editImageMode === 'url' ? 'active' : '') + '">Dán link ảnh</button>' +
+      '<button data-emode="upload" class="' + (editImageMode === 'upload' ? 'active' : '') + '">Tải ảnh lên</button>' +
+      '</div>' +
+      (editImageMode === 'url'
+        ? '<input type="text" id="editImgUrlInput" placeholder="https://..." value="' + esc(p.imageUrl || '') + '">'
+        : '<div class="file-drop' + (editPendingImageDataUrl ? ' has-image' : '') + '" id="editFileDrop">' + previewHtml + '<input type="file" accept="image/*" id="editImgInput"></div>') +
+      '</div>' +
+      '<div class="field-row"><label>Tên mẫu</label><input type="text" id="editNameInput" value="' + esc(p.name) + '"></div>' +
+      '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="editColorsInput" value="' + esc(colors.join(', ')) + '"></div>' +
+      '<div style="display:flex; gap:8px;">' +
+      '<button class="btn primary" id="saveEditBtn" data-pid="' + esc(p.id) + '">Lưu thay đổi</button>' +
+      '<button class="btn ghost" id="cancelEditBtn">Huỷ</button>' +
+      '</div></div>';
+  }
+
+  function bindEditFormEvents(listEl) {
+    var form = listEl.querySelector('.edit-product-form');
+    if (!form) return;
+    form.querySelectorAll('[data-emode]').forEach(function (b) {
+      b.addEventListener('click', function () { editImageMode = b.dataset.emode; renderManage(); });
+    });
+    if (editImageMode === 'upload') {
+      var fi = $('editImgInput');
+      if (fi) fi.addEventListener('change', function (e) {
+        var f = e.target.files[0]; if (!f) return;
+        compressImage(f, function (dataUrl, sizeKB) { editPendingImageDataUrl = dataUrl; editPendingImageSizeKB = sizeKB; renderManage(); });
+      });
+    }
+    $('cancelEditBtn').addEventListener('click', function () { editingProductId = null; editPendingImageDataUrl = null; renderManage(); });
+    $('saveEditBtn').addEventListener('click', function () { saveEditProduct(form.dataset.editingPid); });
+  }
+
+  function startEditProduct(pid) {
+    editingProductId = pid;
+    editImageMode = 'url';
+    editPendingImageDataUrl = null;
+    editPendingImageSizeKB = 0;
+    renderManage();
+  }
+
+  function saveEditProduct(pid) {
+    var name = $('editNameInput').value.trim();
+    var colorsRaw = $('editColorsInput').value.trim();
+    var colors = colorsRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!colors.length) colors = DEFAULT_COLORS.slice();
+    if (!name) { toast('Nhập tên mẫu áo.'); return; }
+    var imageUrl = editImageMode === 'url' ? $('editImgUrlInput').value.trim() : (editPendingImageDataUrl || products[pid].imageUrl);
+    if (!imageUrl) { toast('Thêm ảnh mẫu áo trước đã.'); return; }
+    var btn = $('saveEditBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+    db.ref('products/' + pid).update({ name: name, imageUrl: imageUrl, colors: colors })
+      .then(function () {
+        editingProductId = null; editPendingImageDataUrl = null;
+        toast('Đã cập nhật mẫu áo.'); renderManage();
+      })
+      .catch(function (e) { btn.disabled = false; btn.textContent = 'Lưu thay đổi'; toast('Lỗi: ' + e.message); });
+  }
+
+  function toggleProductHidden(pid, currentlyHidden) {
+    db.ref('products/' + pid + '/hidden').set(!currentlyHidden)
+      .then(function () { toast(!currentlyHidden ? 'Đã ẩn mẫu áo khỏi tab Đặt hàng.' : 'Đã hiện lại mẫu áo.'); })
+      .catch(function () { toast('Không cập nhật được.'); });
   }
 
   function compressImage(file, cb) {
