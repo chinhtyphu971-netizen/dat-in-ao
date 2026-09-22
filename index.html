@@ -243,6 +243,10 @@
   .qty-stepper button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 18px; cursor: pointer; color: var(--ink); line-height: 1; }
   .qty-stepper input { width: 54px; text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px; font-size: 15px; font-family: var(--font-body); background: var(--paper-raised); color: var(--ink); }
   #productModal .btn.full { margin-top: 20px; }
+  .qty-color-rows { margin-top: 6px; }
+  .qty-color-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .qty-color-row:last-child { border-bottom: none; }
+  .qty-color-row .col-label { flex: 1; font-size: 14px; color: var(--ink); }
 
   .cart-fab { position: fixed; right: 18px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 50%; background: var(--denim); color: #fff; border: none; box-shadow: 0 10px 24px -8px rgba(0,0,0,0.45); font-size: 24px; cursor: pointer; z-index: 60; display: flex; align-items: center; justify-content: center; }
   .cart-fab .cart-badge { position: absolute; top: -3px; right: -3px; background: var(--stitch); color: #fff; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
@@ -319,9 +323,7 @@
 
 <div class="toast" id="toast"></div>
 <div class="lightbox hidden" id="lightbox"><button class="lb-close" id="lbClose">✕</button><img id="lightboxImg" src="" alt=""></div>
-<button class="cart-fab hidden" id="cartFab">🛒<span class="cart-badge hidden" id="cartBadge">0</span></button>
 <div class="modal-overlay hidden" id="productModal"></div>
-<div class="modal-overlay hidden" id="cartDrawer"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -347,7 +349,7 @@
   if (configOk) { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.database(); }
 
   var products = {};
-  var customerOrders = {};
+  var orders = {};
   var printStatus = {};
   var users = {};           // userId -> {name, nameKey, pin, role, createdAt}
   var usersLoaded = false;
@@ -535,10 +537,8 @@
   }
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
-  // ---------- order tab: shop-style browse + cart ----------
-  var cart = []; // {tempId, productId, productName, productImage, color, customerName, quantity}
+  // ---------- order tab: shop-style browse, quantity per color (no customer name) ----------
   var modalProduct = null;
-  var modalColor = null;
 
   function renderOrderList() {
     if (!configOk) { $('shopGrid').innerHTML = setupWarningHtml(); return; }
@@ -548,66 +548,60 @@
     if (!plist.length) {
       $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.' + (isManager() ? ' Vào tab "Quản lý mẫu" để thêm ảnh mẫu.' : ' Chờ quản lý thêm ảnh mẫu nhé.') + '</div>';
       $('myOrdersToday').innerHTML = '';
-      updateCartFab();
       return;
     }
-    var todayOrders = customerOrders[today] || {};
+    var todayOrders = orders[today] || {};
     var todayPrint = printStatus[today] || {};
 
     $('shopGrid').innerHTML = plist.map(function (p) {
       var colors = colorsOf(p);
-      var mineCount = Object.keys(todayOrders).filter(function (oid) {
-        var o = todayOrders[oid]; return o.productId === p.id && o.employeeKey === currentUser.id;
-      }).length;
+      var mine = (todayOrders[p.id] && todayOrders[p.id][currentUser.id] && todayOrders[p.id][currentUser.id].quantities) || {};
+      var mineTotal = colors.reduce(function (s, c) { return s + (Number(mine[c]) || 0); }, 0);
       var printed = !!(todayPrint[p.id] && todayPrint[p.id].printed);
       return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
         '<span class="sc-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
         '</div>' +
         '<div class="sc-body"><div class="sc-name">' + esc(p.name) + '</div>' +
-        (mineCount ? '<div class="sc-mine">Bạn đã nhập <b>' + mineCount + '</b> khách hôm nay</div>' : '<div class="sc-mine">' + colors.length + ' màu</div>') +
+        (mineTotal ? '<div class="sc-mine">Bạn đã đặt <b>' + mineTotal + '</b> áo</div>' : '<div class="sc-mine">' + colors.length + ' màu</div>') +
         '</div></div>';
     }).join('');
     $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
       card.addEventListener('click', function () { openProductModal(card.dataset.pid); });
     });
     renderMyOrdersToday();
-    updateCartFab();
   }
 
   function renderMyOrdersToday() {
     var container = $('myOrdersToday');
     var today = todayStr();
-    var todayOrders = customerOrders[today] || {};
-    var mine = Object.keys(todayOrders).map(function (oid) { return Object.assign({ id: oid }, todayOrders[oid]); })
-      .filter(function (o) { return o.employeeKey === currentUser.id; });
-    if (!mine.length) { container.innerHTML = ''; return; }
-    mine.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
-    var total = mine.reduce(function (s, o) { return s + (Number(o.quantity) || 0); }, 0);
-    container.innerHTML = '<div class="manage-form" style="margin-top:24px;"><h2>Đơn của bạn hôm nay (' + total + ' áo)</h2><div class="cust-list">' +
-      mine.map(function (o) {
-        var pname = products[o.productId] ? products[o.productId].name : '(mẫu đã xoá)';
-        return '<div class="cust-row" data-oid="' + esc(o.id) + '">' +
-          '<span class="swatch" style="background:' + swatchColor(o.color) + '"></span>' +
-          '<span class="cr-name">' + esc(o.customerName || 'Không tên') + '</span>' +
-          '<span class="cr-color">' + esc(pname) + ' · ' + esc(o.color) + '</span>' +
-          '<span class="cr-qty">' + (Number(o.quantity) || 0) + '</span>' +
-          '<button class="cr-del" data-action="del" title="Xoá">✕</button></div>';
-      }).join('') + '</div></div>';
-    container.querySelectorAll('[data-action="del"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { deleteCustomerOrder(btn.closest('.cust-row').dataset.oid); });
+    var todayOrders = orders[today] || {};
+    var rows = [];
+    Object.keys(todayOrders).forEach(function (pid) {
+      var mine = todayOrders[pid][currentUser.id];
+      if (!mine) return;
+      var total = Object.values(mine.quantities || {}).reduce(function (s, v) { return s + (Number(v) || 0); }, 0);
+      if (total <= 0) return;
+      rows.push({ pid: pid, quantities: mine.quantities || {}, total: total });
     });
+    if (!rows.length) { container.innerHTML = ''; return; }
+    var grand = rows.reduce(function (s, r) { return s + r.total; }, 0);
+    container.innerHTML = '<div class="manage-form" style="margin-top:24px;"><h2>Đơn của bạn hôm nay (' + grand + ' áo)</h2><div class="cust-list">' +
+      rows.map(function (r) {
+        var p = products[r.pid];
+        var pname = p ? p.name : '(mẫu đã xoá)';
+        var breakdown = Object.keys(r.quantities).filter(function (c) { return r.quantities[c] > 0; })
+          .map(function (c) { return esc(c) + ' × ' + r.quantities[c]; }).join(', ');
+        return '<div class="cust-row"><span class="cr-name">' + esc(pname) + '</span>' +
+          '<span class="cr-color">' + breakdown + '</span>' +
+          '<span class="cr-qty">' + r.total + '</span></div>';
+      }).join('') + '</div><p class="img-hint">Bấm vào mẫu áo ở trên để sửa lại số lượng.</p></div>';
   }
 
-  function deleteCustomerOrder(orderId) {
-    db.ref('customerOrders/' + todayStr() + '/' + orderId).remove().catch(function () { toast('Không xoá được.'); });
-  }
-
-  // ---- product picker modal ----
+  // ---- product quantity modal ----
   function openProductModal(pid) {
     if (!products[pid]) return;
     modalProduct = Object.assign({ id: pid }, products[pid]);
-    modalColor = colorsOf(modalProduct)[0];
     renderProductModal();
     $('productModal').classList.remove('hidden');
   }
@@ -618,146 +612,80 @@
     var colors = colorsOf(p);
     var today = todayStr();
     var printed = !!(printStatus[today] && printStatus[today][p.id] && printStatus[today][p.id].printed);
+    var mine = (orders[today] && orders[today][p.id] && orders[today][p.id][currentUser.id] && orders[today][p.id][currentUser.id].quantities) || {};
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span>' +
-      '<div class="ms-section-label">Chọn màu</div>' +
-      '<div class="ms-colors">' + colors.map(function (c) {
-        return '<button class="color-chip' + (c === modalColor ? ' active' : '') + '" data-color="' + esc(c) + '"><span class="swatch" style="background:' + swatchColor(c) + '"></span>' + esc(c) + '</button>';
+      '<div class="ms-section-label">Số lượng theo màu</div>' +
+      '<div class="qty-color-rows">' + colors.map(function (c) {
+        var v = mine[c] != null ? mine[c] : 0;
+        return '<div class="qty-color-row" data-color="' + esc(c) + '">' +
+          '<span class="swatch" style="background:' + swatchColor(c) + '"></span>' +
+          '<span class="col-label">' + esc(c) + '</span>' +
+          '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
+          '</div>';
       }).join('') + '</div>' +
-      '<div class="ms-field"><label>Tên khách</label><input type="text" id="msCustomerName" placeholder="Tên khách"></div>' +
-      '<div class="ms-field"><label>Số lượng</label><div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" id="msQty" value="1" min="1"><button data-action="inc" type="button">+</button></div></div>' +
-      '<button class="btn primary full" id="msAddBtn">Thêm vào giỏ</button>' +
+      '<button class="btn primary full" id="msSaveBtn">Lưu số lượng</button>' +
       '</div>';
     $('productModal').innerHTML = html;
     bindLightboxes($('productModal'));
     $('msCloseBtn').addEventListener('click', closeProductModal);
-    $('productModal').querySelectorAll('.color-chip').forEach(function (chip) {
-      chip.addEventListener('click', function () { modalColor = chip.dataset.color; renderProductModal(); });
+    $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
+      var input = row.querySelector('.qc-input');
+      row.querySelector('[data-action="dec"]').addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); });
+      row.querySelector('[data-action="inc"]').addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; });
     });
-    $('productModal').querySelector('[data-action="dec"]').addEventListener('click', function () {
-      var i = $('msQty'); i.value = Math.max(1, (Number(i.value) || 1) - 1);
-    });
-    $('productModal').querySelector('[data-action="inc"]').addEventListener('click', function () {
-      var i = $('msQty'); i.value = (Number(i.value) || 1) + 1;
-    });
-    $('msCustomerName').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('msAddBtn').click(); });
-    $('msAddBtn').addEventListener('click', addToCart);
+    $('msSaveBtn').addEventListener('click', saveProductQuantities);
   }
 
-  function addToCart() {
-    var name = $('msCustomerName').value.trim();
-    var qty = Math.max(1, Math.floor(Number($('msQty').value) || 1));
-    if (!name) { toast('Nhập tên khách trước đã.'); return; }
-    cart.push({
-      tempId: 'c' + Date.now() + Math.random().toString(36).slice(2),
-      productId: modalProduct.id, productName: modalProduct.name, productImage: modalProduct.imageUrl,
-      color: modalColor, customerName: name, quantity: qty
+  function saveProductQuantities() {
+    var p = modalProduct;
+    var quantities = {};
+    $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
+      var c = row.dataset.color;
+      var v = Math.max(0, Math.floor(Number(row.querySelector('.qc-input').value) || 0));
+      quantities[c] = v;
     });
-    toast('Đã thêm vào giỏ: ' + name + ' (' + modalColor + ').');
-    $('msCustomerName').value = ''; $('msQty').value = 1;
-    $('msCustomerName').focus();
-    updateCartFab();
+    var btn = $('msSaveBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+    db.ref('orders/' + todayStr() + '/' + p.id + '/' + currentUser.id).set({
+      employeeName: currentUser.name, quantities: quantities, updatedAt: Date.now()
+    }).then(function () {
+      toast('Đã lưu số lượng cho "' + p.name + '".');
+      closeProductModal();
+    }).catch(function (e) { btn.disabled = false; btn.textContent = 'Lưu số lượng'; toast('Lỗi: ' + e.message); });
   }
 
-  // ---- cart drawer ----
-  function updateCartFab() {
-    var count = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
-    var fab = $('cartFab');
-    if (count > 0) {
-      fab.classList.remove('hidden');
-      $('cartBadge').textContent = count;
-      $('cartBadge').classList.remove('hidden');
-    } else {
-      fab.classList.add('hidden');
-    }
-  }
-  function openCartDrawer() { renderCartDrawer(); $('cartDrawer').classList.remove('hidden'); }
-  function closeCartDrawer() { $('cartDrawer').classList.add('hidden'); $('cartDrawer').innerHTML = ''; }
-
-  function renderCartDrawer() {
-    var total = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
-    var itemsHtml = cart.length ? cart.map(function (item) {
-      return '<div class="cart-item" data-tid="' + item.tempId + '">' +
-        (item.productImage ? '<img src="' + esc(item.productImage) + '" alt="">' : '<div class="pc-thumb placeholder">–</div>') +
-        '<div class="ci-info"><div class="ci-name">' + esc(item.customerName) + '</div><div class="ci-meta">' + esc(item.productName) + ' · ' + esc(item.color) + '</div></div>' +
-        '<div class="ci-qty-stepper"><button data-action="dec" type="button">−</button><span>' + item.quantity + '</span><button data-action="inc" type="button">+</button></div>' +
-        '<button class="ci-remove" data-action="remove" type="button">✕</button>' +
-        '</div>';
-    }).join('') : '<div class="empty">Giỏ hàng trống. Chọn mẫu áo để thêm khách.</div>';
-
-    var html = '<div class="modal-sheet">' +
-      '<div class="modal-head"><h2>Giỏ hàng (' + total + ')</h2><button class="ms-close" id="cartCloseBtn">✕</button></div>' +
-      '<div class="cart-list">' + itemsHtml + '</div>' +
-      (cart.length ? '<div class="cart-footer"><div class="cart-total-row"><span>Tổng số lượng</span><b>' + total + '</b></div>' +
-        '<button class="btn primary full" id="submitCartBtn">Đặt hàng</button></div>' : '') +
-      '</div>';
-    $('cartDrawer').innerHTML = html;
-    $('cartCloseBtn').addEventListener('click', closeCartDrawer);
-    $('cartDrawer').querySelectorAll('.cart-item').forEach(function (row) {
-      var tid = row.dataset.tid;
-      row.querySelector('[data-action="dec"]').addEventListener('click', function () { changeCartQty(tid, -1); });
-      row.querySelector('[data-action="inc"]').addEventListener('click', function () { changeCartQty(tid, 1); });
-      row.querySelector('[data-action="remove"]').addEventListener('click', function () { removeFromCart(tid); });
-    });
-    if (cart.length) $('submitCartBtn').addEventListener('click', submitCart);
-  }
-
-  function changeCartQty(tid, delta) {
-    var item = cart.find(function (i) { return i.tempId === tid; });
-    if (!item) return;
-    item.quantity = Math.max(1, item.quantity + delta);
-    renderCartDrawer();
-    updateCartFab();
-  }
-  function removeFromCart(tid) {
-    cart = cart.filter(function (i) { return i.tempId !== tid; });
-    renderCartDrawer();
-    updateCartFab();
-  }
-  function submitCart() {
-    if (!cart.length) return;
-    var btn = $('submitCartBtn'); btn.disabled = true; btn.textContent = 'Đang gửi…';
-    var today = todayStr();
-    var updates = {};
-    cart.forEach(function (item) {
-      var key = db.ref('customerOrders/' + today).push().key;
-      updates['customerOrders/' + today + '/' + key] = {
-        productId: item.productId, color: item.color, customerName: item.customerName, quantity: item.quantity,
-        employeeName: currentUser.name, employeeKey: currentUser.id, createdAt: Date.now()
-      };
-    });
-    db.ref().update(updates).then(function () {
-      toast('Đã đặt hàng cho ' + cart.length + ' khách!');
-      cart = [];
-      updateCartFab();
-      closeCartDrawer();
-    }).catch(function (e) { btn.disabled = false; btn.textContent = 'Đặt hàng'; toast('Lỗi: ' + e.message); });
-  }
-
-  $('cartFab').addEventListener('click', openCartDrawer);
   $('productModal').addEventListener('click', function (e) { if (e.target === $('productModal')) closeProductModal(); });
-  $('cartDrawer').addEventListener('click', function (e) { if (e.target === $('cartDrawer')) closeCartDrawer(); });
 
   // ---------- aggregate tab (manager only) ----------
   function availableDates() {
-    var set = {};
-    Object.keys(customerOrders).forEach(function (d) { set[d] = true; });
-    var dates = Object.keys(set).sort().reverse();
+    var dates = Object.keys(orders).sort().reverse();
     return dates.length ? dates : [todayStr()];
   }
-  function ordersForDates(dates) {
-    var out = [];
+  function mergedProductOrders(productId, dates) {
+    var out = {}; // employeeKey -> {employeeName, quantities}
     dates.forEach(function (d) {
-      var node = customerOrders[d] || {};
-      Object.keys(node).forEach(function (oid) { out.push(Object.assign({ id: oid, date: d }, node[oid])); });
+      var dayNode = (orders[d] && orders[d][productId]) || {};
+      Object.keys(dayNode).forEach(function (empKey) {
+        var o = dayNode[empKey];
+        if (!out[empKey]) out[empKey] = { employeeName: o.employeeName, quantities: {} };
+        Object.keys(o.quantities || {}).forEach(function (c) {
+          out[empKey].quantities[c] = (out[empKey].quantities[c] || 0) + (Number(o.quantities[c]) || 0);
+        });
+      });
     });
     return out;
   }
   function dayGrandTotal(d) {
-    var node = customerOrders[d] || {};
-    return Object.keys(node).reduce(function (s, oid) { return s + (Number(node[oid].quantity) || 0); }, 0);
+    var t = 0;
+    var dayNode = orders[d] || {};
+    Object.keys(dayNode).forEach(function (pid) {
+      Object.keys(dayNode[pid]).forEach(function (empKey) {
+        Object.values(dayNode[pid][empKey].quantities || {}).forEach(function (v) { t += Number(v) || 0; });
+      });
+    });
+    return t;
   }
   function renderAggDateControls() {
     if (!selectedAggDate) selectedAggDate = todayStr();
@@ -789,36 +717,41 @@
 
     var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
     var singleDate = dates.length === 1 ? dates[0] : null;
-    var allOrders = ordersForDates(dates);
 
-    var grandTotal = 0, custSet = {};
-    var byProduct = {};
-    allOrders.forEach(function (o) {
-      grandTotal += Number(o.quantity) || 0;
-      custSet[o.customerName + '|' + o.productId + '|' + o.date] = true;
-      if (!byProduct[o.productId]) byProduct[o.productId] = { byColor: {}, lines: [] };
-      byProduct[o.productId].byColor[o.color] = (byProduct[o.productId].byColor[o.color] || 0) + (Number(o.quantity) || 0);
-      byProduct[o.productId].lines.push(o);
+    var grandTotal = 0, peopleSet = {};
+    var byProduct = {}; // productId -> { byColor: {c: qty}, byPerson: {empKey: {employeeName, total, quantities}} }
+    plist.forEach(function (p) {
+      var merged = mergedProductOrders(p.id, dates);
+      var colors = colorsOf(p);
+      var byColor = {}, byPerson = {}, hasAny = false;
+      Object.keys(merged).forEach(function (empKey) {
+        var o = merged[empKey];
+        var pTotal = 0;
+        colors.forEach(function (c) { var v = Number(o.quantities[c]) || 0; if (v > 0) { byColor[c] = (byColor[c] || 0) + v; pTotal += v; hasAny = true; } });
+        if (pTotal > 0) { byPerson[empKey] = { employeeName: o.employeeName, total: pTotal, quantities: o.quantities }; peopleSet[empKey] = true; grandTotal += pTotal; }
+      });
+      if (hasAny) byProduct[p.id] = { byColor: byColor, byPerson: byPerson };
     });
 
     summaryEl.innerHTML = '<div class="agg-stat"><div class="num">' + grandTotal + '</div><div class="lbl">Tổng số áo · ' + esc(fmtDate(selectedAggDate)) + '</div></div>' +
       '<div class="agg-stat"><div class="num">' + Object.keys(byProduct).length + '</div><div class="lbl">Mẫu có đơn</div></div>' +
-      '<div class="agg-stat"><div class="num">' + Object.keys(custSet).length + '</div><div class="lbl">Lượt khách</div></div>';
+      '<div class="agg-stat"><div class="num">' + Object.keys(peopleSet).length + '</div><div class="lbl">Sale đã đặt</div></div>';
 
-    if (!allOrders.length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
+    if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
     var html = '';
     plist.filter(function (p) { return byProduct[p.id]; }).forEach(function (p) {
       var pdata = byProduct[p.id];
       var colors = colorsOf(p);
       var printed = singleDate ? !!(printStatus[singleDate] && printStatus[singleDate][p.id] && printStatus[singleDate][p.id].printed) : false;
-      var rowTotal = pdata.lines.reduce(function (s, o) { return s + (Number(o.quantity) || 0); }, 0);
+      var rowTotal = Object.values(pdata.byColor).reduce(function (s, v) { return s + v; }, 0);
+      var personCount = Object.keys(pdata.byPerson).length;
       var showBreak = !!openBreakdowns[p.id];
 
       html += '<div class="agg-product" data-pid="' + esc(p.id) + '">';
       html += '<div class="agg-product-head">';
       html += p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '';
-      html += '<div class="apn"><div class="name">' + esc(p.name) + '</div><div class="sub">' + pdata.lines.length + ' lượt khách</div></div>';
+      html += '<div class="apn"><div class="name">' + esc(p.name) + '</div><div class="sub">' + personCount + ' sale đã đặt</div></div>';
       if (singleDate) {
         html += '<button class="btn small ' + (printed ? 'ghost' : 'primary') + '" data-action="toggle-print">' + (printed ? '✅ Đã in' : 'Đánh dấu đã in') + '</button>';
       }
@@ -827,12 +760,13 @@
         return '<div class="tally-pill"><span class="swatch" style="background:' + swatchColor(c) + '"></span>' + esc(c) + ': <b>' + pdata.byColor[c] + '</b></div>';
       }).join('') + '</div>';
       html += '<div class="agg-toggle-row"><span class="total-lbl">Tổng mẫu này: <b>' + rowTotal + '</b></span>' +
-        '<button class="breakdown-toggle-btn btn ghost small" data-action="toggle-detail">' + (showBreak ? 'Ẩn danh sách khách' : 'Xem danh sách khách') + '</button></div>';
+        '<button class="breakdown-toggle-btn btn ghost small" data-action="toggle-detail">' + (showBreak ? 'Ẩn theo Sale' : 'Xem theo Sale') + '</button></div>';
       if (showBreak) {
-        html += '<div class="cust-detail">' + pdata.lines.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }).map(function (o) {
-          return '<div class="cd-row"><span class="swatch" style="background:' + swatchColor(o.color) + '"></span>' +
-            '<span class="cd-name">' + esc(o.customerName || 'Không tên') + '</span>' +
-            '<span class="cd-meta">' + esc(o.color) + ' × ' + (Number(o.quantity) || 0) + (selectedAggDate === 'all' ? ' · ' + fmtDate(o.date).replace(' (hôm nay)', '') : '') + ' · ' + esc(o.employeeName || '') + '</span></div>';
+        var people = Object.keys(pdata.byPerson).map(function (k) { return pdata.byPerson[k]; }).sort(function (a, b) { return b.total - a.total; });
+        html += '<div class="cust-detail">' + people.map(function (person) {
+          var breakdown = colors.filter(function (c) { return person.quantities[c] > 0; }).map(function (c) { return esc(c) + ' × ' + person.quantities[c]; }).join(', ');
+          return '<div class="cd-row"><span class="cd-name">' + esc(person.employeeName || 'Không tên') + '</span>' +
+            '<span class="cd-meta">' + breakdown + ' · <b>' + person.total + '</b></span></div>';
         }).join('') + '</div>';
       }
       html += '</div>';
@@ -996,8 +930,8 @@
       products = snap.val() || {};
       if (currentUser) renderCurrentTab();
     });
-    db.ref('customerOrders').on('value', function (snap) {
-      customerOrders = snap.val() || {};
+    db.ref('orders').on('value', function (snap) {
+      orders = snap.val() || {};
       if (currentUser) renderCurrentTab();
     });
     db.ref('printStatus').on('value', function (snap) {
