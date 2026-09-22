@@ -233,6 +233,8 @@
   .shop-card .sc-badge.pending { background: rgba(255,255,255,0.92); color: var(--ink-soft); }
   .shop-card .sc-body { padding: 10px 11px 12px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
   .shop-card .sc-name { font-size: 13px; font-weight: 600; line-height: 1.35; }
+  .shop-card .sc-sub { font-size: 11.5px; color: var(--ink-soft); display: flex; justify-content: space-between; align-items: center; }
+  .shop-card .sc-sub .hot-tag { color: var(--stitch); font-weight: 700; }
   .shop-card .sc-mine { font-size: 11.5px; color: var(--ink-soft); margin-top: auto; }
   .shop-card .sc-mine b { color: var(--stitch); }
 
@@ -521,6 +523,19 @@
   }
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
+  // Tính tổng số lượng đặt áo của TẤT CẢ mọi người hôm nay cho từng mẫu
+  function productTotalToday(pid) {
+    var today = todayStr();
+    var pOrders = (orders[today] && orders[today][pid]) || {};
+    var total = 0;
+    Object.keys(pOrders).forEach(function (uid) {
+      var q = pOrders[uid].quantities || {};
+      Object.keys(q).forEach(function (c) { total += Number(q[c]) || 0; });
+    });
+    return total;
+  }
+
+  // ---------- order tab: ưu tiên mẫu có nhiều người đặt xếp trên cùng ----------
   var modalProduct = null;
 
   function renderOrderList() {
@@ -536,17 +551,31 @@
     var todayOrders = orders[today] || {};
     var todayPrint = printStatus[today] || {};
 
+    // Sắp xếp mẫu: mẫu có tổng số áo được đặt nhiều nhất hôm nay xếp lên đầu
+    plist.sort(function (a, b) {
+      var tA = productTotalToday(a.id);
+      var tB = productTotalToday(b.id);
+      if (tB !== tA) return tB - tA;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+
     $('shopGrid').innerHTML = plist.map(function (p) {
       var colors = colorsOf(p);
       var mine = (todayOrders[p.id] && todayOrders[p.id][currentUser.id] && todayOrders[p.id][currentUser.id].quantities) || {};
       var mineTotal = colors.reduce(function (s, c) { return s + (Number(mine[c]) || 0); }, 0);
+      var totalAll = productTotalToday(p.id);
       var printed = !!(todayPrint[p.id] && todayPrint[p.id].printed);
       return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
         '<span class="sc-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
         '</div>' +
-        '<div class="sc-body"><div class="sc-name">' + esc(p.name) + '</div>' +
-        (mineTotal ? '<div class="sc-mine">Bạn đã đặt <b>' + mineTotal + '</b> áo</div>' : '<div class="sc-mine">' + colors.length + ' màu</div>') +
+        '<div class="sc-body">' +
+          '<div class="sc-name">' + esc(p.name) + '</div>' +
+          '<div class="sc-sub">' +
+            '<span>' + colors.length + ' màu</span>' +
+            (totalAll > 0 ? '<span class="hot-tag">🔥 Đã đặt: ' + totalAll + '</span>' : '') +
+          '</div>' +
+          (mineTotal ? '<div class="sc-mine">Bạn đã đặt <b>' + mineTotal + '</b> áo</div>' : '<div class="sc-mine" style="opacity:0.6;">Chưa đặt</div>') +
         '</div></div>';
     }).join('');
     $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
@@ -688,6 +717,7 @@
     strip.querySelectorAll('.daily-chip').forEach(function (btn) { btn.addEventListener('click', function () { selectedAggDate = btn.dataset.date; renderAgg(); }); });
   }
 
+  // ---------- aggregate tab: ưu tiên mẫu có nhiều người đặt xếp trên cùng ----------
   function renderAgg() {
     if (!isManager()) return;
     var summaryEl = $('aggSummary'), prodEl = $('aggProducts');
@@ -700,18 +730,18 @@
     var singleDate = dates.length === 1 ? dates[0] : null;
 
     var grandTotal = 0, peopleSet = {};
-    var byProduct = {};
+    var byProduct = {}; // productId -> { byColor, byPerson, totalQty }
     plist.forEach(function (p) {
       var merged = mergedProductOrders(p.id, dates);
       var colors = colorsOf(p);
-      var byColor = {}, byPerson = {}, hasAny = false;
+      var byColor = {}, byPerson = {}, pTotalQty = 0;
       Object.keys(merged).forEach(function (empKey) {
         var o = merged[empKey];
         var pTotal = 0;
-        colors.forEach(function (c) { var v = Number(o.quantities[c]) || 0; if (v > 0) { byColor[c] = (byColor[c] || 0) + v; pTotal += v; hasAny = true; } });
-        if (pTotal > 0) { byPerson[empKey] = { employeeName: o.employeeName, total: pTotal, quantities: o.quantities }; peopleSet[empKey] = true; grandTotal += pTotal; }
+        colors.forEach(function (c) { var v = Number(o.quantities[c]) || 0; if (v > 0) { byColor[c] = (byColor[c] || 0) + v; pTotal += v; } });
+        if (pTotal > 0) { byPerson[empKey] = { employeeName: o.employeeName, total: pTotal, quantities: o.quantities }; peopleSet[empKey] = true; grandTotal += pTotal; pTotalQty += pTotal; }
       });
-      if (hasAny) byProduct[p.id] = { byColor: byColor, byPerson: byPerson };
+      if (pTotalQty > 0) byProduct[p.id] = { byColor: byColor, byPerson: byPerson, totalQty: pTotalQty };
     });
 
     summaryEl.innerHTML = '<div class="agg-stat"><div class="num">' + grandTotal + '</div><div class="lbl">Tổng số áo · ' + esc(fmtDate(selectedAggDate)) + '</div></div>' +
@@ -720,12 +750,18 @@
 
     if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
+    // Sắp xếp các mẫu có tổng số áo được đặt từ cao nhất xuống thấp nhất
+    var filteredList = plist.filter(function (p) { return byProduct[p.id]; });
+    filteredList.sort(function (a, b) {
+      return (byProduct[b.id].totalQty || 0) - (byProduct[a.id].totalQty || 0);
+    });
+
     var html = '';
-    plist.filter(function (p) { return byProduct[p.id]; }).forEach(function (p) {
+    filteredList.forEach(function (p) {
       var pdata = byProduct[p.id];
       var colors = colorsOf(p);
       var printed = singleDate ? !!(printStatus[singleDate] && printStatus[singleDate][p.id] && printStatus[singleDate][p.id].printed) : false;
-      var rowTotal = Object.values(pdata.byColor).reduce(function (s, v) { return s + v; }, 0);
+      var rowTotal = pdata.totalQty;
       var personCount = Object.keys(pdata.byPerson).length;
       var showBreak = !!openBreakdowns[p.id];
 
