@@ -146,6 +146,9 @@
   .agg-date-bar label { font-size: 13px; color: var(--ink-soft); }
   .agg-date-bar select { font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
   .agg-date-bar .print-btn { margin-left: auto; }
+  .print-only-toggle { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
+  .print-only-toggle input { cursor: pointer; }
+  .print-only-toggle.disabled { opacity: 0.45; pointer-events: none; }
 
   #printArea { display: none; }
   @media print {
@@ -160,6 +163,7 @@
     .pr-row .pr-noimg { width: 70px; height: 70px; border: 1px dashed #ccc; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #999; text-align: center; }
     .pr-row .pr-info { flex: 1; }
     .pr-row .pr-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .pr-row .pr-already { font-weight: 400; font-size: 11px; color: #888; }
     .pr-row .pr-colors { font-size: 12.5px; color: #333; }
     .pr-row .pr-total { font-weight: 700; font-size: 15px; white-space: nowrap; }
     .pr-grand { display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; padding-top: 12px; margin-top: 6px; border-top: 2px solid #000; }
@@ -334,7 +338,9 @@
       <div id="myOrdersToday"></div>
     </section>
     <section class="view" id="view-agg">
-      <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select><button class="btn ghost small print-btn" id="printAggBtn">🖨️ In danh sách</button></div>
+      <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
+        <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
+        <button class="btn ghost small print-btn" id="printAggBtn">🖨️ In danh sách</button></div>
       <div id="dailyStrip" class="daily-strip"></div>
       <div id="aggSummary" class="agg-summary"></div>
       <div id="aggProducts"></div>
@@ -749,6 +755,12 @@
         '<div class="dc-total">' + dayGrandTotal(d) + '</div></button>';
     }).join('');
     strip.querySelectorAll('.daily-chip').forEach(function (btn) { btn.addEventListener('click', function () { selectedAggDate = btn.dataset.date; renderAgg(); }); });
+
+    var toggleLabel = $('printOnlyUnprinted').closest('label');
+    var isSingle = selectedAggDate !== 'all';
+    toggleLabel.classList.toggle('disabled', !isSingle);
+    $('printOnlyUnprinted').disabled = !isSingle;
+    if (!isSingle) $('printOnlyUnprinted').checked = false;
   }
 
   function renderAgg() {
@@ -851,21 +863,47 @@
   function printAggregateReport() {
     if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có đơn hàng nào để in.'); return; }
     var snap = lastAggSnapshot;
-    var rowsHtml = snap.filteredList.map(function (p) {
+    var singleDate = selectedAggDate !== 'all' ? selectedAggDate : null;
+    var onlyUnprinted = singleDate && $('printOnlyUnprinted').checked;
+
+    function isPrinted(pid) { return !!(singleDate && printStatus[singleDate] && printStatus[singleDate][pid] && printStatus[singleDate][pid].printed); }
+
+    var list = onlyUnprinted ? snap.filteredList.filter(function (p) { return !isPrinted(p.id); }) : snap.filteredList;
+    if (!list.length) { toast('Tất cả mẫu ở ngày này đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+
+    var runningTotal = 0;
+    var rowsHtml = list.map(function (p) {
       var pdata = snap.byProduct[p.id];
       var colors = colorsOf(p);
       var colorsText = colors.filter(function (c) { return pdata.byColor[c]; })
         .map(function (c) { return esc(c) + ': ' + pdata.byColor[c]; }).join(' · ');
+      runningTotal += pdata.totalQty;
+      var printedTag = isPrinted(p.id) ? ' <span class="pr-already">(đã in trước đó)</span>' : '';
       return '<div class="pr-row">' +
         (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pr-noimg">Không ảnh</div>') +
-        '<div class="pr-info"><div class="pr-name">' + esc(p.name) + '</div><div class="pr-colors">' + colorsText + '</div></div>' +
+        '<div class="pr-info"><div class="pr-name">' + esc(p.name) + printedTag + '</div><div class="pr-colors">' + colorsText + '</div></div>' +
         '<div class="pr-total">' + pdata.totalQty + ' áo</div>' +
         '</div>';
     }).join('');
     $('printArea').innerHTML =
-      '<div class="pr-header"><h1>Bảng tổng hợp đặt may</h1><p>' + esc(snap.dateLabel) + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
+      '<div class="pr-header"><h1>Bảng tổng hợp đặt may</h1><p>' + esc(snap.dateLabel) +
+      (onlyUnprinted ? ' · Chỉ mẫu chưa in' : '') + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
       rowsHtml +
-      '<div class="pr-grand"><span>Tổng cộng</span><span>' + snap.grandTotal + ' áo</span></div>';
+      '<div class="pr-grand"><span>Tổng cộng</span><span>' + runningTotal + ' áo</span></div>';
+
+    var pendingMarkIds = singleDate ? list.filter(function (p) { return !isPrinted(p.id); }).map(function (p) { return p.id; }) : [];
+
+    window.onafterprint = function () {
+      window.onafterprint = null;
+      if (pendingMarkIds.length && confirm('Đánh dấu ' + pendingMarkIds.length + ' mẫu vừa in là "Đã in" để tránh in trùng lần sau?')) {
+        var updates = {};
+        pendingMarkIds.forEach(function (pid) {
+          updates['printStatus/' + singleDate + '/' + pid] = { printed: true, printedAt: Date.now(), printedBy: currentUser.name };
+        });
+        db.ref().update(updates).then(function () { toast('Đã đánh dấu ' + pendingMarkIds.length + ' mẫu là đã in.'); })
+          .catch(function () { toast('Không cập nhật được trạng thái đã in.'); });
+      }
+    };
     setTimeout(function () { window.print(); }, 50);
   }
   var printAggBtnEl = $('printAggBtn');
