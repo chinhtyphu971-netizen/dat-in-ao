@@ -209,6 +209,59 @@
 
   .hidden { display: none !important; }
 
+  /* ---- shop-style browsing ---- */
+  .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 14px; margin-top: 4px; }
+  .shop-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); box-shadow: var(--shadow-card); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: transform .1s ease; }
+  .shop-card:active { transform: scale(0.98); }
+  .shop-card .sc-imgwrap { position: relative; width: 100%; aspect-ratio: 1; background: var(--paper); overflow: hidden; }
+  .shop-card .sc-imgwrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .shop-card .sc-badge { position: absolute; top: 7px; left: 7px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-pill); }
+  .shop-card .sc-badge.done { background: var(--ok); color: #fff; }
+  .shop-card .sc-badge.pending { background: rgba(255,255,255,0.92); color: var(--ink-soft); }
+  .shop-card .sc-body { padding: 10px 11px 12px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .shop-card .sc-name { font-size: 13px; font-weight: 600; line-height: 1.35; }
+  .shop-card .sc-mine { font-size: 11.5px; color: var(--ink-soft); margin-top: auto; }
+  .shop-card .sc-mine b { color: var(--stitch); }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(20,18,14,0.55); z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
+  @media (min-width: 560px) { .modal-overlay { align-items: center; padding: 20px; } }
+  .modal-sheet { background: var(--paper-raised); width: 100%; max-width: 440px; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); box-shadow: var(--shadow-card); }
+  @media (min-width: 560px) { .modal-sheet { border-radius: var(--radius-tag); max-height: 85vh; } }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .modal-head h2 { font-family: var(--font-display); font-size: 17px; margin: 0; }
+  .ms-close { border: none; background: var(--paper); color: var(--ink-soft); width: 30px; height: 30px; border-radius: 50%; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+  .ms-image { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; cursor: zoom-in; }
+  .ms-section-label { font-size: 12.5px; color: var(--ink-soft); margin: 14px 0 8px; }
+  .ms-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-chip { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 7px 13px; font-size: 13px; cursor: pointer; background: var(--paper); color: var(--ink); }
+  .color-chip .swatch { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); }
+  .color-chip.active { border-color: var(--denim); box-shadow: 0 0 0 1.5px var(--denim) inset; font-weight: 600; background: var(--paper-raised); }
+  .ms-field { margin-top: 16px; }
+  .ms-field label { display: block; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .ms-field input[type=text] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14.5px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .qty-stepper { display: flex; align-items: center; gap: 12px; }
+  .qty-stepper button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 18px; cursor: pointer; color: var(--ink); line-height: 1; }
+  .qty-stepper input { width: 54px; text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px; font-size: 15px; font-family: var(--font-body); background: var(--paper-raised); color: var(--ink); }
+  #productModal .btn.full { margin-top: 20px; }
+
+  .cart-fab { position: fixed; right: 18px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 50%; background: var(--denim); color: #fff; border: none; box-shadow: 0 10px 24px -8px rgba(0,0,0,0.45); font-size: 24px; cursor: pointer; z-index: 60; display: flex; align-items: center; justify-content: center; }
+  .cart-fab .cart-badge { position: absolute; top: -3px; right: -3px; background: var(--stitch); color: #fff; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+  .cart-list { display: flex; flex-direction: column; }
+  .cart-item { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item img, .cart-item .pc-thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; }
+  .cart-item .ci-info { flex: 1; min-width: 0; }
+  .cart-item .ci-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cart-item .ci-meta { font-size: 12px; color: var(--ink-soft); }
+  .cart-item .ci-qty-stepper { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .cart-item .ci-qty-stepper button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); cursor: pointer; font-size: 14px; line-height: 1; }
+  .cart-item .ci-qty-stepper span { font-family: var(--font-display); font-weight: 700; min-width: 16px; text-align: center; }
+  .cart-item .ci-remove { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 16px; flex-shrink: 0; }
+  .cart-item .ci-remove:hover { color: var(--stitch); }
+  .cart-footer { position: sticky; bottom: 0; background: var(--paper-raised); padding-top: 14px; margin-top: 4px; }
+  .cart-total-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 12px; color: var(--ink-soft); }
+  .cart-total-row b { font-family: var(--font-display); font-size: 19px; color: var(--ink); }
+
   .pc-thumb, .agg-product-head img, .manage-list-item img { cursor: zoom-in; }
   .lightbox { position: fixed; inset: 0; background: rgba(20,18,14,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); cursor: zoom-out; }
   .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.6); }
@@ -248,7 +301,11 @@
   <main class="main-content">
     <p class="subtitle main-subtitle">Nhập theo từng khách. Quản lý đánh dấu mẫu nào đã in để báo lại khách.</p>
 
-    <section class="view active" id="view-order"><div id="orderList"></div></section>
+    <section class="view active" id="view-order">
+      <p class="day-note" id="orderDayNote"></p>
+      <div id="shopGrid" class="shop-grid"></div>
+      <div id="myOrdersToday"></div>
+    </section>
     <section class="view" id="view-agg">
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select></div>
       <div id="dailyStrip" class="daily-strip"></div>
@@ -262,6 +319,9 @@
 
 <div class="toast" id="toast"></div>
 <div class="lightbox hidden" id="lightbox"><button class="lb-close" id="lbClose">✕</button><img id="lightboxImg" src="" alt=""></div>
+<button class="cart-fab hidden" id="cartFab">🛒<span class="cart-badge hidden" id="cartBadge">0</span></button>
+<div class="modal-overlay hidden" id="productModal"></div>
+<div class="modal-overlay hidden" id="cartDrawer"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -475,103 +535,210 @@
   }
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
-  // ---------- order tab ----------
+  // ---------- order tab: shop-style browse + cart ----------
+  var cart = []; // {tempId, productId, productName, productImage, color, customerName, quantity}
+  var modalProduct = null;
+  var modalColor = null;
+
   function renderOrderList() {
-    var list = $('orderList');
-    if (!configOk) { list.innerHTML = setupWarningHtml(); return; }
+    if (!configOk) { $('shopGrid').innerHTML = setupWarningHtml(); return; }
     var plist = productList();
+    var today = todayStr();
+    $('orderDayNote').innerHTML = 'Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.';
     if (!plist.length) {
-      list.innerHTML = '<div class="empty">Chưa có mẫu áo nào.' + (isManager() ? ' Vào tab "Quản lý mẫu" để thêm ảnh mẫu.' : ' Chờ quản lý thêm ảnh mẫu nhé.') + '</div>';
+      $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.' + (isManager() ? ' Vào tab "Quản lý mẫu" để thêm ảnh mẫu.' : ' Chờ quản lý thêm ảnh mẫu nhé.') + '</div>';
+      $('myOrdersToday').innerHTML = '';
+      updateCartFab();
       return;
     }
-    var today = todayStr();
     var todayOrders = customerOrders[today] || {};
     var todayPrint = printStatus[today] || {};
 
-    var html = '<p class="day-note">Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.</p>';
-    plist.forEach(function (p) {
+    $('shopGrid').innerHTML = plist.map(function (p) {
       var colors = colorsOf(p);
-      var mine = Object.keys(todayOrders)
-        .map(function (oid) { return Object.assign({ id: oid }, todayOrders[oid]); })
-        .filter(function (o) { return o.productId === p.id && o.employeeKey === currentUser.id; });
-      var total = mine.reduce(function (s, o) { return s + (Number(o.quantity) || 0); }, 0);
+      var mineCount = Object.keys(todayOrders).filter(function (oid) {
+        var o = todayOrders[oid]; return o.productId === p.id && o.employeeKey === currentUser.id;
+      }).length;
       var printed = !!(todayPrint[p.id] && todayPrint[p.id].printed);
-
-      html += '<div class="product-card" data-pid="' + esc(p.id) + '">';
-      html += '<div class="pc-head">';
-      html += p.imageUrl ? '<img class="pc-thumb" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder">Không ảnh</div>';
-      html += '<div class="pc-headtext"><p class="pc-title">' + esc(p.name) + '</p><p class="pc-meta">' + colors.length + ' màu</p>' +
-        '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span></div>';
-      html += '</div><div class="pc-body">';
-      html += '<div class="color-order-rows">' + colors.map(function (c) {
-        return '<div class="color-order-row" data-color="' + esc(c) + '">' +
-          '<span class="swatch" style="background:' + swatchColor(c) + '"></span>' +
-          '<span class="col-label">' + esc(c) + '</span>' +
-          '<input type="text" data-f="customer" placeholder="Tên khách">' +
-          '<input type="number" data-f="qty" min="1" step="1" value="1">' +
-          '<button class="btn primary small" data-action="add">Thêm</button>' +
-          '</div>';
-      }).join('') + '</div>';
-      html += '<div class="cust-list">';
-      if (!mine.length) {
-        html += '<div class="pc-empty-list">Bạn chưa nhập khách nào cho mẫu này hôm nay.</div>';
-      } else {
-        mine.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }).forEach(function (o) {
-          html += '<div class="cust-row" data-oid="' + esc(o.id) + '">' +
-            '<span class="swatch" style="background:' + swatchColor(o.color) + '"></span>' +
-            '<span class="cr-name">' + esc(o.customerName || 'Không tên') + '</span>' +
-            '<span class="cr-color">' + esc(o.color) + '</span>' +
-            '<span class="cr-qty">' + (Number(o.quantity) || 0) + '</span>' +
-            '<button class="cr-del" data-action="del" title="Xoá">✕</button></div>';
-        });
-      }
-      html += '</div><div class="pc-footer"><span class="pc-total">Tổng của bạn cho mẫu này: <b>' + total + '</b></span></div>';
-      html += '</div></div>';
+      return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
+        '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
+        '<span class="sc-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
+        '</div>' +
+        '<div class="sc-body"><div class="sc-name">' + esc(p.name) + '</div>' +
+        (mineCount ? '<div class="sc-mine">Bạn đã nhập <b>' + mineCount + '</b> khách hôm nay</div>' : '<div class="sc-mine">' + colors.length + ' màu</div>') +
+        '</div></div>';
+    }).join('');
+    $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
+      card.addEventListener('click', function () { openProductModal(card.dataset.pid); });
     });
-    list.innerHTML = html;
-    bindLightboxes(list);
-
-    list.querySelectorAll('.product-card').forEach(function (card) {
-      var pid = card.dataset.pid;
-      card.querySelectorAll('.color-order-row').forEach(function (row) {
-        row.querySelector('[data-action="add"]').addEventListener('click', function () { addCustomerOrder(pid, row); });
-        var custInput = row.querySelector('[data-f="customer"]');
-        custInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') row.querySelector('[data-action="add"]').click(); });
-        var qtyInput = row.querySelector('[data-f="qty"]');
-        qtyInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') row.querySelector('[data-action="add"]').click(); });
-      });
-      card.querySelectorAll('[data-action="del"]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var oid = btn.closest('.cust-row').dataset.oid;
-          deleteCustomerOrder(oid);
-        });
-      });
-    });
+    renderMyOrdersToday();
+    updateCartFab();
   }
 
-  function addCustomerOrder(productId, row) {
-    var color = row.dataset.color;
-    var customerName = row.querySelector('[data-f="customer"]').value.trim();
-    var qtyInput = row.querySelector('[data-f="qty"]');
-    var quantity = Math.max(1, Math.floor(Number(qtyInput.value) || 1));
-    if (!customerName) { toast('Nhập tên khách trước đã.'); return; }
-    var btn = row.querySelector('[data-action="add"]');
-    btn.disabled = true;
-    db.ref('customerOrders/' + todayStr()).push({
-      productId: productId, color: color, customerName: customerName, quantity: quantity,
-      employeeName: currentUser.name, employeeKey: currentUser.id, createdAt: Date.now()
-    }).then(function () {
-      btn.disabled = false;
-      row.querySelector('[data-f="customer"]').value = '';
-      qtyInput.value = 1;
-      row.querySelector('[data-f="customer"]').focus();
-      toast('Đã thêm khách "' + customerName + '" (' + color + ').');
-    }).catch(function (e) { btn.disabled = false; toast('Lỗi: ' + e.message); });
+  function renderMyOrdersToday() {
+    var container = $('myOrdersToday');
+    var today = todayStr();
+    var todayOrders = customerOrders[today] || {};
+    var mine = Object.keys(todayOrders).map(function (oid) { return Object.assign({ id: oid }, todayOrders[oid]); })
+      .filter(function (o) { return o.employeeKey === currentUser.id; });
+    if (!mine.length) { container.innerHTML = ''; return; }
+    mine.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+    var total = mine.reduce(function (s, o) { return s + (Number(o.quantity) || 0); }, 0);
+    container.innerHTML = '<div class="manage-form" style="margin-top:24px;"><h2>Đơn của bạn hôm nay (' + total + ' áo)</h2><div class="cust-list">' +
+      mine.map(function (o) {
+        var pname = products[o.productId] ? products[o.productId].name : '(mẫu đã xoá)';
+        return '<div class="cust-row" data-oid="' + esc(o.id) + '">' +
+          '<span class="swatch" style="background:' + swatchColor(o.color) + '"></span>' +
+          '<span class="cr-name">' + esc(o.customerName || 'Không tên') + '</span>' +
+          '<span class="cr-color">' + esc(pname) + ' · ' + esc(o.color) + '</span>' +
+          '<span class="cr-qty">' + (Number(o.quantity) || 0) + '</span>' +
+          '<button class="cr-del" data-action="del" title="Xoá">✕</button></div>';
+      }).join('') + '</div></div>';
+    container.querySelectorAll('[data-action="del"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteCustomerOrder(btn.closest('.cust-row').dataset.oid); });
+    });
   }
 
   function deleteCustomerOrder(orderId) {
     db.ref('customerOrders/' + todayStr() + '/' + orderId).remove().catch(function () { toast('Không xoá được.'); });
   }
+
+  // ---- product picker modal ----
+  function openProductModal(pid) {
+    if (!products[pid]) return;
+    modalProduct = Object.assign({ id: pid }, products[pid]);
+    modalColor = colorsOf(modalProduct)[0];
+    renderProductModal();
+    $('productModal').classList.remove('hidden');
+  }
+  function closeProductModal() { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; modalProduct = null; }
+
+  function renderProductModal() {
+    var p = modalProduct;
+    var colors = colorsOf(p);
+    var today = todayStr();
+    var printed = !!(printStatus[today] && printStatus[today][p.id] && printStatus[today][p.id].printed);
+    var html = '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
+      (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
+      '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span>' +
+      '<div class="ms-section-label">Chọn màu</div>' +
+      '<div class="ms-colors">' + colors.map(function (c) {
+        return '<button class="color-chip' + (c === modalColor ? ' active' : '') + '" data-color="' + esc(c) + '"><span class="swatch" style="background:' + swatchColor(c) + '"></span>' + esc(c) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="ms-field"><label>Tên khách</label><input type="text" id="msCustomerName" placeholder="Tên khách"></div>' +
+      '<div class="ms-field"><label>Số lượng</label><div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" id="msQty" value="1" min="1"><button data-action="inc" type="button">+</button></div></div>' +
+      '<button class="btn primary full" id="msAddBtn">Thêm vào giỏ</button>' +
+      '</div>';
+    $('productModal').innerHTML = html;
+    bindLightboxes($('productModal'));
+    $('msCloseBtn').addEventListener('click', closeProductModal);
+    $('productModal').querySelectorAll('.color-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () { modalColor = chip.dataset.color; renderProductModal(); });
+    });
+    $('productModal').querySelector('[data-action="dec"]').addEventListener('click', function () {
+      var i = $('msQty'); i.value = Math.max(1, (Number(i.value) || 1) - 1);
+    });
+    $('productModal').querySelector('[data-action="inc"]').addEventListener('click', function () {
+      var i = $('msQty'); i.value = (Number(i.value) || 1) + 1;
+    });
+    $('msCustomerName').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('msAddBtn').click(); });
+    $('msAddBtn').addEventListener('click', addToCart);
+  }
+
+  function addToCart() {
+    var name = $('msCustomerName').value.trim();
+    var qty = Math.max(1, Math.floor(Number($('msQty').value) || 1));
+    if (!name) { toast('Nhập tên khách trước đã.'); return; }
+    cart.push({
+      tempId: 'c' + Date.now() + Math.random().toString(36).slice(2),
+      productId: modalProduct.id, productName: modalProduct.name, productImage: modalProduct.imageUrl,
+      color: modalColor, customerName: name, quantity: qty
+    });
+    toast('Đã thêm vào giỏ: ' + name + ' (' + modalColor + ').');
+    $('msCustomerName').value = ''; $('msQty').value = 1;
+    $('msCustomerName').focus();
+    updateCartFab();
+  }
+
+  // ---- cart drawer ----
+  function updateCartFab() {
+    var count = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
+    var fab = $('cartFab');
+    if (count > 0) {
+      fab.classList.remove('hidden');
+      $('cartBadge').textContent = count;
+      $('cartBadge').classList.remove('hidden');
+    } else {
+      fab.classList.add('hidden');
+    }
+  }
+  function openCartDrawer() { renderCartDrawer(); $('cartDrawer').classList.remove('hidden'); }
+  function closeCartDrawer() { $('cartDrawer').classList.add('hidden'); $('cartDrawer').innerHTML = ''; }
+
+  function renderCartDrawer() {
+    var total = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
+    var itemsHtml = cart.length ? cart.map(function (item) {
+      return '<div class="cart-item" data-tid="' + item.tempId + '">' +
+        (item.productImage ? '<img src="' + esc(item.productImage) + '" alt="">' : '<div class="pc-thumb placeholder">–</div>') +
+        '<div class="ci-info"><div class="ci-name">' + esc(item.customerName) + '</div><div class="ci-meta">' + esc(item.productName) + ' · ' + esc(item.color) + '</div></div>' +
+        '<div class="ci-qty-stepper"><button data-action="dec" type="button">−</button><span>' + item.quantity + '</span><button data-action="inc" type="button">+</button></div>' +
+        '<button class="ci-remove" data-action="remove" type="button">✕</button>' +
+        '</div>';
+    }).join('') : '<div class="empty">Giỏ hàng trống. Chọn mẫu áo để thêm khách.</div>';
+
+    var html = '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>Giỏ hàng (' + total + ')</h2><button class="ms-close" id="cartCloseBtn">✕</button></div>' +
+      '<div class="cart-list">' + itemsHtml + '</div>' +
+      (cart.length ? '<div class="cart-footer"><div class="cart-total-row"><span>Tổng số lượng</span><b>' + total + '</b></div>' +
+        '<button class="btn primary full" id="submitCartBtn">Đặt hàng</button></div>' : '') +
+      '</div>';
+    $('cartDrawer').innerHTML = html;
+    $('cartCloseBtn').addEventListener('click', closeCartDrawer);
+    $('cartDrawer').querySelectorAll('.cart-item').forEach(function (row) {
+      var tid = row.dataset.tid;
+      row.querySelector('[data-action="dec"]').addEventListener('click', function () { changeCartQty(tid, -1); });
+      row.querySelector('[data-action="inc"]').addEventListener('click', function () { changeCartQty(tid, 1); });
+      row.querySelector('[data-action="remove"]').addEventListener('click', function () { removeFromCart(tid); });
+    });
+    if (cart.length) $('submitCartBtn').addEventListener('click', submitCart);
+  }
+
+  function changeCartQty(tid, delta) {
+    var item = cart.find(function (i) { return i.tempId === tid; });
+    if (!item) return;
+    item.quantity = Math.max(1, item.quantity + delta);
+    renderCartDrawer();
+    updateCartFab();
+  }
+  function removeFromCart(tid) {
+    cart = cart.filter(function (i) { return i.tempId !== tid; });
+    renderCartDrawer();
+    updateCartFab();
+  }
+  function submitCart() {
+    if (!cart.length) return;
+    var btn = $('submitCartBtn'); btn.disabled = true; btn.textContent = 'Đang gửi…';
+    var today = todayStr();
+    var updates = {};
+    cart.forEach(function (item) {
+      var key = db.ref('customerOrders/' + today).push().key;
+      updates['customerOrders/' + today + '/' + key] = {
+        productId: item.productId, color: item.color, customerName: item.customerName, quantity: item.quantity,
+        employeeName: currentUser.name, employeeKey: currentUser.id, createdAt: Date.now()
+      };
+    });
+    db.ref().update(updates).then(function () {
+      toast('Đã đặt hàng cho ' + cart.length + ' khách!');
+      cart = [];
+      updateCartFab();
+      closeCartDrawer();
+    }).catch(function (e) { btn.disabled = false; btn.textContent = 'Đặt hàng'; toast('Lỗi: ' + e.message); });
+  }
+
+  $('cartFab').addEventListener('click', openCartDrawer);
+  $('productModal').addEventListener('click', function (e) { if (e.target === $('productModal')) closeProductModal(); });
+  $('cartDrawer').addEventListener('click', function (e) { if (e.target === $('cartDrawer')) closeCartDrawer(); });
 
   // ---------- aggregate tab (manager only) ----------
   function availableDates() {
