@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Đặt số lượng may</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧵</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f2f0e9;
+    --paper-raised: #ffffff;
+    --ink: #211f1a;
+    --ink-soft: #63594a;
+    --line: #ddd7c8;
+    --denim: #33506e;
+    --thread: #d99a2b;
+    --thread-soft: #f3d99a;
+    --stitch: #b0523f;
+    --ok: #4a7a4f;
+    --ok-soft: #dcebdd;
+    --radius-tag: 10px;
+    --radius-pill: 999px;
+    --shadow-card: 0 1px 0 rgba(33,31,26,0.05), 0 6px 16px -10px rgba(33,31,26,0.25);
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 20px 16px 64px; }
+
+  header.top { padding: 18px 4px 20px; border-bottom: 2px solid var(--line); margin-bottom: 18px; }
+  .eyebrow-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.01em; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+  h1 .tag-dot { width: 12px; height: 12px; border-radius: 3px; background: var(--thread); display: inline-block; transform: rotate(45deg); flex-shrink: 0; }
+  .subtitle { color: var(--ink-soft); font-size: 14.5px; margin: 0; }
+
+  .name-bar { display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 6px 6px 14px; }
+  .name-bar span.lbl { font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+  .name-bar input { border: none; background: none; font-size: 14px; font-family: var(--font-body); color: var(--ink); flex: 1; min-width: 120px; padding: 6px 0; }
+  .name-bar input:focus { outline: none; }
+  .name-bar button { border: none; background: var(--denim); color: #fff; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-pill); cursor: pointer; }
+
+  nav.tabs { display: flex; gap: 6px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
+  nav.tabs button { font-family: var(--font-body); font-weight: 600; font-size: 14.5px; background: none; border: none; color: var(--ink-soft); padding: 10px 4px 12px; margin-right: 20px; cursor: pointer; border-bottom: 2px solid transparent; }
+  nav.tabs button.active { color: var(--ink); border-color: var(--stitch); }
+
+  section.view { display: none; }
+  section.view.active { display: block; }
+
+  .empty { padding: 40px 20px; text-align: center; color: var(--ink-soft); border: 1.5px dashed var(--line); border-radius: var(--radius-tag); font-size: 14.5px; line-height: 1.6; }
+
+  .day-note { font-size: 13px; color: var(--ink-soft); margin: -4px 0 14px; }
+  .day-note b { color: var(--ink); }
+
+  .product-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); box-shadow: var(--shadow-card); margin-bottom: 16px; overflow: hidden; }
+  .product-card .pc-head { display: flex; gap: 12px; padding: 14px; align-items: flex-start; }
+  .pc-thumb { width: 68px; height: 68px; border-radius: 8px; object-fit: cover; background: var(--paper); border: 1px solid var(--line); flex-shrink: 0; }
+  .pc-thumb.placeholder { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: 11px; text-align: center; }
+  .pc-title { font-family: var(--font-display); font-weight: 600; font-size: 16.5px; margin: 0 0 4px; }
+  .pc-meta { font-size: 12.5px; color: var(--ink-soft); }
+  .pc-headtext { flex: 1; min-width: 0; }
+  .pc-body { padding: 0 14px 14px; }
+
+  .print-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-pill); margin-top: 6px; }
+  .print-badge.done { background: var(--ok); color: #fff; }
+  .print-badge.pending { background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
+
+  .add-customer-row { display: grid; grid-template-columns: minmax(90px,1fr) minmax(120px,1.6fr) 64px auto; gap: 8px; margin-bottom: 12px; }
+  .add-customer-row select, .add-customer-row input[type=text], .add-customer-row input[type=number] {
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; font-size: 13.5px; font-family: var(--font-body); background: var(--paper); color: var(--ink); width: 100%;
+  }
+  .add-customer-row input[type=number] { text-align: center; }
+  .add-customer-row button { white-space: nowrap; }
+
+  .cust-list { border-top: 1px solid var(--line); padding-top: 4px; }
+  .cust-row { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .cust-row:last-child { border-bottom: none; }
+  .cust-row .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
+  .cust-row .cr-name { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cust-row .cr-color { color: var(--ink-soft); font-size: 12.5px; white-space: nowrap; }
+  .cust-row .cr-qty { font-family: var(--font-display); font-weight: 700; min-width: 20px; text-align: right; }
+  .cust-row .cr-del { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
+  .cust-row .cr-del:hover { color: var(--stitch); }
+  .pc-empty-list { font-size: 12.5px; color: var(--ink-soft); padding: 6px 2px 2px; }
+  .pc-footer { display: flex; align-items: center; justify-content: flex-end; padding-top: 10px; }
+  .pc-total { font-size: 13px; color: var(--ink-soft); }
+  .pc-total b { color: var(--ink); font-family: var(--font-display); font-size: 15px; }
+
+  button.btn { font-family: var(--font-body); font-weight: 600; font-size: 13.5px; border-radius: var(--radius-pill); padding: 9px 16px; border: 1px solid transparent; cursor: pointer; }
+  button.btn.primary { background: var(--denim); color: #fff; }
+  button.btn.ghost { background: none; border-color: var(--line); color: var(--ink); }
+  button.btn.danger { background: none; border-color: var(--stitch); color: var(--stitch); }
+  button.btn.danger:hover { background: var(--stitch); color: #fff; }
+  button.btn.small { padding: 6px 12px; font-size: 12px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  button.btn.saved { background: var(--ok); }
+
+  .agg-date-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .agg-date-bar label { font-size: 13px; color: var(--ink-soft); }
+  .agg-date-bar select { font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .daily-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px; }
+  .daily-chip { flex-shrink: 0; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; text-align: left; font-family: var(--font-body); }
+  .daily-chip.active { border-color: var(--stitch); background: var(--thread-soft); }
+  .daily-chip .dc-date { font-size: 11.5px; color: var(--ink-soft); }
+  .daily-chip .dc-total { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+  .agg-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .agg-stat { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; }
+  .agg-stat .num { font-family: var(--font-display); font-size: 24px; font-weight: 700; }
+  .agg-stat .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  .agg-product { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); margin-bottom: 14px; overflow: hidden; }
+  .agg-product-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+  .agg-product-head img { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; }
+  .agg-product-head .apn { flex: 1; min-width: 0; }
+  .agg-product-head .apn .name { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+  .agg-product-head .apn .sub { font-size: 12px; color: var(--ink-soft); }
+  .agg-color-tally { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 14px 12px; }
+  .tally-pill { display: flex; align-items: center; gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 5px 10px; font-size: 12.5px; }
+  .tally-pill .swatch { width: 12px; height: 12px; border-radius: 3px; }
+  .tally-pill b { font-family: var(--font-display); }
+  .agg-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--paper); }
+  .agg-toggle-row .total-lbl { font-size: 13px; color: var(--ink-soft); }
+  .agg-toggle-row .total-lbl b { font-family: var(--font-display); color: var(--ink); font-size: 16px; }
+  .cust-detail { padding: 4px 14px 12px; }
+  .cust-detail .cd-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 13px; align-items: center; }
+  .cust-detail .cd-row:last-child { border-bottom: none; }
+  .cust-detail .cd-name { flex: 1; font-weight: 500; }
+  .cust-detail .cd-meta { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+
+  .pin-gate { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 24px; text-align: center; max-width: 320px; margin: 40px auto; }
+  .pin-gate input { width: 100%; text-align: center; letter-spacing: 4px; font-size: 20px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 14px 0; font-family: var(--font-body); }
+
+  .manage-form { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 18px; margin-bottom: 22px; box-shadow: var(--shadow-card); }
+  .manage-form h2 { font-family: var(--font-display); font-size: 16px; margin: 0 0 14px; }
+  .field-row { margin-bottom: 12px; }
+  .field-row label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 5px; }
+  .field-row input[type=text] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .img-mode-toggle { display: flex; gap: 6px; margin-bottom: 8px; }
+  .img-mode-toggle button { flex: 1; font-size: 12.5px; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
+  .img-mode-toggle button.active { background: var(--denim); color: #fff; border-color: var(--denim); }
+  .file-drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: var(--ink-soft); position: relative; }
+  .file-drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-drop.has-image { padding: 8px; }
+  .file-drop img { max-height: 90px; border-radius: 6px; display: block; margin: 0 auto; }
+
+  .manage-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .manage-list-item:last-child { border-bottom: none; }
+  .manage-list-item img { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line); }
+  .manage-list-item .mli-info { flex: 1; min-width: 0; }
+  .manage-list-item .mli-name { font-weight: 600; font-size: 14px; }
+  .manage-list-item .mli-colors { font-size: 12px; color: var(--ink-soft); }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--paper); padding: 10px 18px; border-radius: var(--radius-pill); font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 50; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .setup-warning { background: #fff3cd; color: #6b4a00; border: 1px solid #e3c26b; border-radius: var(--radius-tag); padding: 16px; margin: 20px 0; font-size: 13.5px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow-row"><h1><span class="tag-dot"></span>Đặt số lượng may</h1></div>
+    <p class="subtitle">Nhập theo từng khách. Quản lý đánh dấu mẫu nào đã in để báo lại khách.</p>
+    <div class="name-bar">
+      <span class="lbl">Tên của bạn:</span>
+      <input type="text" id="nameField" placeholder="VD: Lan (Sale 1)">
+      <button id="saveNameBtn">Lưu tên</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="order" class="active">Đặt hàng</button>
+    <button data-tab="agg">Tổng hợp</button>
+    <button data-tab="manage">Quản lý mẫu</button>
+  </nav>
+
+  <section class="view active" id="view-order"><div id="orderList"></div></section>
+  <section class="view" id="view-agg">
+    <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select></div>
+    <div id="dailyStrip" class="daily-strip"></div>
+    <div id="aggSummary" class="agg-summary"></div>
+    <div id="aggProducts"></div>
+  </section>
+  <section class="view" id="view-manage"><div id="manageContent"></div></section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script>
+(function () {
+  // ============================================================
+  // DÁN CONFIG FIREBASE CỦA ANH VÀO ĐÂY (Project Settings > Your apps > SDK setup)
+  // ============================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "PASTE_API_KEY",
+    authDomain: "PASTE_PROJECT.firebaseapp.com",
+    databaseURL: "https://PASTE_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "PASTE_PROJECT",
+  };
+  // Mã PIN để vào tab "Quản lý mẫu" và đánh dấu "đã in" (đổi tuỳ ý, chỉ quản lý biết)
+  const ADMIN_PIN = "2468";
+  // ============================================================
+
+  var DEFAULT_COLORS = ['Đen', 'Trắng', 'Vàng', 'Xanh'];
+  var COLOR_SWATCH = { 'Đen': '#1a1a1a', 'Trắng': '#f5f5f0', 'Vàng': '#f0c14b', 'Xanh': '#3d6fa8', 'Đỏ': '#b0523f', 'Xám': '#8a8579', 'Hồng': '#e3a8b8', 'Nâu': '#6b4a2f' };
+  function swatchColor(name) { return COLOR_SWATCH[name] || '#9a9382'; }
+
+  var configOk = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE') === -1;
+  var db = null;
+  if (configOk) { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.database(); }
+
+  var myName = localStorage.getItem('mm_name') || '';
+  var myKey = myName ? slugKey(myName) : null;
+  var products = {};       // id -> {name, imageUrl, colors, createdAt}
+  var customerOrders = {}; // date -> orderId -> {productId, color, customerName, quantity, employeeName, employeeKey, createdAt}
+  var printStatus = {};    // date -> productId -> {printed, printedAt}
+  var currentTab = 'order';
+  var openBreakdowns = {};
+  var pendingImageDataUrl = null;
+  var imageMode = 'url';
+  var adminUnlocked = sessionStorage.getItem('mm_admin') === '1';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, 2200); }
+  function slugKey(name) { return (name || 'khach').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'khach'; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fmtDate(dstr) {
+    if (dstr === 'all') return 'Tất cả các ngày';
+    var p = dstr.split('-'); if (p.length !== 3) return dstr;
+    return p[2] + '/' + p[1] + '/' + p[0] + (dstr === todayStr() ? ' (hôm nay)' : '');
+  }
+  function requireAdmin(cb) {
+    if (adminUnlocked) { cb(); return; }
+    var v = prompt('Nhập mã PIN quản lý:');
+    if (v === null) return;
+    if (v === ADMIN_PIN) { adminUnlocked = true; sessionStorage.setItem('mm_admin', '1'); cb(); }
+    else toast('Sai mã PIN.');
+  }
+
+  var selectedAggDate = todayStr();
+
+  $('nameField').value = myName;
+  $('saveNameBtn').addEventListener('click', function () {
+    var v = $('nameField').value.trim();
+    if (!v) { toast('Nhập tên của bạn trước đã.'); return; }
+    myName = v; myKey = slugKey(v);
+    localStorage.setItem('mm_name', v);
+    toast('Đã lưu tên: ' + v);
+    renderOrderList();
+  });
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('nav.tabs button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+    document.querySelectorAll('section.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + tab); });
+    if (tab === 'agg') renderAgg();
+    if (tab === 'manage') renderManage();
+  }
+  document.querySelectorAll('nav.tabs button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
+
+  function productList() {
+    return Object.keys(products).map(function (id) { return Object.assign({ id: id }, products[id]); })
+      .sort(function (a, b) { return (a.createdAt || '').localeCompare(b.createdAt || ''); });
+  }
+  function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
+
+  // ---------- order tab ----------
+  function renderOrderList() {
+    var list = $('orderList');
+    if (!configOk) { list.innerHTML = setupWarningHtml(); return; }
+    var plist = productList();
+    if (!plist.length) { list.innerHTML = '<div class="empty">Chưa có mẫu áo nào. Vào tab "Quản lý mẫu" để thêm ảnh mẫu.</div>'; return; }
+    var today = todayStr();
+    var todayOrders = customerOrders[today] || {};
+    var todayPrint = printStatus[today] || {};
+
+    var html = '<p class="day-note">Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.</p>';
+    plist.forEach(function (p) {
+      var colors = colorsOf(p);
+      var mine = Object.keys(todayOrders)
+        .map(function (oid) { return Object.assign({ id: oid }, todayOrders[oid]); })
+        .filter(function (o) { return o.productId === p.id && o.employeeKey === myKey; });
+      var total = mine.reduce(function (s, o) { return s + (Number(o.quantity) || 0); }, 0);
+      var printed = !!(todayPrint[p.id] && todayPrint[p.id].printed);
+
+      html += '<div class="product-card" data-pid="' + esc(p.id) + '">';
+      html += '<div class="pc-head">';
+      html += p.imageUrl ? '<img class="pc-thumb" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder">Không ảnh</div>';
+      html += '<div class="pc-headtext"><p class="pc-title">' + esc(p.name) + '</p><p class="pc-meta">' + colors.length + ' màu</p>' +
+        '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span></div>';
+      html += '</div><div class="pc-body">';
+      html += '<div class="add-customer-row">' +
+        '<select data-f="color">' + colors.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('') + '</select>' +
+        '<input type="text" data-f="customer" placeholder="Tên khách">' +
+        '<input type="number" data-f="qty" min="1" step="1" value="1">' +
+        '<button class="btn primary small" data-action="add">Thêm</button>' +
+        '</div>';
+      html += '<div class="cust-list">';
+      if (!mine.length) {
+        html += '<div class="pc-empty-list">Bạn chưa nhập khách nào cho mẫu này hôm nay.</div>';
+      } else {
+        mine.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }).forEach(function (o) {
+          html += '<div class="cust-row" data-oid="' + esc(o.id) + '">' +
+            '<span class="swatch" style="background:' + swatchColor(o.color) + '"></span>' +
+            '<span class="cr-name">' + esc(o.customerName || 'Không tên') + '</span>' +
+            '<span class="cr-color">' + esc(o.color) + '</span>' +
+            '<span class="cr-qty">' + (Number(o.quantity) || 0) + '</span>' +
+            '<button class="cr-del" data-action="del" title="Xoá">✕</button></div>';
+        });
+      }
+      html += '</div><div class="pc-footer"><span class="pc-total">Tổng của bạn cho mẫu này: <b>' + total + '</b></span></div>';
+      html += '</div></div>';
+    });
+    list.innerHTML = html;
+
+    list.querySelectorAll('.product-card').forEach(function (card) {
+      var pid = card.dataset.pid;
+      card.querySelector('[data-action="add"]').addEventListener('click', function () { addCustomerOrder(pid, card); });
+      card.querySelectorAll('[data-action="del"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var oid = btn.closest('.cust-row').dataset.oid;
+          deleteCustomerOrder(oid);
+        });
+      });
+      var custInput = card.querySelector('[data-f="customer"]');
+      custInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') card.querySelector('[data-action="add"]').click(); });
+    });
+  }
+
+  function addCustomerOrder(productId, card) {
+    if (!myName) { toast('Nhập và lưu tên của bạn ở trên trước đã.'); return; }
+    var color = card.querySelector('[data-f="color"]').value;
+    var customerName = card.querySelector('[data-f="customer"]').value.trim();
+    var qtyInput = card.querySelector('[data-f="qty"]');
+    var quantity = Math.max(1, Math.floor(Number(qtyInput.value) || 1));
+    if (!customerName) { toast('Nhập tên khách trước đã.'); return; }
+    var btn = card.querySelector('[data-action="add"]');
+    btn.disabled = true;
+    db.ref('customerOrders/' + todayStr()).push({
+      productId: productId, color: color, customerName: customerName, quantity: quantity,
+      employeeName: myName, employeeKey: myKey, createdAt: Date.now()
+    }).then(function () {
+      btn.disabled = false;
+      card.querySelector('[data-f="customer"]').value = '';
+      qtyInput.value = 1;
+      toast('Đã thêm khách "' + customerName + '".');
+    }).catch(function (e) { btn.disabled = false; toast('Lỗi: ' + e.message); });
+  }
+
+  function deleteCustomerOrder(orderId) {
+    db.ref('customerOrders/' + todayStr() + '/' + orderId).remove().catch(function () { toast('Không xoá được.'); });
+  }
+
+  // ---------- aggregate tab ----------
+  function availableDates() {
+    var set = {};
+    Object.keys(customerOrders).forEach(function (d) { set[d] = true; });
+    var dates = Object.keys(set).sort().reverse();
+    return dates.length ? dates : [todayStr()];
+  }
+
+  function ordersForDates(dates) {
+    var out = [];
+    dates.forEach(function (d) {
+      var node = customerOrders[d] || {};
+      Object.keys(node).forEach(function (oid) { out.push(Object.assign({ id: oid, date: d }, node[oid])); });
+    });
+    return out;
+  }
+
+  function dayGrandTotal(d) {
+    var node = customerOrders[d] || {};
+    return Object.keys(node).reduce(function (s, oid) { return s + (Number(node[oid].quantity) || 0); }, 0);
+  }
+
+  function renderAggDateControls() {
+    var dates = availableDates();
+    if (dates.indexOf(selectedAggDate) === -1 && selectedAggDate !== 'all') selectedAggDate = dates[0];
+    var sel = $('aggDateSelect');
+    var opts = dates.map(function (d) { return '<option value="' + d + '"' + (d === selectedAggDate ? ' selected' : '') + '>' + fmtDate(d) + '</option>'; }).join('');
+    opts += '<option value="all"' + (selectedAggDate === 'all' ? ' selected' : '') + '>Tất cả các ngày (gộp)</option>';
+    sel.innerHTML = opts;
+    sel.onchange = function () { selectedAggDate = sel.value; renderAgg(); };
+
+    var strip = $('dailyStrip');
+    var today = todayStr();
+    strip.innerHTML = dates.slice(0, 14).map(function (d) {
+      return '<button class="daily-chip' + (d === selectedAggDate ? ' active' : '') + '" data-date="' + d + '">' +
+        '<div class="dc-date">' + (d === today ? 'Hôm nay' : fmtDate(d).replace(' (hôm nay)', '')) + '</div>' +
+        '<div class="dc-total">' + dayGrandTotal(d) + '</div></button>';
+    }).join('');
+    strip.querySelectorAll('.daily-chip').forEach(function (btn) { btn.addEventListener('click', function () { selectedAggDate = btn.dataset.date; renderAgg(); }); });
+  }
+
+  function renderAgg() {
+    var summaryEl = $('aggSummary'), prodEl = $('aggProducts');
+    if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
+    var plist = productList();
+    renderAggDateControls();
+    if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo hoặc đơn hàng nào.</div>'; return; }
+
+    var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
+    var singleDate = dates.length === 1 ? dates[0] : null;
+    var allOrders = ordersForDates(dates);
+
+    var grandTotal = 0, custSet = {};
+    var byProduct = {}; // productId -> { byColor: {c: qty}, lines: [orders] }
+    allOrders.forEach(function (o) {
+      grandTotal += Number(o.quantity) || 0;
+      custSet[o.customerName + '|' + o.productId + '|' + o.date] = true;
+      if (!byProduct[o.productId]) byProduct[o.productId] = { byColor: {}, lines: [] };
+      byProduct[o.productId].byColor[o.color] = (byProduct[o.productId].byColor[o.color] || 0) + (Number(o.quantity) || 0);
+      byProduct[o.productId].lines.push(o);
+    });
+
+    summaryEl.innerHTML = '<div class="agg-stat"><div class="num">' + grandTotal + '</div><div class="lbl">Tổng số áo · ' + esc(fmtDate(selectedAggDate)) + '</div></div>' +
+      '<div class="agg-stat"><div class="num">' + Object.keys(byProduct).length + '</div><div class="lbl">Mẫu có đơn</div></div>' +
+      '<div class="agg-stat"><div class="num">' + Object.keys(custSet).length + '</div><div class="lbl">Lượt khách</div></div>';
+
+    if (!allOrders.length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
+
+    var html = '';
+    plist.filter(function (p) { return byProduct[p.id]; }).forEach(function (p) {
+      var pdata = byProduct[p.id];
+      var colors = colorsOf(p);
+      var printed = singleDate ? !!(printStatus[singleDate] && printStatus[singleDate][p.id] && printStatus[singleDate][p.id].printed) : false;
+      var rowTotal = pdata.lines.reduce(function (s, o) { return s + (Number(o.quantity) || 0); }, 0);
+      var showBreak = !!openBreakdowns[p.id];
+
+      html += '<div class="agg-product" data-pid="' + esc(p.id) + '">';
+      html += '<div class="agg-product-head">';
+      html += p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '';
+      html += '<div class="apn"><div class="name">' + esc(p.name) + '</div><div class="sub">' + pdata.lines.length + ' lượt khách</div></div>';
+      if (singleDate) {
+        html += '<button class="btn small ' + (printed ? 'ghost' : 'primary') + '" data-action="toggle-print">' + (printed ? '✅ Đã in' : 'Đánh dấu đã in') + '</button>';
+      }
+      html += '</div>';
+      html += '<div class="agg-color-tally">' + colors.filter(function (c) { return pdata.byColor[c]; }).map(function (c) {
+        return '<div class="tally-pill"><span class="swatch" style="background:' + swatchColor(c) + '"></span>' + esc(c) + ': <b>' + pdata.byColor[c] + '</b></div>';
+      }).join('') + '</div>';
+      html += '<div class="agg-toggle-row"><span class="total-lbl">Tổng mẫu này: <b>' + rowTotal + '</b></span>' +
+        '<button class="breakdown-toggle-btn btn ghost small" data-action="toggle-detail">' + (showBreak ? 'Ẩn danh sách khách' : 'Xem danh sách khách') + '</button></div>';
+      if (showBreak) {
+        html += '<div class="cust-detail">' + pdata.lines.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }).map(function (o) {
+          return '<div class="cd-row"><span class="swatch" style="background:' + swatchColor(o.color) + '"></span>' +
+            '<span class="cd-name">' + esc(o.customerName || 'Không tên') + '</span>' +
+            '<span class="cd-meta">' + esc(o.color) + ' × ' + (Number(o.quantity) || 0) + (selectedAggDate === 'all' ? ' · ' + fmtDate(o.date).replace(' (hôm nay)', '') : '') + ' · ' + esc(o.employeeName || '') + '</span></div>';
+        }).join('') + '</div>';
+      }
+      html += '</div>';
+    });
+    prodEl.innerHTML = html;
+
+    prodEl.querySelectorAll('[data-action="toggle-detail"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var pid = btn.closest('.agg-product').dataset.pid;
+        openBreakdowns[pid] = !openBreakdowns[pid];
+        renderAgg();
+      });
+    });
+    prodEl.querySelectorAll('[data-action="toggle-print"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var pid = btn.closest('.agg-product').dataset.pid;
+        requireAdmin(function () { togglePrintStatus(pid); });
+      });
+    });
+  }
+
+  function togglePrintStatus(productId) {
+    if (!singleDateGuard()) return;
+    var d = selectedAggDate;
+    var cur = !!(printStatus[d] && printStatus[d][productId] && printStatus[d][productId].printed);
+    db.ref('printStatus/' + d + '/' + productId).set({ printed: !cur, printedAt: Date.now() })
+      .then(function () { toast(!cur ? 'Đã đánh dấu: đã in.' : 'Đã bỏ đánh dấu.'); })
+      .catch(function () { toast('Không cập nhật được.'); });
+  }
+  function singleDateGuard() { return selectedAggDate !== 'all'; }
+
+  // ---------- manage tab (PIN gated) ----------
+  function renderManage() {
+    var el = $('manageContent');
+    if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
+    if (!adminUnlocked) {
+      el.innerHTML = '<div class="pin-gate"><p>Nhập mã PIN quản lý để thêm/xoá mẫu áo.</p>' +
+        '<input type="password" inputmode="numeric" id="pinInput" placeholder="••••" maxlength="8">' +
+        '<button class="btn primary" id="pinBtn" style="width:100%">Mở khoá</button></div>';
+      $('pinBtn').addEventListener('click', function () {
+        var v = $('pinInput').value.trim();
+        if (v === ADMIN_PIN) { adminUnlocked = true; sessionStorage.setItem('mm_admin', '1'); renderManage(); }
+        else toast('Sai mã PIN.');
+      });
+      $('pinInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('pinBtn').click(); });
+      return;
+    }
+    var plist = productList();
+    var previewHtml = pendingImageDataUrl ? '<img src="' + pendingImageDataUrl + '" alt="">' : 'Chọn ảnh mẫu áo';
+    el.innerHTML =
+      '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
+      '<div class="field-row"><label>Ảnh mẫu</label>' +
+      '<div class="img-mode-toggle">' +
+      '<button data-mode="url" class="' + (imageMode === 'url' ? 'active' : '') + '">Dán link ảnh</button>' +
+      '<button data-mode="upload" class="' + (imageMode === 'upload' ? 'active' : '') + '">Tải ảnh lên</button>' +
+      '</div>' +
+      (imageMode === 'url' ? '<input type="text" id="imgUrlInput" placeholder="https://...">'
+        : '<div class="file-drop' + (pendingImageDataUrl ? ' has-image' : '') + '" id="fileDrop">' + previewHtml + '<input type="file" accept="image/*" id="imgInput"></div>') +
+      '</div>' +
+      '<div class="field-row"><label>Tên mẫu</label><input type="text" id="nameInput" placeholder="VD: Áo hoodie gấu bông"></div>' +
+      '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
+      '<button class="btn primary" id="addProductBtn">Thêm mẫu</button>' +
+      '</div>' +
+      '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2><div id="productListManage"></div></div>';
+
+    el.querySelectorAll('.img-mode-toggle button').forEach(function (b) { b.addEventListener('click', function () { imageMode = b.dataset.mode; renderManage(); }); });
+    if (imageMode === 'upload') {
+      $('imgInput').addEventListener('change', function (e) {
+        var f = e.target.files[0]; if (!f) return;
+        compressImage(f, function (dataUrl) { pendingImageDataUrl = dataUrl; renderManage(); });
+      });
+    }
+    $('addProductBtn').addEventListener('click', addProduct);
+
+    var listEl = $('productListManage');
+    if (!plist.length) { listEl.innerHTML = '<div class="empty">Chưa có mẫu nào.</div>'; }
+    else {
+      listEl.innerHTML = plist.map(function (p) {
+        var colors = colorsOf(p);
+        return '<div class="manage-list-item">' +
+          (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;font-size:9px;">–</div>') +
+          '<div class="mli-info"><div class="mli-name">' + esc(p.name) + '</div><div class="mli-colors">' + colors.join(', ') + '</div></div>' +
+          '<button class="btn danger" data-pid="' + esc(p.id) + '">Xoá</button></div>';
+      }).join('');
+      listEl.querySelectorAll('button[data-pid]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
+    }
+  }
+
+  function compressImage(file, cb) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var maxW = 800, scale = Math.min(1, maxW / img.width);
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        cb(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function addProduct() {
+    var name = $('nameInput').value.trim();
+    var colorsRaw = $('colorsInput').value.trim();
+    var colors = colorsRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!colors.length) colors = DEFAULT_COLORS.slice();
+    if (!name) { toast('Nhập tên mẫu áo.'); return; }
+    var imageUrl = imageMode === 'url' ? $('imgUrlInput').value.trim() : pendingImageDataUrl;
+    if (!imageUrl) { toast('Thêm ảnh mẫu áo trước đã.'); return; }
+    var btn = $('addProductBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+    db.ref('products').push({ name: name, imageUrl: imageUrl, colors: colors, createdAt: Date.now() })
+      .then(function () { pendingImageDataUrl = null; imageMode = 'url'; toast('Đã thêm mẫu áo.'); renderManage(); })
+      .catch(function (e) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; toast('Lỗi: ' + e.message); });
+  }
+
+  function deleteProduct(pid) {
+    if (!confirm('Xoá mẫu áo này? Các đơn khách đã nhập cho mẫu này vẫn còn trong lịch sử nhưng sẽ không hiện được ảnh/tên nữa.')) return;
+    db.ref('products/' + pid).remove().then(function () { toast('Đã xoá mẫu áo.'); }).catch(function () { toast('Không xoá được mẫu áo.'); });
+  }
+
+  function setupWarningHtml() {
+    return '<div class="setup-warning">⚠️ Chưa cấu hình Firebase. Mở file <code>index.html</code>, tìm dòng <code>FIREBASE_CONFIG</code> gần cuối file và dán config từ Firebase Console (Project settings → SDK setup) vào, rồi lưu &amp; upload lại lên GitHub.</div>';
+  }
+
+  // ---------- boot ----------
+  if (configOk) {
+    db.ref('products').on('value', function (snap) {
+      products = snap.val() || {};
+      if (currentTab === 'order') renderOrderList();
+      if (currentTab === 'agg') renderAgg();
+      if (currentTab === 'manage') renderManage();
+    });
+    db.ref('customerOrders').on('value', function (snap) {
+      customerOrders = snap.val() || {};
+      if (currentTab === 'order') renderOrderList();
+      if (currentTab === 'agg') renderAgg();
+    });
+    db.ref('printStatus').on('value', function (snap) {
+      printStatus = snap.val() || {};
+      if (currentTab === 'order') renderOrderList();
+      if (currentTab === 'agg') renderAgg();
+    });
+  }
+  renderOrderList();
+})();
+</script>
+</body>
+</html>
