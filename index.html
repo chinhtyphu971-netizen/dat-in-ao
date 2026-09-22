@@ -178,6 +178,11 @@
   .setup-warning { background: #fff3cd; color: #6b4a00; border: 1px solid #e3c26b; border-radius: var(--radius-tag); padding: 16px; margin: 20px 0; font-size: 13.5px; line-height: 1.6; }
 
   .hidden { display: none !important; }
+
+  .pc-thumb, .agg-product-head img, .manage-list-item img { cursor: zoom-in; }
+  .lightbox { position: fixed; inset: 0; background: rgba(20,18,14,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); cursor: zoom-out; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.6); }
+  .lightbox .lb-close { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; background: rgba(255,255,255,0.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -224,6 +229,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="lightbox hidden" id="lightbox"><button class="lb-close" id="lbClose">✕</button><img id="lightboxImg" src="" alt=""></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -264,6 +270,19 @@
   function $(id) { return document.getElementById(id); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, 2200); }
+  function openLightbox(src) {
+    if (!src) return;
+    $('lightboxImg').src = src;
+    $('lightbox').classList.remove('hidden');
+  }
+  function closeLightbox() { $('lightbox').classList.add('hidden'); $('lightboxImg').src = ''; }
+  $('lightbox').addEventListener('click', closeLightbox);
+  $('lbClose').addEventListener('click', function (e) { e.stopPropagation(); closeLightbox(); });
+  function bindLightboxes(root) {
+    root.querySelectorAll('img[data-lightbox]').forEach(function (img) {
+      img.addEventListener('click', function (e) { e.stopPropagation(); openLightbox(img.getAttribute('data-lightbox') || img.src); });
+    });
+  }
   function slugKey(name) { return (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function fmtDate(dstr) {
@@ -448,7 +467,7 @@
 
       html += '<div class="product-card" data-pid="' + esc(p.id) + '">';
       html += '<div class="pc-head">';
-      html += p.imageUrl ? '<img class="pc-thumb" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder">Không ảnh</div>';
+      html += p.imageUrl ? '<img class="pc-thumb" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder">Không ảnh</div>';
       html += '<div class="pc-headtext"><p class="pc-title">' + esc(p.name) + '</p><p class="pc-meta">' + colors.length + ' màu</p>' +
         '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span></div>';
       html += '</div><div class="pc-body">';
@@ -475,6 +494,7 @@
       html += '</div></div>';
     });
     list.innerHTML = html;
+    bindLightboxes(list);
 
     list.querySelectorAll('.product-card').forEach(function (card) {
       var pid = card.dataset.pid;
@@ -590,7 +610,7 @@
 
       html += '<div class="agg-product" data-pid="' + esc(p.id) + '">';
       html += '<div class="agg-product-head">';
-      html += p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '';
+      html += p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '';
       html += '<div class="apn"><div class="name">' + esc(p.name) + '</div><div class="sub">' + pdata.lines.length + ' lượt khách</div></div>';
       if (singleDate) {
         html += '<button class="btn small ' + (printed ? 'ghost' : 'primary') + '" data-action="toggle-print">' + (printed ? '✅ Đã in' : 'Đánh dấu đã in') + '</button>';
@@ -611,6 +631,7 @@
       html += '</div>';
     });
     prodEl.innerHTML = html;
+    bindLightboxes(prodEl);
 
     prodEl.querySelectorAll('[data-action="toggle-detail"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -678,11 +699,12 @@
       listEl.innerHTML = plist.map(function (p) {
         var colors = colorsOf(p);
         return '<div class="manage-list-item">' +
-          (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;font-size:9px;">–</div>') +
+          (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;font-size:9px;">–</div>') +
           '<div class="mli-info"><div class="mli-name">' + esc(p.name) + '</div><div class="mli-colors">' + colors.join(', ') + '</div></div>' +
           '<button class="btn danger" data-pid="' + esc(p.id) + '">Xoá</button></div>';
       }).join('');
       listEl.querySelectorAll('button[data-pid]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
+      bindLightboxes(listEl);
     }
   }
 
