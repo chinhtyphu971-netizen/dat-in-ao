@@ -1115,7 +1115,7 @@
     var el = $('manageContent');
     if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
     var formSnap = snapshotFormState();
-    var plist = productList();
+    var plist = productList().slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
     el.innerHTML =
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
@@ -1164,7 +1164,10 @@
         var colors = colorsOf(p);
         var hidden = !!p.hidden;
         var editable = canEditProduct(p);
-        var ownerNote = p.createdByName ? '<div class="mli-owner">Thêm bởi: ' + esc(p.createdByName) + '</div>' : '';
+        var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
+        var ownerNote = (p.createdByName || createdText)
+          ? '<div class="mli-owner">' + (p.createdByName ? 'Thêm bởi: ' + esc(p.createdByName) : '') + (p.createdByName && createdText ? ' · ' : '') + (createdText ? 'Lúc ' + esc(createdText) : '') + '</div>'
+          : '';
         var actions = editable
           ? '<button class="btn ghost small" data-action="edit" data-pid="' + esc(p.id) + '">Sửa</button>' +
             '<button class="btn ghost small" data-action="toggle-hide" data-pid="' + esc(p.id) + '">' + (hidden ? 'Hiện lại' : 'Ẩn') + '</button>' +
