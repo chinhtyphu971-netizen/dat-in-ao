@@ -644,11 +644,13 @@
 
   function productTotalToday(pid) {
     var today = todayStr();
+    var p = products[pid];
+    var colors = p ? colorsOf(p) : null;
     var pOrders = (orders[today] && orders[today][pid]) || {};
     var total = 0;
     Object.keys(pOrders).forEach(function (uid) {
       var q = pOrders[uid].quantities || {};
-      Object.keys(q).forEach(function (c) { total += Number(q[c]) || 0; });
+      (colors || Object.keys(q)).forEach(function (c) { total += Number(q[c]) || 0; });
     });
     return total;
   }
@@ -706,9 +708,13 @@
     Object.keys(todayOrders).forEach(function (pid) {
       var mine = todayOrders[pid][currentUser.id];
       if (!mine) return;
-      var total = Object.values(mine.quantities || {}).reduce(function (s, v) { return s + (Number(v) || 0); }, 0);
+      var p = products[pid];
+      var colors = p ? colorsOf(p) : null;
+      var q = mine.quantities || {};
+      var validQ = {}, total = 0;
+      (colors || Object.keys(q)).forEach(function (c) { var v = Number(q[c]) || 0; if (v > 0) { validQ[c] = v; total += v; } });
       if (total <= 0) return;
-      rows.push({ pid: pid, quantities: mine.quantities || {}, total: total });
+      rows.push({ pid: pid, quantities: validQ, total: total });
     });
     if (!rows.length) { container.innerHTML = ''; return; }
     var grand = rows.reduce(function (s, r) { return s + r.total; }, 0);
@@ -804,9 +810,13 @@
   function dayGrandTotal(d) {
     var t = 0;
     var dayNode = orders[d] || {};
-    Object.keys(dayNode).forEach(function (pid) {
-      Object.keys(dayNode[pid]).forEach(function (empKey) {
-        Object.values(dayNode[pid][empKey].quantities || {}).forEach(function (v) { t += Number(v) || 0; });
+    productList().forEach(function (p) {
+      var node = dayNode[p.id];
+      if (!node) return;
+      var colors = colorsOf(p);
+      Object.keys(node).forEach(function (empKey) {
+        var q = node[empKey].quantities || {};
+        colors.forEach(function (c) { t += Number(q[c]) || 0; });
       });
     });
     return t;
