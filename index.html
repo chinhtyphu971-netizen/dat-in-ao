@@ -524,9 +524,21 @@
     var el = $('accountsContent');
     var list = userList().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
     var managerCount = list.filter(function (u) { return u.role === 'manager'; }).length;
-    el.innerHTML = '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div>' +
-      '<p class="img-hint" style="margin-top:12px;">Nhân viên tự tạo tài khoản ở màn đăng nhập (gõ tên mới + đặt PIN). Ở đây quản lý chỉnh vai trò / đặt lại PIN / xoá tài khoản.<br>' +
+    el.innerHTML =
+      '<div class="manage-form"><h2>Tạo tài khoản mới</h2>' +
+      '<div class="field-row"><label>Tên nhân viên</label><input type="text" id="newAcctName" placeholder="VD: Lan (Sale 1)"></div>' +
+      '<div class="field-row"><label>Mã PIN (từ 4 ký tự)</label><input type="text" id="newAcctPin" placeholder="VD: 1234" maxlength="8"></div>' +
+      '<div class="field-row"><label>Vai trò</label><select id="newAcctRole" class="role-select">' +
+      ['staff', 'product_manager', 'manager'].map(function (r) { return '<option value="' + r + '">' + roleLabel(r) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<button class="btn primary" id="createAcctBtn">Tạo tài khoản</button>' +
+      '<p class="img-hint" style="margin-top:10px;">Dùng khi anh muốn tự đặt sẵn tên + PIN cho nhân viên (họ không cần tự đăng ký) — báo lại PIN cho họ để đăng nhập.</p>' +
+      '</div>' +
+      '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div>' +
+      '<p class="img-hint" style="margin-top:12px;">Nhân viên cũng có thể tự tạo tài khoản ở màn đăng nhập (gõ tên mới + đặt PIN). Ở đây quản lý chỉnh vai trò / đặt lại PIN / xoá tài khoản.<br>' +
       '<b>Nhân viên</b>: chỉ đặt hàng. <b>Người thêm mẫu</b>: thêm mẫu mới, chỉ sửa/xoá được mẫu của chính mình. <b>Quản lý</b>: toàn quyền, sửa/xoá được mọi mẫu.</p></div>';
+
+    $('createAcctBtn').addEventListener('click', createAccountByManager);
     var listEl = $('acctList');
     listEl.innerHTML = list.map(function (u) {
       var isYou = u.id === currentUser.id;
@@ -575,6 +587,20 @@
         }).catch(function () { toast('Lỗi khi xoá.'); });
       });
     });
+  }
+
+  function createAccountByManager() {
+    var name = $('newAcctName').value.trim();
+    var pin = $('newAcctPin').value.trim();
+    var role = $('newAcctRole').value;
+    if (!name) { toast('Nhập tên nhân viên.'); return; }
+    if (!pin || pin.length < 4) { toast('Mã PIN cần ít nhất 4 ký tự.'); return; }
+    var nameKey = slugKey(name);
+    if (findByNameKey(nameKey)) { toast('Đã có tài khoản tên này rồi, đổi tên khác hoặc sửa PIN cho tài khoản cũ.'); return; }
+    var btn = $('createAcctBtn'); btn.disabled = true; btn.textContent = 'Đang tạo…';
+    db.ref('users').push({ name: name, nameKey: nameKey, pin: pin, role: role, createdAt: Date.now() })
+      .then(function () { toast('Đã tạo tài khoản cho "' + name + '". Báo PIN cho họ để đăng nhập.'); renderAccounts(); })
+      .catch(function (e) { btn.disabled = false; btn.textContent = 'Tạo tài khoản'; toast('Lỗi: ' + e.message); });
   }
 
   function productList() {
