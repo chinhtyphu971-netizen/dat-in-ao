@@ -825,7 +825,7 @@
     return t;
   }
   function renderAggDateControls() {
-    if (!selectedAggDate) selectedAggDate = todayStr();
+    if (!selectedAggDate) selectedAggDate = 'all';
     var dates = availableDates();
     if (dates.indexOf(selectedAggDate) === -1 && selectedAggDate !== 'all') selectedAggDate = dates[0];
     var sel = $('aggDateSelect');
