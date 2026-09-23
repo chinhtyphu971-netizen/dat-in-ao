@@ -186,6 +186,18 @@
   .agg-stat .num { font-family: var(--font-display); font-size: 24px; font-weight: 700; }
   .agg-stat .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .workshop-table-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .workshop-table-head h2 { margin: 0; }
+  .workshop-table-actions { display: flex; gap: 8px; }
+  table.workshop-table { width: 100%; border-collapse: collapse; font-size: 13.5px; white-space: nowrap; }
+  table.workshop-table th, table.workshop-table td { padding: 9px 12px; text-align: right; border: 1px solid var(--line); }
+  table.workshop-table th:first-child, table.workshop-table td:first-child { text-align: left; white-space: normal; min-width: 140px; }
+  table.workshop-table thead th { background: var(--paper); font-weight: 700; color: var(--ink); }
+  table.workshop-table tbody tr:nth-child(even) { background: var(--paper); }
+  table.workshop-table tfoot td { font-weight: 800; background: var(--thread-soft); border-top: 2px solid var(--thread); }
+  table.workshop-table td.wt-total, table.workshop-table th.wt-total { font-family: var(--font-display); }
+
   .agg-product { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); margin-bottom: 14px; overflow: hidden; }
   .agg-product-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
   .agg-product-head img { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; }
@@ -359,6 +371,16 @@
       <div id="dailyStrip" class="daily-strip"></div>
       <div id="aggSummary" class="agg-summary"></div>
       <button class="btn ghost small" id="openArchiveBtn" style="margin-bottom:14px;">📜 Xem lịch sử đã lưu</button>
+      <div class="manage-form" id="workshopTableWrap" style="display:none;">
+        <div class="workshop-table-head">
+          <h2>Bảng tổng cho xưởng</h2>
+          <div class="workshop-table-actions">
+            <button class="btn ghost small" id="copyTableBtn">📋 Sao chép</button>
+            <button class="btn ghost small" id="exportExcelBtn">📊 Xuất Excel</button>
+          </div>
+        </div>
+        <div class="scroll-x"><table class="workshop-table" id="workshopTable"></table></div>
+      </div>
       <div id="aggProducts"></div>
     </section>
     <section class="view" id="view-manage"><div id="manageContent"></div></section>
@@ -849,7 +871,7 @@
     if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
     var plist = productList();
     renderAggDateControls();
-    if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo hoặc đơn hàng nào.</div>'; return; }
+    if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo hoặc đơn hàng nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
 
     var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
     var singleDate = dates.length === 1 ? dates[0] : null;
@@ -878,6 +900,7 @@
       return (byProduct[b.id].totalQty || 0) - (byProduct[a.id].totalQty || 0);
     });
     lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate), datesUsed: dates };
+    renderWorkshopTable();
 
     if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
@@ -1010,6 +1033,110 @@
   }
   var printAggBtnEl = $('printAggBtn');
   if (printAggBtnEl) printAggBtnEl.addEventListener('click', printAggregateReport);
+
+  // ---------- workshop grid table: rows = mẫu, columns = màu, kèm xuất Excel / sao chép ----------
+  function workshopTableColumns() {
+    var snap = lastAggSnapshot;
+    var seen = {}, cols = [];
+    DEFAULT_COLORS.forEach(function (c) { if (!seen[c]) { seen[c] = true; cols.push(c); } });
+    snap.filteredList.forEach(function (p) {
+      colorsOf(p).forEach(function (c) { if (!seen[c]) { seen[c] = true; cols.push(c); } });
+    });
+    // chỉ giữ cột màu nào thực sự có số lượng > 0 ở đâu đó
+    return cols.filter(function (c) {
+      return snap.filteredList.some(function (p) { return (snap.byProduct[p.id].byColor[c] || 0) > 0; });
+    });
+  }
+
+  function renderWorkshopTable() {
+    var snap = lastAggSnapshot;
+    var wrap = $('workshopTableWrap');
+    if (!snap || !snap.filteredList.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    var cols = workshopTableColumns();
+    var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
+    var grand = 0;
+
+    var thead = '<thead><tr><th>Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th class="wt-total">Tổng</th></tr></thead>';
+    var bodyRows = snap.filteredList.map(function (p) {
+      var pdata = snap.byProduct[p.id];
+      var rowTotal = 0;
+      var cells = cols.map(function (c) {
+        var v = pdata.byColor[c] || 0;
+        colTotals[c] += v; rowTotal += v;
+        return '<td>' + (v || '–') + '</td>';
+      }).join('');
+      grand += rowTotal;
+      return '<tr><td>' + esc(p.name) + '</td>' + cells + '<td class="wt-total">' + rowTotal + '</td></tr>';
+    }).join('');
+    var tfoot = '<tfoot><tr><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td class="wt-total">' + grand + '</td></tr></tfoot>';
+
+    $('workshopTable').innerHTML = thead + '<tbody>' + bodyRows + '</tbody>' + tfoot;
+  }
+
+  function buildWorkshopTsv() {
+    var snap = lastAggSnapshot;
+    if (!snap || !snap.filteredList.length) return null;
+    var cols = workshopTableColumns();
+    var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
+    var grand = 0;
+    var lines = [];
+    lines.push(['Mẫu áo'].concat(cols).concat(['Tổng']).join('\t'));
+    snap.filteredList.forEach(function (p) {
+      var pdata = snap.byProduct[p.id];
+      var rowTotal = 0;
+      var vals = cols.map(function (c) { var v = pdata.byColor[c] || 0; colTotals[c] += v; rowTotal += v; return v; });
+      grand += rowTotal;
+      lines.push([p.name].concat(vals).concat([rowTotal]).join('\t'));
+    });
+    lines.push(['Tổng cộng'].concat(cols.map(function (c) { return colTotals[c]; })).concat([grand]).join('\t'));
+    return lines.join('\n');
+  }
+
+  function copyWorkshopTable() {
+    var tsv = buildWorkshopTsv();
+    if (!tsv) { toast('Chưa có dữ liệu để sao chép.'); return; }
+    var header = 'Bảng tổng cho xưởng · ' + (lastAggSnapshot ? lastAggSnapshot.dateLabel : '') + '\n\n';
+    var text = header + tsv;
+    function done() { toast('Đã sao chép — dán vào Zalo, Excel, Sheet đều được.'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Không sao chép được, thử lại nhé.'); }
+    document.body.removeChild(ta);
+  }
+
+  function exportWorkshopExcel() {
+    var tsv = buildWorkshopTsv();
+    if (!tsv) { toast('Chưa có dữ liệu để xuất.'); return; }
+    // CSV có dấu phẩy làm ngăn cách để Excel tự nhận cột; thêm BOM để Excel hiển thị đúng tiếng Việt
+    var csv = tsv.split('\n').map(function (line) {
+      return line.split('\t').map(function (cell) {
+        var s = String(cell);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',');
+    }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateForFile = (lastAggSnapshot.dateLabel || '').replace(/[^0-9a-zA-Z]+/g, '_');
+    a.href = url; a.download = 'bang-tong-xuong_' + dateForFile + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    toast('Đã tải file — mở bằng Excel bình thường.');
+  }
+
+  var copyTableBtnEl = $('copyTableBtn');
+  if (copyTableBtnEl) copyTableBtnEl.addEventListener('click', copyWorkshopTable);
+  var exportExcelBtnEl = $('exportExcelBtn');
+  if (exportExcelBtnEl) exportExcelBtnEl.addEventListener('click', exportWorkshopExcel);
 
   var archiveModalMode = 'all';
   function openArchiveModal(mode) { archiveModalMode = mode || 'all'; renderArchiveModal(); $('archiveModal').classList.remove('hidden'); }
