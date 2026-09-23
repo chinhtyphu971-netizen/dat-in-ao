@@ -355,6 +355,7 @@
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
         <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
         <button class="btn ghost small print-btn" id="printAggBtn">🖨️ In danh sách</button></div>
+      <p class="print-toggle-hint hidden" id="printToggleHint">💡 Đang xem gộp nhiều ngày — nếu tích "Lưu & đặt lại về 0", nó sẽ xoá số liệu ở TẤT CẢ các ngày liên quan đến mẫu vừa in, không chỉ hôm nay.</p>
       <div id="dailyStrip" class="daily-strip"></div>
       <div id="aggSummary" class="agg-summary"></div>
       <button class="btn ghost small" id="openArchiveBtn" style="margin-bottom:14px;">📜 Xem lịch sử đã lưu</button>
@@ -438,11 +439,8 @@
   function clearAuthError() { $('authError').classList.remove('show'); }
 
   function renderAuthNote() {
-    var count = userList().length;
-    $('authNote').textContent = count === 0
-      ? 'Chưa có tài khoản nào — người đầu tiên tạo ở đây sẽ tự động là Quản lý.'
-      : 'Chưa có tài khoản? Liên hệ quản lý để được tạo tên và mã PIN.';
-    $('authBtn').textContent = count === 0 ? 'Tạo tài khoản Quản lý đầu tiên' : 'Đăng nhập';
+    $('authNote').textContent = 'Chưa có tài khoản? Liên hệ quản lý để được tạo tên và mã PIN.';
+    $('authBtn').textContent = 'Đăng nhập';
   }
 
   function attemptAuth() {
@@ -450,7 +448,7 @@
     var name = $('authName').value.trim();
     var pin = $('authPin').value.trim();
     if (!name) { showAuthError('Nhập tên của bạn.'); return; }
-    if (!pin || pin.length < 4) { showAuthError('Mã PIN cần ít nhất 4 ký tự.'); return; }
+    if (!pin) { showAuthError('Nhập mã PIN.'); return; }
     var nameKey = slugKey(name);
     var btn = $('authBtn'); btn.disabled = true;
     var existing = findByNameKey(nameKey);
@@ -460,19 +458,8 @@
       else showAuthError('Sai mã PIN cho tên "' + existing.name + '". Nếu quên PIN, nhờ quản lý đặt lại ở tab Tài khoản.');
       return;
     }
-    if (userList().length > 0) {
-      btn.disabled = false;
-      showAuthError('Không tìm thấy tài khoản tên "' + name + '". Liên hệ quản lý để được tạo tài khoản trước.');
-      return;
-    }
-    // Chưa có ai — cho phép tạo tài khoản Quản lý đầu tiên duy nhất
-    db.ref('users').push({ name: name, nameKey: nameKey, pin: pin, role: 'manager', createdAt: Date.now() })
-      .then(function (ref) {
-        btn.disabled = false;
-        loginAs({ id: ref.key, name: name, nameKey: nameKey, pin: pin, role: 'manager' });
-        toast('Đã tạo tài khoản Quản lý đầu tiên!');
-      })
-      .catch(function (e) { btn.disabled = false; showAuthError('Lỗi: ' + e.message); });
+    btn.disabled = false;
+    showAuthError('Không tìm thấy tài khoản tên "' + name + '". Liên hệ quản lý để được tạo tài khoản trước.');
   }
 
   function loginAs(u) {
@@ -843,14 +830,7 @@
     }).join('');
     strip.querySelectorAll('.daily-chip').forEach(function (btn) { btn.addEventListener('click', function () { selectedAggDate = btn.dataset.date; renderAgg(); }); });
 
-    var toggleLabel = $('printOnlyUnprinted').closest('label');
-    var resetLabel = $('printResetAfter').closest('label');
-    var isSingle = selectedAggDate !== 'all';
-    toggleLabel.classList.toggle('disabled', !isSingle);
-    $('printOnlyUnprinted').disabled = !isSingle;
-    resetLabel.classList.toggle('disabled', !isSingle);
-    $('printResetAfter').disabled = !isSingle;
-    if (!isSingle) { $('printOnlyUnprinted').checked = false; $('printResetAfter').checked = false; }
+    $('printToggleHint').classList.toggle('hidden', selectedAggDate !== 'all');
   }
 
   function renderAgg() {
@@ -887,7 +867,7 @@
     filteredList.sort(function (a, b) {
       return (byProduct[b.id].totalQty || 0) - (byProduct[a.id].totalQty || 0);
     });
-    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate) };
+    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate), datesUsed: dates };
 
     if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
@@ -938,13 +918,20 @@
   function printAggregateReport() {
     if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có đơn hàng nào để in.'); return; }
     var snap = lastAggSnapshot;
-    var singleDate = selectedAggDate !== 'all' ? selectedAggDate : null;
-    var onlyUnprinted = singleDate && $('printOnlyUnprinted').checked;
+    var datesUsed = snap.datesUsed || [selectedAggDate];
+    var onlyUnprinted = $('printOnlyUnprinted').checked;
 
-    function isPrinted(pid) { return !!(singleDate && printStatus[singleDate] && printStatus[singleDate][pid] && printStatus[singleDate][pid].printed); }
+    // Những ngày nào (trong số ngày đang gộp) thực sự có đơn cho mẫu này
+    function productDates(pid) { return datesUsed.filter(function (d) { return orders[d] && orders[d][pid]; }); }
+    // Coi là "đã in" nếu MỌI ngày có đơn của mẫu đó đều đã được đánh dấu đã in
+    function isPrinted(pid) {
+      var ds = productDates(pid);
+      if (!ds.length) return false;
+      return ds.every(function (d) { return !!(printStatus[d] && printStatus[d][pid] && printStatus[d][pid].printed); });
+    }
 
     var list = onlyUnprinted ? snap.filteredList.filter(function (p) { return !isPrinted(p.id); }) : snap.filteredList;
-    if (!list.length) { toast('Tất cả mẫu ở ngày này đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+    if (!list.length) { toast('Tất cả mẫu trong phạm vi đang xem đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
 
     var runningTotal = 0;
     var rowsHtml = list.map(function (p) {
@@ -966,15 +953,16 @@
       rowsHtml +
       '<div class="pr-grand"><span>Tổng cộng</span><span>' + runningTotal + ' áo</span></div>';
 
-    var pendingMarkIds = singleDate ? list.filter(function (p) { return !isPrinted(p.id); }).map(function (p) { return p.id; }) : [];
-    var doResetAfter = singleDate && $('printResetAfter').checked;
+    var pendingMarkIds = list.filter(function (p) { return !isPrinted(p.id); }).map(function (p) { return p.id; });
+    var doResetAfter = $('printResetAfter').checked;
 
     window.onafterprint = function () {
       window.onafterprint = null;
-      if (!singleDate) return;
 
       if (doResetAfter) {
-        if (!confirm('In xong! Lưu ' + list.length + ' mẫu vào lịch sử và đặt lại số lượng về 0 cho ngày ' + snap.dateLabel + '?\n\nKhông thể hoàn tác — nhân viên sẽ đặt lại từ đầu cho các mẫu này.')) return;
+        var dateCount = datesUsed.length;
+        var scopeText = dateCount > 1 ? (dateCount + ' ngày (' + snap.dateLabel + ')') : snap.dateLabel;
+        if (!confirm('In xong! Lưu ' + list.length + ' mẫu vào lịch sử và đặt lại số lượng về 0 cho ' + scopeText + '?\n\nKhông thể hoàn tác — nhân viên sẽ đặt lại từ đầu cho các mẫu này.')) return;
         var archiveKey = db.ref('printArchive').push().key;
         var archiveItems = list.map(function (p) {
           return { productId: p.id, name: p.name, imageUrl: p.imageUrl || null, byColor: snap.byProduct[p.id].byColor, totalQty: snap.byProduct[p.id].totalQty, byPerson: snap.byProduct[p.id].byPerson };
@@ -982,12 +970,14 @@
         var archiveTotal = archiveItems.reduce(function (s, i) { return s + i.totalQty; }, 0);
         var updates = {};
         updates['printArchive/' + archiveKey] = {
-          date: singleDate, dateLabel: snap.dateLabel, printedAt: Date.now(), printedBy: currentUser.name,
+          date: datesUsed.length === 1 ? datesUsed[0] : 'multiple', dateLabel: snap.dateLabel, printedAt: Date.now(), printedBy: currentUser.name,
           items: archiveItems, grandTotal: archiveTotal
         };
         list.forEach(function (p) {
-          updates['orders/' + singleDate + '/' + p.id] = null;
-          updates['printStatus/' + singleDate + '/' + p.id] = null;
+          productDates(p.id).forEach(function (d) {
+            updates['orders/' + d + '/' + p.id] = null;
+            updates['printStatus/' + d + '/' + p.id] = null;
+          });
         });
         db.ref().update(updates)
           .then(function () { toast('Đã lưu vào lịch sử và đặt lại ' + list.length + ' mẫu về 0.'); })
@@ -998,7 +988,9 @@
       if (pendingMarkIds.length && confirm('Đánh dấu ' + pendingMarkIds.length + ' mẫu vừa in là "Đã in" để tránh in trùng lần sau?')) {
         var markUpdates = {};
         pendingMarkIds.forEach(function (pid) {
-          markUpdates['printStatus/' + singleDate + '/' + pid] = { printed: true, printedAt: Date.now(), printedBy: currentUser.name };
+          productDates(pid).forEach(function (d) {
+            markUpdates['printStatus/' + d + '/' + pid] = { printed: true, printedAt: Date.now(), printedBy: currentUser.name };
+          });
         });
         db.ref().update(markUpdates).then(function () { toast('Đã đánh dấu ' + pendingMarkIds.length + ' mẫu là đã in.'); })
           .catch(function () { toast('Không cập nhật được trạng thái đã in.'); });
