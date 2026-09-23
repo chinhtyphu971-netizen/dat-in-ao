@@ -197,6 +197,9 @@
   table.workshop-table tbody tr:nth-child(even) { background: var(--paper); }
   table.workshop-table tfoot td { font-weight: 800; background: var(--thread-soft); border-top: 2px solid var(--thread); }
   table.workshop-table td.wt-total, table.workshop-table th.wt-total { font-family: var(--font-display); }
+  table.workshop-table td.wt-img { padding: 6px; text-align: center; }
+  .wt-thumb { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; border: 1px solid var(--line); cursor: zoom-in; display: block; }
+  .wt-thumb-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: 10px; background: var(--paper); cursor: default; }
 
   .agg-product { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); margin-bottom: 14px; overflow: hidden; }
   .agg-product-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
@@ -443,6 +446,49 @@
     });
   }
   function slugKey(name) { return (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
+  // Chuẩn hoá tên màu để "Hồng" / "hồng" / "HỒNG" đều tính chung 1 màu.
+  function normalizeColorName(s) {
+    s = (s == null ? '' : String(s)).trim();
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  }
+  function normalizeProductsData(raw) {
+    var out = {};
+    Object.keys(raw || {}).forEach(function (pid) {
+      var p = raw[pid] || {};
+      var seen = {}, dedup = [];
+      (p.colors || []).forEach(function (c) {
+        var nc = normalizeColorName(c);
+        if (nc && !seen[nc]) { seen[nc] = true; dedup.push(nc); }
+      });
+      out[pid] = Object.assign({}, p, { colors: dedup });
+    });
+    return out;
+  }
+  function normalizeOrdersData(raw) {
+    var out = {};
+    Object.keys(raw || {}).forEach(function (date) {
+      var outDate = {};
+      var dateNode = raw[date] || {};
+      Object.keys(dateNode).forEach(function (pid) {
+        var outProd = {};
+        var prodNode = dateNode[pid] || {};
+        Object.keys(prodNode).forEach(function (empId) {
+          var rec = prodNode[empId] || {};
+          var q = rec.quantities || {};
+          var normQ = {};
+          Object.keys(q).forEach(function (c) {
+            var nc = normalizeColorName(c);
+            normQ[nc] = (normQ[nc] || 0) + (Number(q[c]) || 0);
+          });
+          outProd[empId] = Object.assign({}, rec, { quantities: normQ });
+        });
+        outDate[pid] = outProd;
+      });
+      out[date] = outDate;
+    });
+    return out;
+  }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function fmtDate(dstr) {
     if (dstr === 'all') return 'Tất cả các ngày';
@@ -1057,7 +1103,7 @@
     var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
     var grand = 0;
 
-    var thead = '<thead><tr><th>Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th class="wt-total">Tổng</th></tr></thead>';
+    var thead = '<thead><tr><th>Ảnh</th><th>Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th class="wt-total">Tổng</th></tr></thead>';
     var bodyRows = snap.filteredList.map(function (p) {
       var pdata = snap.byProduct[p.id];
       var rowTotal = 0;
@@ -1067,11 +1113,15 @@
         return '<td>' + (v || '–') + '</td>';
       }).join('');
       grand += rowTotal;
-      return '<tr><td>' + esc(p.name) + '</td>' + cells + '<td class="wt-total">' + rowTotal + '</td></tr>';
+      var thumb = p.imageUrl
+        ? '<img class="wt-thumb" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">'
+        : '<div class="wt-thumb wt-thumb-empty">–</div>';
+      return '<tr><td class="wt-img">' + thumb + '</td><td>' + esc(p.name) + '</td>' + cells + '<td class="wt-total">' + rowTotal + '</td></tr>';
     }).join('');
-    var tfoot = '<tfoot><tr><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td class="wt-total">' + grand + '</td></tr></tfoot>';
+    var tfoot = '<tfoot><tr><td></td><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td class="wt-total">' + grand + '</td></tr></tfoot>';
 
     $('workshopTable').innerHTML = thead + '<tbody>' + bodyRows + '</tbody>' + tfoot;
+    bindLightboxes($('workshopTable'));
   }
 
   function buildWorkshopTsv() {
@@ -1373,7 +1423,7 @@
     if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
     var name = $('editNameInput').value.trim();
     var colorsRaw = $('editColorsInput').value.trim();
-    var colors = colorsRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
     if (!colors.length) colors = DEFAULT_COLORS.slice();
     if (!name) { toast('Nhập tên mẫu áo.'); return; }
     var imageUrl = $('editImgUrlInput').value.trim();
@@ -1398,7 +1448,7 @@
     if (!canManageProducts()) return;
     var name = $('nameInput').value.trim();
     var colorsRaw = $('colorsInput').value.trim();
-    var colors = colorsRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
     if (!colors.length) colors = DEFAULT_COLORS.slice();
     if (!name) { toast('Nhập tên mẫu áo.'); return; }
     var imageUrl = $('imgUrlInput').value.trim();
@@ -1438,11 +1488,11 @@
       renderShell();
     });
     db.ref('products').on('value', function (snap) {
-      products = snap.val() || {};
+      products = normalizeProductsData(snap.val() || {});
       if (currentUser) renderCurrentTab();
     });
     db.ref('orders').on('value', function (snap) {
-      orders = snap.val() || {};
+      orders = normalizeOrdersData(snap.val() || {});
       if (currentUser) renderCurrentTab();
     });
     db.ref('printStatus').on('value', function (snap) {
