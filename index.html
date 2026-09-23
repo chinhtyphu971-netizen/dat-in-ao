@@ -249,6 +249,8 @@
   .acct-row:last-child { border-bottom: none; }
   .acct-row .acct-name { font-weight: 600; flex: 1; min-width: 120px; }
   .acct-row .acct-name .you-tag { font-weight: 400; color: var(--ink-soft); font-size: 12px; }
+  .acct-row .acct-meta { font-size: 11.5px; color: var(--ink-soft); font-weight: 400; margin-top: 2px; }
+  .acct-row .acct-meta b { color: var(--stitch); font-family: var(--font-display); letter-spacing: 0.02em; }
   .acct-row .acct-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .role-select { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 10px; cursor: pointer; }
   .role-select:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -552,8 +554,10 @@
       var roleOptions = ['staff', 'product_manager', 'manager'].map(function (r) {
         return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + roleLabel(r) + '</option>';
       }).join('');
+      var createdText = u.createdAt ? new Date(u.createdAt).toLocaleString('vi-VN') : '';
       return '<div class="acct-row" data-uid="' + esc(u.id) + '">' +
-        '<span class="acct-name">' + esc(u.name) + (isYou ? ' <span class="you-tag">(bạn)</span>' : '') + '</span>' +
+        '<div class="acct-name">' + esc(u.name) + (isYou ? ' <span class="you-tag">(bạn)</span>' : '') +
+        '<div class="acct-meta">PIN: <b>' + esc(u.pin || '') + '</b> · Tạo lúc ' + esc(createdText) + '</div></div>' +
         '<span class="role-chip' + (u.role === 'manager' ? ' manager' : '') + '">' + roleLabel(u.role) + '</span>' +
         '<span class="acct-actions">' +
         '<select class="role-select" data-action="set-role"' + (isLastManager ? ' disabled title="Cần giữ lại ít nhất 1 quản lý"' : '') + '>' + roleOptions + '</select>' +
@@ -864,8 +868,8 @@
       html += '<div class="agg-product-head">';
       html += p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '';
       html += '<div class="apn"><div class="name">' + esc(p.name) + '</div><div class="sub">' + personCount + ' sale đã đặt</div></div>';
-      if (singleDate) {
-        html += '<button class="btn small ' + (printed ? 'ghost' : 'primary') + '" data-action="toggle-print">' + (printed ? '✅ Đã in' : 'Đánh dấu đã in') + '</button>';
+      if (singleDate && printed) {
+        html += '<span class="print-badge done">✅ Đã in</span>';
       }
       html += '</div>';
       html += '<div class="agg-color-tally">' + colors.filter(function (c) { return pdata.byColor[c]; }).map(function (c) {
@@ -893,21 +897,6 @@
         renderAgg();
       });
     });
-    prodEl.querySelectorAll('[data-action="toggle-print"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var pid = btn.closest('.agg-product').dataset.pid;
-        togglePrintStatus(pid);
-      });
-    });
-  }
-
-  function togglePrintStatus(productId) {
-    if (!isManager() || selectedAggDate === 'all') return;
-    var d = selectedAggDate;
-    var cur = !!(printStatus[d] && printStatus[d][productId] && printStatus[d][productId].printed);
-    db.ref('printStatus/' + d + '/' + productId).set({ printed: !cur, printedAt: Date.now(), printedBy: currentUser.name })
-      .then(function () { toast(!cur ? 'Đã đánh dấu: đã in.' : 'Đã bỏ đánh dấu.'); })
-      .catch(function () { toast('Không cập nhật được.'); });
   }
 
   function printAggregateReport() {
