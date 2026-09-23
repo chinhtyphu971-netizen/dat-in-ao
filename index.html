@@ -314,7 +314,7 @@
 <div id="authScreen" class="auth-wrap hidden">
   <div class="auth-card">
     <h1><span class="tag-dot"></span>Đặt số lượng may</h1>
-    <p class="sub" id="authSub">Nhập tên và mã PIN của bạn. Chưa có tài khoản? Tự đặt PIN mới là tạo tài khoản nhân viên luôn.</p>
+    <p class="sub" id="authSub">Nhập tên và mã PIN quản lý đã cấp cho bạn.</p>
     <div class="auth-field"><label>Tên của bạn</label><input type="text" id="authName" placeholder="VD: Lan (Sale 1)"></div>
     <div class="auth-field"><label>Mã PIN (4-8 số hoặc chữ)</label><input type="password" id="authPin" placeholder="••••" inputmode="numeric" maxlength="8"></div>
     <button class="btn primary full" id="authBtn">Đăng nhập / Tạo tài khoản</button>
@@ -438,8 +438,9 @@
   function renderAuthNote() {
     var count = userList().length;
     $('authNote').textContent = count === 0
-      ? 'Chưa có ai đăng ký — người đầu tiên tạo tài khoản ở đây sẽ tự động là Quản lý.'
-      : 'Tài khoản mới tạo mặc định là Nhân viên. Nhờ quản lý nâng quyền trong tab "Tài khoản" nếu cần.';
+      ? 'Chưa có tài khoản nào — người đầu tiên tạo ở đây sẽ tự động là Quản lý.'
+      : 'Chưa có tài khoản? Liên hệ quản lý để được tạo tên và mã PIN.';
+    $('authBtn').textContent = count === 0 ? 'Tạo tài khoản Quản lý đầu tiên' : 'Đăng nhập';
   }
 
   function attemptAuth() {
@@ -457,12 +458,17 @@
       else showAuthError('Sai mã PIN cho tên "' + existing.name + '". Nếu quên PIN, nhờ quản lý đặt lại ở tab Tài khoản.');
       return;
     }
-    var role = userList().length === 0 ? 'manager' : 'staff';
-    db.ref('users').push({ name: name, nameKey: nameKey, pin: pin, role: role, createdAt: Date.now() })
+    if (userList().length > 0) {
+      btn.disabled = false;
+      showAuthError('Không tìm thấy tài khoản tên "' + name + '". Liên hệ quản lý để được tạo tài khoản trước.');
+      return;
+    }
+    // Chưa có ai — cho phép tạo tài khoản Quản lý đầu tiên duy nhất
+    db.ref('users').push({ name: name, nameKey: nameKey, pin: pin, role: 'manager', createdAt: Date.now() })
       .then(function (ref) {
         btn.disabled = false;
-        loginAs({ id: ref.key, name: name, nameKey: nameKey, pin: pin, role: role });
-        toast(role === 'manager' ? 'Đã tạo tài khoản Quản lý đầu tiên!' : 'Đã tạo tài khoản, chào mừng!');
+        loginAs({ id: ref.key, name: name, nameKey: nameKey, pin: pin, role: 'manager' });
+        toast('Đã tạo tài khoản Quản lý đầu tiên!');
       })
       .catch(function (e) { btn.disabled = false; showAuthError('Lỗi: ' + e.message); });
   }
@@ -535,7 +541,7 @@
       '<p class="img-hint" style="margin-top:10px;">Dùng khi anh muốn tự đặt sẵn tên + PIN cho nhân viên (họ không cần tự đăng ký) — báo lại PIN cho họ để đăng nhập.</p>' +
       '</div>' +
       '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div>' +
-      '<p class="img-hint" style="margin-top:12px;">Nhân viên cũng có thể tự tạo tài khoản ở màn đăng nhập (gõ tên mới + đặt PIN). Ở đây quản lý chỉnh vai trò / đặt lại PIN / xoá tài khoản.<br>' +
+      '<p class="img-hint" style="margin-top:12px;">Nhân viên không tự tạo được tài khoản — chỉ quản lý tạo ở trên rồi báo tên + PIN cho họ đăng nhập. Ở đây quản lý chỉnh vai trò / đặt lại PIN / xoá tài khoản.<br>' +
       '<b>Nhân viên</b>: chỉ đặt hàng. <b>Người thêm mẫu</b>: thêm mẫu mới, chỉ sửa/xoá được mẫu của chính mình. <b>Quản lý</b>: toàn quyền, sửa/xoá được mọi mẫu.</p></div>';
 
     $('createAcctBtn').addEventListener('click', createAccountByManager);
