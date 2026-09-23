@@ -342,7 +342,7 @@
   </aside>
 
   <main class="main-content">
-    <p class="subtitle main-subtitle">Nhập theo từng khách. Quản lý đánh dấu mẫu nào đã in để báo lại khách.</p>
+    <p class="subtitle main-subtitle">Chọn mẫu, nhập số lượng theo màu mỗi ngày. Quản lý in danh sách gửi xưởng, hệ thống tự lưu lịch sử và đặt lại số lượng.</p>
 
     <section class="view active" id="view-order">
       <p class="day-note" id="orderDayNote"></p>
@@ -527,9 +527,44 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
+  // Giữ lại chữ đang gõ dở trong các ô input khi phải render lại do dữ liệu
+  // realtime thay đổi (vd: người khác vừa thêm/sửa mẫu khác cùng lúc).
+  var PRESERVE_FIELD_IDS = ['nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
+  function snapshotFormState() {
+    var snap = {};
+    PRESERVE_FIELD_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var isTextLike = el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'password' || el.type === 'search');
+      snap[id] = {
+        value: el.value,
+        focused: document.activeElement === el,
+        selStart: isTextLike ? el.selectionStart : null,
+        selEnd: isTextLike ? el.selectionEnd : null
+      };
+    });
+    return snap;
+  }
+  function restoreFormState(snap) {
+    Object.keys(snap).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var s = snap[id];
+      if (s.value) {
+        el.value = s.value;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if (s.focused) {
+        el.focus();
+        if (typeof s.selStart === 'number' && el.setSelectionRange) { try { el.setSelectionRange(s.selStart, s.selEnd); } catch (e) {} }
+      }
+    });
+  }
+
   function renderAccounts() {
     if (!isManager()) return;
     var el = $('accountsContent');
+    var formSnap = snapshotFormState();
     var list = userList().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
     var managerCount = list.filter(function (u) { return u.role === 'manager'; }).length;
     el.innerHTML =
@@ -545,6 +580,7 @@
       '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div>' +
       '<p class="img-hint" style="margin-top:12px;">Nhân viên không tự tạo được tài khoản — chỉ quản lý tạo ở trên rồi báo tên + PIN cho họ đăng nhập. Ở đây quản lý chỉnh vai trò / đặt lại PIN / xoá tài khoản.<br>' +
       '<b>Nhân viên</b>: chỉ đặt hàng. <b>Người thêm mẫu</b>: thêm mẫu mới, chỉ sửa/xoá được mẫu của chính mình. <b>Quản lý</b>: toàn quyền, sửa/xoá được mọi mẫu.</p></div>';
+    restoreFormState(formSnap);
 
     $('createAcctBtn').addEventListener('click', createAccountByManager);
     var listEl = $('acctList');
@@ -1076,6 +1112,7 @@
     if (!canManageProducts()) return;
     var el = $('manageContent');
     if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
+    var formSnap = snapshotFormState();
     var plist = productList();
     el.innerHTML =
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
@@ -1144,6 +1181,7 @@
       bindEditFormEvents(listEl);
       bindLightboxes(listEl);
     }
+    restoreFormState(formSnap);
   }
 
   function renderEditProductForm(p) {
@@ -1241,7 +1279,7 @@
 
   function deleteProduct(pid) {
     if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền xoá mẫu này.'); return; }
-    if (!confirm('Xoá mẫu áo này? Các đơn khách đã nhập cho mẫu này vẫn còn trong lịch sử nhưng sẽ không hiện được ảnh/tên nữa.')) return;
+    if (!confirm('Xoá mẫu áo này? Số liệu đặt hàng cũ cho mẫu này vẫn còn trong lịch sử nhưng sẽ không hiện được ảnh/tên nữa.')) return;
     db.ref('products/' + pid).remove().then(function () { toast('Đã xoá mẫu áo.'); }).catch(function () { toast('Không xoá được mẫu áo.'); });
   }
 
