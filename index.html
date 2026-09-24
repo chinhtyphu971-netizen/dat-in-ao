@@ -360,6 +360,7 @@
     <p class="subtitle main-subtitle">Chọn mẫu, nhập số lượng theo màu mỗi ngày. Quản lý in danh sách gửi xưởng, hệ thống tự lưu lịch sử và đặt lại số lượng.</p>
 
     <section class="view active" id="view-order">
+      <div class="agg-date-bar"><label>Xem theo:</label><select id="orderDateSelect"></select></div>
       <p class="day-note" id="orderDayNote"></p>
       <div id="shopGrid" class="shop-grid"></div>
       <div id="myOrdersToday"></div>
@@ -710,47 +711,80 @@
   }
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
-  function productTotalToday(pid) {
-    var today = todayStr();
+  function sumQuantitiesForColors(quantities, colors) {
+    var t = 0;
+    (colors || Object.keys(quantities || {})).forEach(function (c) { t += Number((quantities || {})[c]) || 0; });
+    return t;
+  }
+  function productTotalAcrossDates(pid, dates) {
     var p = products[pid];
     var colors = p ? colorsOf(p) : null;
-    var pOrders = (orders[today] && orders[today][pid]) || {};
     var total = 0;
-    Object.keys(pOrders).forEach(function (uid) {
-      var q = pOrders[uid].quantities || {};
-      (colors || Object.keys(q)).forEach(function (c) { total += Number(q[c]) || 0; });
+    dates.forEach(function (d) {
+      var node = (orders[d] && orders[d][pid]) || {};
+      Object.keys(node).forEach(function (uid) { total += sumQuantitiesForColors(node[uid].quantities, colors); });
     });
     return total;
   }
+  function myTotalAcrossDates(pid, dates) {
+    var p = products[pid];
+    var colors = p ? colorsOf(p) : null;
+    var total = 0;
+    dates.forEach(function (d) {
+      var node = orders[d] && orders[d][pid] && orders[d][pid][currentUser.id];
+      if (node) total += sumQuantitiesForColors(node.quantities, colors);
+    });
+    return total;
+  }
+  function productPrintedAcrossDates(pid, dates) {
+    var ds = dates.filter(function (d) { return orders[d] && orders[d][pid]; });
+    if (!ds.length) return false;
+    return ds.every(function (d) { return !!(printStatus[d] && printStatus[d][pid] && printStatus[d][pid].printed); });
+  }
 
+  var selectedOrderDate = 'all';
+  var modalEntryDate = null;
   var modalProduct = null;
+
+  function renderOrderDateControls() {
+    var dates = availableDates();
+    if (dates.indexOf(selectedOrderDate) === -1 && selectedOrderDate !== 'all') selectedOrderDate = 'all';
+    var sel = $('orderDateSelect');
+    var opts = '<option value="all"' + (selectedOrderDate === 'all' ? ' selected' : '') + '>Tất cả (chưa in, gộp)</option>';
+    opts += dates.map(function (d) { return '<option value="' + d + '"' + (d === selectedOrderDate ? ' selected' : '') + '>' + fmtDate(d) + '</option>'; }).join('');
+    sel.innerHTML = opts;
+    sel.onchange = function () { selectedOrderDate = sel.value; renderOrderList(); };
+  }
 
   function renderOrderList() {
     if (!configOk) { $('shopGrid').innerHTML = setupWarningHtml(); return; }
+    renderOrderDateControls();
     var plist = productList().filter(function (p) { return !p.hidden; });
     var today = todayStr();
-    $('orderDayNote').innerHTML = 'Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.';
+    var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
+    $('orderDayNote').innerHTML = selectedOrderDate === 'all'
+      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Bấm vào mẫu để nhập số lượng cho <b>hôm nay</b>.'
+      : (selectedOrderDate === today
+        ? 'Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.'
+        : 'Đang xem/sửa đơn ngày <b>' + fmtDate(selectedOrderDate) + '</b>.');
     if (!plist.length) {
       $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.' + (isManager() ? ' Vào tab "Quản lý mẫu" để thêm ảnh mẫu.' : ' Chờ quản lý thêm ảnh mẫu nhé.') + '</div>';
       $('myOrdersToday').innerHTML = '';
       return;
     }
-    var todayOrders = orders[today] || {};
-    var todayPrint = printStatus[today] || {};
 
     plist.sort(function (a, b) {
-      var tA = productTotalToday(a.id);
-      var tB = productTotalToday(b.id);
+      var tA = productTotalAcrossDates(a.id, activeDates);
+      var tB = productTotalAcrossDates(b.id, activeDates);
       if (tB !== tA) return tB - tA;
       return (a.createdAt || 0) - (b.createdAt || 0);
     });
 
     $('shopGrid').innerHTML = plist.map(function (p) {
       var colors = colorsOf(p);
-      var mine = (todayOrders[p.id] && todayOrders[p.id][currentUser.id] && todayOrders[p.id][currentUser.id].quantities) || {};
-      var mineTotal = colors.reduce(function (s, c) { return s + (Number(mine[c]) || 0); }, 0);
-      var totalAll = productTotalToday(p.id);
-      var printed = !!(todayPrint[p.id] && todayPrint[p.id].printed);
+      var mineTotal = myTotalAcrossDates(p.id, activeDates);
+      var totalAll = productTotalAcrossDates(p.id, activeDates);
+      var printed = productPrintedAcrossDates(p.id, activeDates);
       return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
         '<span class="sc-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
@@ -770,23 +804,22 @@
 
   function renderMyOrdersToday() {
     var container = $('myOrdersToday');
-    var today = todayStr();
-    var todayOrders = orders[today] || {};
+    var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     var rows = [];
-    Object.keys(todayOrders).forEach(function (pid) {
-      var mine = todayOrders[pid][currentUser.id];
-      if (!mine) return;
-      var p = products[pid];
-      var colors = p ? colorsOf(p) : null;
-      var q = mine.quantities || {};
-      var validQ = {}, total = 0;
-      (colors || Object.keys(q)).forEach(function (c) { var v = Number(q[c]) || 0; if (v > 0) { validQ[c] = v; total += v; } });
-      if (total <= 0) return;
-      rows.push({ pid: pid, quantities: validQ, total: total });
+    productList().forEach(function (p) {
+      var q = {}, total = 0;
+      var colors = colorsOf(p);
+      activeDates.forEach(function (d) {
+        var node = orders[d] && orders[d][p.id] && orders[d][p.id][currentUser.id];
+        if (!node) return;
+        colors.forEach(function (c) { var v = Number((node.quantities || {})[c]) || 0; if (v > 0) { q[c] = (q[c] || 0) + v; total += v; } });
+      });
+      if (total > 0) rows.push({ pid: p.id, quantities: q, total: total });
     });
     if (!rows.length) { container.innerHTML = ''; return; }
     var grand = rows.reduce(function (s, r) { return s + r.total; }, 0);
-    container.innerHTML = '<div class="manage-form" style="margin-top:24px;"><h2>Đơn của bạn hôm nay (' + grand + ' áo)</h2><div class="cust-list">' +
+    var titleLabel = selectedOrderDate === 'all' ? 'Đơn của bạn — tất cả (chưa in)' : 'Đơn của bạn ngày ' + fmtDate(selectedOrderDate);
+    container.innerHTML = '<div class="manage-form" style="margin-top:24px;"><h2>' + esc(titleLabel) + ' (' + grand + ' áo)</h2><div class="cust-list">' +
       rows.map(function (r) {
         var p = products[r.pid];
         var pname = p ? p.name : '(mẫu đã xoá)';
@@ -795,27 +828,30 @@
         return '<div class="cust-row"><span class="cr-name">' + esc(pname) + '</span>' +
           '<span class="cr-color">' + breakdown + '</span>' +
           '<span class="cr-qty">' + r.total + '</span></div>';
-      }).join('') + '</div><p class="img-hint">Bấm vào mẫu áo ở trên để sửa lại số lượng.</p></div>';
+      }).join('') + '</div><p class="img-hint">Bấm vào mẫu áo ở trên để sửa lại số lượng cho hôm nay.</p></div>';
   }
 
   function openProductModal(pid) {
     if (!products[pid]) return;
     modalProduct = Object.assign({ id: pid }, products[pid]);
+    modalEntryDate = selectedOrderDate === 'all' ? todayStr() : selectedOrderDate;
     renderProductModal();
     $('productModal').classList.remove('hidden');
   }
-  function closeProductModal() { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; modalProduct = null; }
+  function closeProductModal() { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; modalProduct = null; modalEntryDate = null; }
 
   function renderProductModal() {
     var p = modalProduct;
     var colors = colorsOf(p);
+    var d = modalEntryDate;
     var today = todayStr();
-    var printed = !!(printStatus[today] && printStatus[today][p.id] && printStatus[today][p.id].printed);
-    var mine = (orders[today] && orders[today][p.id] && orders[today][p.id][currentUser.id] && orders[today][p.id][currentUser.id].quantities) || {};
+    var printed = !!(printStatus[d] && printStatus[d][p.id] && printStatus[d][p.id].printed);
+    var mine = (orders[d] && orders[d][p.id] && orders[d][p.id][currentUser.id] && orders[d][p.id][currentUser.id].quantities) || {};
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span>' +
+      '<p class="img-hint" style="margin-top:8px;">Đang nhập cho ngày: <b>' + esc(fmtDate(d)) + (d === today ? '' : ' (không phải hôm nay)') + '</b></p>' +
       '<div class="ms-section-label">Số lượng theo màu</div>' +
       '<div class="qty-color-rows">' + colors.map(function (c) {
         var v = mine[c] != null ? mine[c] : 0;
@@ -840,6 +876,7 @@
 
   function saveProductQuantities() {
     var p = modalProduct;
+    var d = modalEntryDate;
     var quantities = {};
     $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
       var c = row.dataset.color;
@@ -847,7 +884,7 @@
       quantities[c] = v;
     });
     var btn = $('msSaveBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
-    db.ref('orders/' + todayStr() + '/' + p.id + '/' + currentUser.id).set({
+    db.ref('orders/' + d + '/' + p.id + '/' + currentUser.id).set({
       employeeName: currentUser.name, quantities: quantities, updatedAt: Date.now()
     }).then(function () {
       toast('Đã lưu số lượng cho "' + p.name + '".');
