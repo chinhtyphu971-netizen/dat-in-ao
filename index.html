@@ -1041,44 +1041,23 @@
     });
   }
 
-  function printAggregateReport() {
-    if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có đơn hàng nào để in.'); return; }
+  // ---- logic dùng chung cho mọi nút "in": lọc mẫu chưa in + sau khi in xong thì lưu lịch sử/reset hoặc đánh dấu đã in ----
+  function getPrintableList() {
     var snap = lastAggSnapshot;
     var datesUsed = snap.datesUsed || [selectedAggDate];
     var onlyUnprinted = $('printOnlyUnprinted').checked;
-
-    // Những ngày nào (trong số ngày đang gộp) thực sự có đơn cho mẫu này
     function productDates(pid) { return datesUsed.filter(function (d) { return orders[d] && orders[d][pid]; }); }
-    // Coi là "đã in" nếu MỌI ngày có đơn của mẫu đó đều đã được đánh dấu đã in
     function isPrinted(pid) {
       var ds = productDates(pid);
       if (!ds.length) return false;
       return ds.every(function (d) { return !!(printStatus[d] && printStatus[d][pid] && printStatus[d][pid].printed); });
     }
-
     var list = onlyUnprinted ? snap.filteredList.filter(function (p) { return !isPrinted(p.id); }) : snap.filteredList;
-    if (!list.length) { toast('Tất cả mẫu trong phạm vi đang xem đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+    return { snap: snap, datesUsed: datesUsed, onlyUnprinted: onlyUnprinted, list: list, productDates: productDates, isPrinted: isPrinted };
+  }
 
-    var runningTotal = 0;
-    var rowsHtml = list.map(function (p) {
-      var pdata = snap.byProduct[p.id];
-      var colors = colorsOf(p);
-      var colorsText = colors.filter(function (c) { return pdata.byColor[c]; })
-        .map(function (c) { return esc(c) + ': ' + pdata.byColor[c]; }).join(' · ');
-      runningTotal += pdata.totalQty;
-      var printedTag = isPrinted(p.id) ? ' <span class="pr-already">(đã in trước đó)</span>' : '';
-      return '<div class="pr-row">' +
-        (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pr-noimg">Không ảnh</div>') +
-        '<div class="pr-info"><div class="pr-name">' + esc(p.name) + printedTag + '</div><div class="pr-colors">' + colorsText + '</div></div>' +
-        '<div class="pr-total">' + pdata.totalQty + ' áo</div>' +
-        '</div>';
-    }).join('');
-    $('printArea').innerHTML =
-      '<div class="pr-header"><h1>Bảng tổng hợp đặt may</h1><p>' + esc(snap.dateLabel) +
-      (onlyUnprinted ? ' · Chỉ mẫu chưa in' : '') + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
-      rowsHtml +
-      '<div class="pr-grand"><span>Tổng cộng</span><span>' + runningTotal + ' áo</span></div>';
-
+  function finalizePrintFlow(ctx) {
+    var snap = ctx.snap, datesUsed = ctx.datesUsed, list = ctx.list, productDates = ctx.productDates, isPrinted = ctx.isPrinted;
     var pendingMarkIds = list.filter(function (p) { return !isPrinted(p.id); }).map(function (p) { return p.id; });
     var doResetAfter = $('printResetAfter').checked;
 
@@ -1123,6 +1102,35 @@
       }
     };
     setTimeout(function () { window.print(); }, 50);
+  }
+
+  function printAggregateReport() {
+    if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có đơn hàng nào để in.'); return; }
+    var ctx = getPrintableList();
+    var snap = ctx.snap, list = ctx.list, isPrinted = ctx.isPrinted, onlyUnprinted = ctx.onlyUnprinted;
+    if (!list.length) { toast('Tất cả mẫu trong phạm vi đang xem đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+
+    var runningTotal = 0;
+    var rowsHtml = list.map(function (p) {
+      var pdata = snap.byProduct[p.id];
+      var colors = colorsOf(p);
+      var colorsText = colors.filter(function (c) { return pdata.byColor[c]; })
+        .map(function (c) { return esc(c) + ': ' + pdata.byColor[c]; }).join(' · ');
+      runningTotal += pdata.totalQty;
+      var printedTag = isPrinted(p.id) ? ' <span class="pr-already">(đã in trước đó)</span>' : '';
+      return '<div class="pr-row">' +
+        (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pr-noimg">Không ảnh</div>') +
+        '<div class="pr-info"><div class="pr-name">' + esc(p.name) + printedTag + '</div><div class="pr-colors">' + colorsText + '</div></div>' +
+        '<div class="pr-total">' + pdata.totalQty + ' áo</div>' +
+        '</div>';
+    }).join('');
+    $('printArea').innerHTML =
+      '<div class="pr-header"><h1>Bảng tổng hợp đặt may</h1><p>' + esc(snap.dateLabel) +
+      (onlyUnprinted ? ' · Chỉ mẫu chưa in' : '') + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
+      rowsHtml +
+      '<div class="pr-grand"><span>Tổng cộng</span><span>' + runningTotal + ' áo</span></div>';
+
+    finalizePrintFlow(ctx);
   }
   var printAggBtnEl = $('printAggBtn');
   if (printAggBtnEl) printAggBtnEl.addEventListener('click', printAggregateReport);
@@ -1236,14 +1244,17 @@
   if (exportExcelBtnEl) exportExcelBtnEl.addEventListener('click', exportWorkshopExcel);
 
   function printWorkshopTable() {
-    var snap = lastAggSnapshot;
-    if (!snap || !snap.filteredList.length) { toast('Chưa có dữ liệu để in.'); return; }
+    if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có dữ liệu để in.'); return; }
+    var ctx = getPrintableList();
+    var snap = ctx.snap, list = ctx.list, isPrinted = ctx.isPrinted, onlyUnprinted = ctx.onlyUnprinted;
+    if (!list.length) { toast('Tất cả mẫu trong phạm vi đang xem đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+
     var cols = workshopTableColumns();
     var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
     var grand = 0;
 
     var thead = '<thead><tr><th>Ảnh</th><th>Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th>Tổng</th></tr></thead>';
-    var bodyRows = snap.filteredList.map(function (p) {
+    var bodyRows = list.map(function (p) {
       var pdata = snap.byProduct[p.id];
       var rowTotal = 0;
       var cells = cols.map(function (c) {
@@ -1253,14 +1264,17 @@
       }).join('');
       grand += rowTotal;
       var thumb = p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pr-noimg-small">Không ảnh</div>';
-      return '<tr><td>' + thumb + '</td><td class="pr-name-cell">' + esc(p.name) + '</td>' + cells + '<td>' + rowTotal + '</td></tr>';
+      var printedTag = isPrinted(p.id) ? ' <span class="pr-already">(đã in trước đó)</span>' : '';
+      return '<tr><td>' + thumb + '</td><td class="pr-name-cell">' + esc(p.name) + printedTag + '</td>' + cells + '<td>' + rowTotal + '</td></tr>';
     }).join('');
     var tfoot = '<tfoot><tr><td></td><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td>' + grand + '</td></tr></tfoot>';
 
     $('printArea').innerHTML =
-      '<div class="pr-header"><h1>Bảng tổng cho xưởng</h1><p>' + esc(snap.dateLabel) + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
+      '<div class="pr-header"><h1>Bảng tổng cho xưởng</h1><p>' + esc(snap.dateLabel) +
+      (onlyUnprinted ? ' · Chỉ mẫu chưa in' : '') + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
       '<table class="pr-grid-table">' + thead + '<tbody>' + bodyRows + '</tbody>' + tfoot + '</table>';
-    setTimeout(function () { window.print(); }, 50);
+
+    finalizePrintFlow(ctx);
   }
   var printTableBtnEl = $('printTableBtn');
   if (printTableBtnEl) printTableBtnEl.addEventListener('click', printWorkshopTable);
