@@ -201,7 +201,6 @@
   .workshop-table-actions { display: flex; gap: 8px; }
   table.workshop-table { width: 100%; border-collapse: collapse; font-size: 13.5px; white-space: nowrap; }
   table.workshop-table th, table.workshop-table td { padding: 9px 12px; text-align: right; border: 1px solid var(--line); }
-  table.workshop-table th:first-child, table.workshop-table td:first-child { text-align: left; white-space: normal; min-width: 140px; }
   table.workshop-table thead th { background: var(--paper); font-weight: 700; color: var(--ink); }
   table.workshop-table tbody tr:nth-child(even) { background: var(--paper); }
   table.workshop-table tfoot td { font-weight: 800; background: var(--thread-soft); border-top: 2px solid var(--thread); }
@@ -209,6 +208,10 @@
   table.workshop-table td.wt-img { padding: 6px; text-align: center; }
   .wt-thumb { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; border: 1px solid var(--line); cursor: zoom-in; display: block; }
   .wt-thumb-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: 10px; background: var(--paper); cursor: default; }
+  table.workshop-table td.wt-name, table.workshop-table th.wt-name { text-align: left; white-space: normal; min-width: 140px; }
+  table.workshop-table td.wt-check, table.workshop-table th.wt-check { text-align: center; width: 36px; }
+  table.workshop-table .wt-row-check, table.workshop-table #wtSelectAll { width: 16px; height: 16px; cursor: pointer; }
+  table.workshop-table tr.wt-row-unchecked { opacity: 0.4; }
 
   .agg-product { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); margin-bottom: 14px; overflow: hidden; }
   .agg-product-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
@@ -1052,7 +1055,8 @@
       if (!ds.length) return false;
       return ds.every(function (d) { return !!(printStatus[d] && printStatus[d][pid] && printStatus[d][pid].printed); });
     }
-    var list = onlyUnprinted ? snap.filteredList.filter(function (p) { return !isPrinted(p.id); }) : snap.filteredList;
+    var base = selectedFilteredList();
+    var list = onlyUnprinted ? base.filter(function (p) { return !isPrinted(p.id); }) : base;
     return { snap: snap, datesUsed: datesUsed, onlyUnprinted: onlyUnprinted, list: list, productDates: productDates, isPrinted: isPrinted };
   }
 
@@ -1136,6 +1140,16 @@
   if (printAggBtnEl) printAggBtnEl.addEventListener('click', printAggregateReport);
 
   // ---------- workshop grid table: rows = mẫu, columns = màu, kèm xuất Excel / sao chép ----------
+  var productSelection = {}; // pid -> true/false, mặc định true (đã tick) khi mới xuất hiện
+  function isProductSelected(pid) { return productSelection[pid] !== false; }
+  function ensureSelectionDefaults(list) {
+    list.forEach(function (p) { if (productSelection[p.id] === undefined) productSelection[p.id] = true; });
+  }
+  function selectedFilteredList() {
+    var snap = lastAggSnapshot;
+    return snap.filteredList.filter(function (p) { return isProductSelected(p.id); });
+  }
+
   function workshopTableColumns() {
     var snap = lastAggSnapshot;
     var seen = {}, cols = [];
@@ -1154,11 +1168,13 @@
     var wrap = $('workshopTableWrap');
     if (!snap || !snap.filteredList.length) { wrap.style.display = 'none'; return; }
     wrap.style.display = '';
+    ensureSelectionDefaults(snap.filteredList);
     var cols = workshopTableColumns();
     var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
     var grand = 0;
+    var allChecked = snap.filteredList.every(function (p) { return isProductSelected(p.id); });
 
-    var thead = '<thead><tr><th>Ảnh</th><th>Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th class="wt-total">Tổng</th></tr></thead>';
+    var thead = '<thead><tr><th class="wt-check"><input type="checkbox" id="wtSelectAll"' + (allChecked ? ' checked' : '') + '></th><th>Ảnh</th><th class="wt-name">Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th class="wt-total">Tổng</th></tr></thead>';
     var bodyRows = snap.filteredList.map(function (p) {
       var pdata = snap.byProduct[p.id];
       var rowTotal = 0;
@@ -1171,23 +1187,37 @@
       var thumb = p.imageUrl
         ? '<img class="wt-thumb" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">'
         : '<div class="wt-thumb wt-thumb-empty">–</div>';
-      return '<tr><td class="wt-img">' + thumb + '</td><td>' + esc(p.name) + '</td>' + cells + '<td class="wt-total">' + rowTotal + '</td></tr>';
+      var checked = isProductSelected(p.id) ? ' checked' : '';
+      return '<tr' + (checked ? '' : ' class="wt-row-unchecked"') + '><td class="wt-check"><input type="checkbox" class="wt-row-check" data-pid="' + esc(p.id) + '"' + checked + '></td><td class="wt-img">' + thumb + '</td><td class="wt-name">' + esc(p.name) + '</td>' + cells + '<td class="wt-total">' + rowTotal + '</td></tr>';
     }).join('');
-    var tfoot = '<tfoot><tr><td></td><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td class="wt-total">' + grand + '</td></tr></tfoot>';
+    var tfoot = '<tfoot><tr><td></td><td></td><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td class="wt-total">' + grand + '</td></tr></tfoot>';
 
     $('workshopTable').innerHTML = thead + '<tbody>' + bodyRows + '</tbody>' + tfoot;
     bindLightboxes($('workshopTable'));
+
+    $('wtSelectAll').addEventListener('change', function () {
+      var check = this.checked;
+      snap.filteredList.forEach(function (p) { productSelection[p.id] = check; });
+      renderWorkshopTable();
+    });
+    $('workshopTable').querySelectorAll('.wt-row-check').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        productSelection[cb.dataset.pid] = cb.checked;
+        renderWorkshopTable();
+      });
+    });
   }
 
   function buildWorkshopTsv() {
     var snap = lastAggSnapshot;
-    if (!snap || !snap.filteredList.length) return null;
+    var list = selectedFilteredList();
+    if (!snap || !list.length) return null;
     var cols = workshopTableColumns();
     var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
     var grand = 0;
     var lines = [];
     lines.push(['Mẫu áo'].concat(cols).concat(['Tổng']).join('\t'));
-    snap.filteredList.forEach(function (p) {
+    list.forEach(function (p) {
       var pdata = snap.byProduct[p.id];
       var rowTotal = 0;
       var vals = cols.map(function (c) { var v = pdata.byColor[c] || 0; colTotals[c] += v; rowTotal += v; return v; });
