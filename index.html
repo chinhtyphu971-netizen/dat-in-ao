@@ -175,6 +175,15 @@
     .pr-row .pr-colors { font-size: 12.5px; color: #333; }
     .pr-row .pr-total { font-weight: 700; font-size: 15px; white-space: nowrap; }
     .pr-grand { display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; padding-top: 12px; margin-top: 6px; border-top: 2px solid #000; }
+    table.pr-grid-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.pr-grid-table th, table.pr-grid-table td { border: 1px solid #999; padding: 6px 8px; text-align: right; }
+    table.pr-grid-table th:nth-child(-n+2), table.pr-grid-table td:nth-child(-n+2) { text-align: left; }
+    table.pr-grid-table thead th { background: #eee; font-weight: 700; }
+    table.pr-grid-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.pr-grid-table img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid #999; display: block; }
+    table.pr-grid-table .pr-noimg-small { width: 64px; height: 64px; border: 1px dashed #999; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #999; }
+    table.pr-grid-table td.pr-name-cell { font-weight: 700; font-size: 13.5px; white-space: normal; }
+    table.pr-grid-table tfoot td { font-weight: 800; background: #f0e0b8; border-top: 2px solid #000; }
   }
   .daily-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px; }
   .daily-chip { flex-shrink: 0; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; text-align: left; font-family: var(--font-body); }
@@ -381,6 +390,7 @@
           <div class="workshop-table-actions">
             <button class="btn ghost small" id="copyTableBtn">📋 Sao chép</button>
             <button class="btn ghost small" id="exportExcelBtn">📊 Xuất Excel</button>
+            <button class="btn ghost small" id="printTableBtn">🖨️ In bảng (ảnh rõ)</button>
           </div>
         </div>
         <div class="scroll-x"><table class="workshop-table" id="workshopTable"></table></div>
@@ -1224,6 +1234,36 @@
   if (copyTableBtnEl) copyTableBtnEl.addEventListener('click', copyWorkshopTable);
   var exportExcelBtnEl = $('exportExcelBtn');
   if (exportExcelBtnEl) exportExcelBtnEl.addEventListener('click', exportWorkshopExcel);
+
+  function printWorkshopTable() {
+    var snap = lastAggSnapshot;
+    if (!snap || !snap.filteredList.length) { toast('Chưa có dữ liệu để in.'); return; }
+    var cols = workshopTableColumns();
+    var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
+    var grand = 0;
+
+    var thead = '<thead><tr><th>Ảnh</th><th>Mẫu áo</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th>Tổng</th></tr></thead>';
+    var bodyRows = snap.filteredList.map(function (p) {
+      var pdata = snap.byProduct[p.id];
+      var rowTotal = 0;
+      var cells = cols.map(function (c) {
+        var v = pdata.byColor[c] || 0;
+        colTotals[c] += v; rowTotal += v;
+        return '<td>' + (v || '–') + '</td>';
+      }).join('');
+      grand += rowTotal;
+      var thumb = p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pr-noimg-small">Không ảnh</div>';
+      return '<tr><td>' + thumb + '</td><td class="pr-name-cell">' + esc(p.name) + '</td>' + cells + '<td>' + rowTotal + '</td></tr>';
+    }).join('');
+    var tfoot = '<tfoot><tr><td></td><td>Tổng cộng</td>' + cols.map(function (c) { return '<td>' + colTotals[c] + '</td>'; }).join('') + '<td>' + grand + '</td></tr></tfoot>';
+
+    $('printArea').innerHTML =
+      '<div class="pr-header"><h1>Bảng tổng cho xưởng</h1><p>' + esc(snap.dateLabel) + ' · In lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
+      '<table class="pr-grid-table">' + thead + '<tbody>' + bodyRows + '</tbody>' + tfoot + '</table>';
+    setTimeout(function () { window.print(); }, 50);
+  }
+  var printTableBtnEl = $('printTableBtn');
+  if (printTableBtnEl) printTableBtnEl.addEventListener('click', printWorkshopTable);
 
   var archiveModalMode = 'all';
   function openArchiveModal(mode) { archiveModalMode = mode || 'all'; renderArchiveModal(); $('archiveModal').classList.remove('hidden'); }
