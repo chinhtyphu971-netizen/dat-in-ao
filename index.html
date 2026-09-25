@@ -239,6 +239,8 @@
   .field-row { margin-bottom: 12px; }
   .field-row label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 5px; }
   .field-row input[type=text] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .char-count { font-size: 11.5px; color: var(--ink-soft); text-align: right; margin-top: 4px; }
+  .char-count.char-count-max { color: var(--stitch); font-weight: 600; }
   .img-hint { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; line-height: 1.5; }
 
   /* Khung preview ảnh bên trái */
@@ -1427,7 +1429,8 @@
           '</div>' +
           '<div class="field-row">' +
             '<label>Tên mẫu</label>' +
-            '<input type="text" id="nameInput" placeholder="VD: Áo hoodie gấu bông">' +
+            '<input type="text" id="nameInput" maxlength="25" placeholder="VD: Áo hoodie gấu bông">' +
+            '<div class="char-count" id="nameCharCount">0/25</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -1451,6 +1454,15 @@
     }
     imgInput.addEventListener('input', updateNewPreview);
     imgInput.addEventListener('change', updateNewPreview);
+
+    var nameInputEl = $('nameInput');
+    function updateNameCharCount() {
+      var n = nameInputEl.value.length;
+      var box = $('nameCharCount');
+      box.textContent = n + '/25';
+      box.classList.toggle('char-count-max', n >= 25);
+    }
+    nameInputEl.addEventListener('input', updateNameCharCount);
 
     $('addProductBtn').addEventListener('click', addProduct);
 
@@ -1501,7 +1513,8 @@
           '</div>' +
           '<div class="field-row">' +
             '<label>Tên mẫu</label>' +
-            '<input type="text" id="editNameInput" value="' + esc(p.name) + '">' +
+            '<input type="text" id="editNameInput" maxlength="25" value="' + esc(p.name) + '">' +
+            '<div class="char-count" id="editNameCharCount">' + (p.name || '').length + '/25</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -1530,6 +1543,15 @@
     editImgInput.addEventListener('input', updateEditPreview);
     editImgInput.addEventListener('change', updateEditPreview);
 
+    var editNameInputEl = $('editNameInput');
+    function updateEditNameCharCount() {
+      var n = editNameInputEl.value.length;
+      var box = $('editNameCharCount');
+      box.textContent = n + '/25';
+      box.classList.toggle('char-count-max', n >= 25);
+    }
+    editNameInputEl.addEventListener('input', updateEditNameCharCount);
+
     $('cancelEditBtn').addEventListener('click', function () { editingProductId = null; renderManage(); });
     $('saveEditBtn').addEventListener('click', function () { saveEditProduct(form.dataset.editingPid); });
   }
@@ -1547,6 +1569,7 @@
     var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
     if (!colors.length) colors = DEFAULT_COLORS.slice();
     if (!name) { toast('Nhập tên mẫu áo.'); return; }
+    if (name.length > 25) { toast('Tên mẫu áo tối đa 25 ký tự (kể cả khoảng trắng), đang dài ' + name.length + ' ký tự.'); return; }
     var imageUrl = $('editImgUrlInput').value.trim();
     if (!imageUrl) { toast('Thêm link ảnh mẫu áo trước đã.'); return; }
     var btn = $('saveEditBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
@@ -1572,6 +1595,7 @@
     var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
     if (!colors.length) colors = DEFAULT_COLORS.slice();
     if (!name) { toast('Nhập tên mẫu áo.'); return; }
+    if (name.length > 25) { toast('Tên mẫu áo tối đa 25 ký tự (kể cả khoảng trắng), đang dài ' + name.length + ' ký tự.'); return; }
     var imageUrl = $('imgUrlInput').value.trim();
     if (!imageUrl) { toast('Thêm link ảnh mẫu áo trước đã.'); return; }
     var btn = $('addProductBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
