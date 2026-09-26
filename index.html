@@ -370,6 +370,10 @@
   }
 
   /* Card yêu cầu đơn khách cho Sale */
+  .lead-filter-bar { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
+  .lead-filter-btn { border: 1px solid var(--line); background: var(--paper); border-radius: var(--radius-pill); padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
+  .lead-filter-btn.active { background: var(--denim); color: #fff; border-color: var(--denim); }
+
   .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
   .lead-card.is-billed { border-color: var(--ok); background: #f7faf7; }
   .lead-card.is-printed { border-color: var(--denim); }
@@ -492,6 +496,12 @@
       </div>
       <div class="manage-form">
         <h2>Yêu cầu đặt hàng từ khách (Gửi qua Link)</h2>
+        <div class="lead-filter-bar" id="leadFilterBar">
+          <button class="lead-filter-btn active" data-filter="all">Tất cả</button>
+          <button class="lead-filter-btn" data-filter="unbilled">Chưa ghi hoá đơn</button>
+          <button class="lead-filter-btn" data-filter="billed">Đã ghi hoá đơn</button>
+          <button class="lead-filter-btn" data-filter="printed">Đã đặt in</button>
+        </div>
         <p class="img-hint" style="margin-bottom:14px;">
           Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Sau khi nhắn tin Zalo và cọc tiền, bạn tự vào tab <b>"Đơn may chính thức"</b> để lên số lượng, rồi <b>tích vào ô "Đã ghi vào hoá đơn"</b> hoặc <b>"Đã đặt in"</b> để theo dõi tiến độ.
         </p>
@@ -526,20 +536,44 @@
     <!-- TAB MỚI: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
     <section class="view" id="view-stats">
       <div class="manage-form">
-        <h2>📊 Dữ liệu thống kê lượt khách truy cập Link theo từng Sale</h2>
-        <p class="img-hint" style="margin-top:-6px;margin-bottom:14px;">Đo lường số lượt khách thực tế đã bấm vào link của từng bạn Sale để xem mẫu.</p>
+        <h2>📊 Dữ liệu thống kê khách vào Link &amp; Đã gửi đơn</h2>
+        <p class="img-hint" style="margin-top:-6px;margin-bottom:14px;">Thống kê chi tiết số lượt khách đã bấm xem link và số lượng khách thực tế đã chốt gửi đơn in.</p>
         <div class="scroll-x">
           <table class="workshop-table" id="trafficStatsTable">
             <thead>
               <tr>
                 <th style="text-align:left;">Tên Sale</th>
-                <th style="text-align:center;">Truy cập hôm nay</th>
-                <th style="text-align:center;">Tổng lượt truy cập</th>
+                <th style="text-align:center;">Vào xem hôm nay</th>
+                <th style="text-align:center;">Tổng lượt xem</th>
+                <th style="text-align:center;color:var(--stitch);">Khách đã gửi đơn</th>
+                <th style="text-align:center;">Tỷ lệ gửi đơn</th>
                 <th style="text-align:center;">Lần cuối xem link</th>
               </tr>
             </thead>
             <tbody id="trafficStatsBody">
-              <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Đang tải số liệu...</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">Đang tải số liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BẢNG CHI TIẾT TẤT CẢ KHÁCH ĐÃ GỬI ĐƠN TỪ LINK -->
+      <div class="manage-form">
+        <h2>📋 Lịch sử chi tiết khách đã gửi đơn từ link</h2>
+        <div class="scroll-x">
+          <table class="workshop-table">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Tên khách</th>
+                <th style="text-align:left;">Số điện thoại / Zalo</th>
+                <th style="text-align:left;">Sale phụ trách</th>
+                <th style="text-align:center;">Số lượng</th>
+                <th style="text-align:center;">Trạng thái</th>
+                <th style="text-align:center;">Thời gian gửi</th>
+              </tr>
+            </thead>
+            <tbody id="leadsHistoryBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">Chưa có đơn nào từ khách.</td></tr>
             </tbody>
           </table>
         </div>
@@ -593,6 +627,7 @@
   var editingProductId = null;
   var selectedAggDate = null;
   var lastAggSnapshot = null;
+  var currentLeadFilter = 'all';
 
   var urlParams = new URLSearchParams(window.location.search);
   var saleRefId = urlParams.get('sale') || urlParams.get('ref');
@@ -646,6 +681,7 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
+      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -657,6 +693,7 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
+      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -931,8 +968,11 @@
     var container = $('leadsList');
     var list = Object.keys(customerLeads).map(function (k) { return Object.assign({ id: k }, customerLeads[k]); })
       .filter(function (lead) {
-        if (isManager()) return true;
-        return lead.saleId === currentUser.id;
+        if (!isManager() && lead.saleId !== currentUser.id) return false;
+        if (currentLeadFilter === 'unbilled') return !lead.billed;
+        if (currentLeadFilter === 'billed') return !!lead.billed;
+        if (currentLeadFilter === 'printed') return !!lead.printed;
+        return true;
       })
       .sort(function (a, b) {
         var billedA = a.billed ? 1 : 0;
@@ -941,7 +981,10 @@
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
 
-    var unbilledCount = list.filter(function (l) { return !l.billed; }).length;
+    // Cập nhật số badge chuông đơn chưa ghi hoá đơn
+    var allMyLeads = Object.keys(customerLeads).map(function (k) { return customerLeads[k]; })
+      .filter(function(l) { return isManager() || (l.saleId === currentUser.id); });
+    var unbilledCount = allMyLeads.filter(function (l) { return !l.billed; }).length;
     var badge = $('leadBadge');
     if (unbilledCount > 0) {
       badge.textContent = unbilledCount;
@@ -951,7 +994,7 @@
     }
 
     if (!list.length) {
-      container.innerHTML = '<div class="empty">Hiện chưa có yêu cầu nào từ khách gửi qua Link.</div>';
+      container.innerHTML = '<div class="empty">Không có đơn nào theo bộ lọc đang chọn.</div>';
       return;
     }
 
@@ -1021,6 +1064,16 @@
     });
   }
 
+  // Bắt sự kiện thanh lọc trạng thái đơn khách
+  document.querySelectorAll('.lead-filter-btn').forEach(function(b) {
+    b.addEventListener('click', function() {
+      document.querySelectorAll('.lead-filter-btn').forEach(function(x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      currentLeadFilter = b.dataset.filter;
+      renderLeads();
+    });
+  });
+
   // Bật/tắt và ghi nhớ chuông
   var enableSoundBtn = $('enableSoundBtn');
   if (enableSoundBtn) {
@@ -1063,14 +1116,22 @@
     var today = todayStr();
 
     if (!allUsers.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Chưa có nhân viên nào.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">Chưa có nhân viên nào.</td></tr>';
       return;
     }
+
+    // Đếm số đơn mà từng sale nhận được từ link
+    var leadsBySale = {};
+    Object.keys(customerLeads).forEach(function(k) {
+      var l = customerLeads[k];
+      leadsBySale[l.saleId] = (leadsBySale[l.saleId] || 0) + 1;
+    });
 
     var rows = allUsers.map(function(u) {
       var logs = visitLogs[u.id] || {};
       var logKeys = Object.keys(logs);
       var totalVisits = logKeys.length;
+      var totalLeads = leadsBySale[u.id] || 0;
 
       var todayVisits = 0;
       var lastVisitTime = 0;
@@ -1083,17 +1144,21 @@
         }
       });
 
+      var convRate = totalVisits > 0 ? Math.round((totalLeads / totalVisits) * 100) + '%' : '0%';
+
       return {
         user: u,
         todayVisits: todayVisits,
         totalVisits: totalVisits,
+        totalLeads: totalLeads,
+        convRate: convRate,
         lastVisitTime: lastVisitTime
       };
     });
 
-    // Sắp xếp theo số lượt truy cập hôm nay giảm dần
+    // Sắp xếp theo số đơn khách gửi giảm dần
     rows.sort(function(a, b) {
-      if (b.todayVisits !== a.todayVisits) return b.todayVisits - a.todayVisits;
+      if (b.totalLeads !== a.totalLeads) return b.totalLeads - a.totalLeads;
       return b.totalVisits - a.totalVisits;
     });
 
@@ -1101,11 +1166,37 @@
       var lastTimeText = r.lastVisitTime ? new Date(r.lastVisitTime).toLocaleString('vi-VN') : '–';
       return '<tr>' +
         '<td style="text-align:left;font-weight:600;">' + esc(r.user.name) + '</td>' +
-        '<td style="text-align:center;font-weight:700;color:' + (r.todayVisits > 0 ? 'var(--stitch)' : 'inherit') + ';">' + r.todayVisits + '</td>' +
+        '<td style="text-align:center;font-weight:700;">' + r.todayVisits + '</td>' +
         '<td style="text-align:center;font-weight:700;">' + r.totalVisits + '</td>' +
+        '<td style="text-align:center;font-weight:800;color:var(--stitch);font-size:15px;">' + r.totalLeads + ' đơn</td>' +
+        '<td style="text-align:center;font-weight:600;color:var(--ok);">' + r.convRate + '</td>' +
         '<td style="text-align:center;font-size:12.5px;color:var(--ink-soft);">' + esc(lastTimeText) + '</td>' +
       '</tr>';
     }).join('');
+
+    // Bảng chi tiết toàn bộ các đơn khách đã gửi từ link
+    var histBody = $('leadsHistoryBody');
+    if (histBody) {
+      var allLeads = Object.keys(customerLeads).map(function(k) { return customerLeads[k]; })
+        .sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+
+      if (!allLeads.length) {
+        histBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">Chưa có đơn hàng nào từ link.</td></tr>';
+      } else {
+        histBody.innerHTML = allLeads.map(function(l) {
+          var timeStr = l.createdAt ? new Date(l.createdAt).toLocaleString('vi-VN') : '–';
+          var statusText = l.printed ? '🔵 Đã đặt in' : (l.billed ? '🟢 Đã ghi hoá đơn' : '⏳ Chờ xử lý');
+          return '<tr>' +
+            '<td style="text-align:left;font-weight:600;">' + esc(l.customerName) + '</td>' +
+            '<td style="text-align:left;color:var(--denim);font-weight:600;">' + esc(l.phone) + '</td>' +
+            '<td style="text-align:left;">' + esc(l.saleName) + '</td>' +
+            '<td style="text-align:center;font-weight:700;">' + l.totalQty + ' áo</td>' +
+            '<td style="text-align:center;font-size:12.5px;">' + statusText + '</td>' +
+            '<td style="text-align:center;font-size:12px;color:var(--ink-soft);">' + timeStr + '</td>' +
+          '</tr>';
+        }).join('');
+      }
+    }
   }
 
   /* ------------------- PHẦN NỘI BỘ (APP SHELL) ------------------- */
@@ -2134,7 +2225,10 @@
       }
 
       customerLeads = newLeads;
-      if (!isGuestMode && currentUser) renderCurrentTab();
+      if (!isGuestMode && currentUser) {
+        renderCurrentTab();
+        if (isManager() && currentTab === 'stats') renderTrafficStats();
+      }
     });
 
     db.ref('printStatus').on('value', function (snap) {
