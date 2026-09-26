@@ -369,6 +369,10 @@
   }
 
   /* Card yêu cầu đơn khách cho Sale */
+  .lead-filter-bar { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
+  .lead-filter-btn { border: 1px solid var(--line); background: var(--paper); border-radius: var(--radius-pill); padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
+  .lead-filter-btn.active { background: var(--denim); color: #fff; border-color: var(--denim); }
+
   .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
   .lead-card.is-billed { border-color: var(--ok); background: #f7faf7; }
   .lead-card.is-printed { border-color: var(--denim); }
@@ -535,7 +539,7 @@
           <table class="workshop-table" id="trafficStatsTable">
             <thead>
               <tr>
-                <th style="text-align:left;">Tên Sale</th>
+                <th style="text-align:left;">Tài khoản</th>
                 <th style="text-align:center;">Vào xem hôm nay</th>
                 <th style="text-align:center;">Tổng lượt xem</th>
                 <th style="text-align:center;color:var(--stitch);">Khách đã gửi đơn</th>
@@ -672,6 +676,7 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
+      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -683,6 +688,7 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
+      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -1092,17 +1098,19 @@
     });
   }
 
-  /* ------------------- PHẦN BẢNG THỐNG KÊ TRUY CẬP LINK DÀNH CHO QUẢN LÝ ------------------- */
+  /* ------------------- PHẦN BẢNG THỐNG KÊ TRUY CẬP LINK DÀNH CHO QUẢN LÝ (BAO GỒM TẤT CẢ TÀI KHOẢN) ------------------- */
   function renderTrafficStats() {
     if (!isManager()) return;
 
     var tbody = $('trafficStatsBody');
     if (!tbody) return;
-    var allUsers = userList().filter(function(u) { return u.role !== 'manager'; });
+    
+    // Lấy TẤT CẢ tài khoản (gồm cả quản lý và nhân viên)
+    var allUsers = userList();
     var today = todayStr();
 
     if (!allUsers.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">Chưa có nhân viên nào.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">Chưa có tài khoản nào.</td></tr>';
       return;
     }
 
@@ -1148,8 +1156,10 @@
 
     tbody.innerHTML = rows.map(function(r) {
       var lastTimeText = r.lastVisitTime ? new Date(r.lastVisitTime).toLocaleString('vi-VN') : '–';
+      var isMgr = r.user.role === 'manager';
+      var roleBadge = '<span class="role-chip' + (isMgr ? ' manager' : '') + '" style="font-size:10.5px;padding:2px 6px;margin-left:6px;">' + (isMgr ? 'Quản lý' : 'Nhân viên') + '</span>';
       return '<tr>' +
-        '<td style="text-align:left;font-weight:600;">' + esc(r.user.name) + '</td>' +
+        '<td style="text-align:left;font-weight:600;">' + esc(r.user.name) + roleBadge + '</td>' +
         '<td style="text-align:center;font-weight:700;">' + r.todayVisits + '</td>' +
         '<td style="text-align:center;font-weight:700;">' + r.totalVisits + '</td>' +
         '<td style="text-align:center;font-weight:800;color:var(--stitch);font-size:15px;">' + r.totalLeads + ' đơn</td>' +
