@@ -324,11 +324,43 @@
   .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.6); }
   .lightbox .lb-close { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; background: rgba(255,255,255,0.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
 
-  /* ---- Giao diện Khách Đặt ---- */
-  .guest-header { background: var(--paper-raised); border-bottom: 1px solid var(--line); padding: 16px 20px; }
+  /* ---- Giao diện Khách Đặt & THANH GIỎ HÀNG NỔI BẬT ---- */
+  .guest-header { background: var(--paper-raised); border-bottom: 1px solid var(--line); padding: 14px 20px; position: sticky; top: 0; z-index: 30; }
   .guest-header .gh-inner { max-width: 780px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-  .guest-cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--paper-raised); border-top: 1px solid var(--line); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -4px 16px rgba(0,0,0,0.08); z-index: 40; }
-  .guest-cart-bar .cart-info b { font-size: 16px; color: var(--stitch); }
+  
+  .header-cart-btn {
+    display: inline-flex; align-items: center; gap: 8px; background: #e0342f; color: #fff;
+    border: none; padding: 7px 14px; border-radius: var(--radius-pill); font-size: 13.5px;
+    font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(224,52,47,0.35);
+  }
+  .header-cart-btn:hover { background: #c52924; }
+
+  /* Thanh giỏ hàng nổi to ở giữa dưới màn hình */
+  .guest-cart-floating-bar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 520px; background: #1c2633; color: #ffffff;
+    border-radius: var(--radius-pill); padding: 10px 14px 10px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35); z-index: 50; animation: popIn .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes popIn {
+    0% { transform: translateX(-50%) translateY(40px); opacity: 0; }
+    100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+  }
+  .guest-cart-floating-bar .cart-info { font-size: 14.5px; font-weight: 500; }
+  .guest-cart-floating-bar .cart-info b { font-size: 18px; color: #ffbf37; font-family: var(--font-display); }
+
+  .btn-submit-cart {
+    background: #e0342f; color: #fff; border: none; font-size: 14.5px; font-weight: 700;
+    padding: 10px 18px; border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: 0 4px 12px rgba(224,52,47,0.4); display: flex; align-items: center; gap: 6px;
+    animation: pulseBtn 2s infinite;
+  }
+  .btn-submit-cart:hover { background: #c52924; }
+  @keyframes pulseBtn {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+  }
 
   /* Card yêu cầu đơn khách cho Sale */
   .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
@@ -372,18 +404,23 @@
   <header class="guest-header">
     <div class="gh-inner">
       <div>
-        <h1 style="font-size:20px;margin:0;"><span class="tag-dot"></span>Chọn mẫu và số lượng in</h1>
-        <div style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Tư vấn viên phụ trách: <b id="guestSaleName" style="color:var(--denim);">...</b></div>
+        <h1 style="font-size:18px;margin:0;"><span class="tag-dot"></span>Chọn mẫu và số lượng in</h1>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;">Tư vấn viên phụ trách: <b id="guestSaleName" style="color:var(--denim);">...</b></div>
       </div>
+      <button class="header-cart-btn" id="guestHeaderCartBtn">
+        🛒 Giỏ hàng (<span id="headerTotalCount">0</span>)
+      </button>
     </div>
   </header>
-  <main class="wrap" style="padding-bottom:100px;">
+  <main class="wrap" style="padding-bottom:120px;">
     <p class="subtitle" style="margin-bottom:16px;">Chọn mẫu và nhập số lượng dự kiến. Tư vấn viên sẽ liên hệ lại qua Zalo để xác nhận và gửi cọc.</p>
     <div id="guestGrid" class="shop-grid"></div>
   </main>
-  <div class="guest-cart-bar">
+  
+  <!-- THANH GIỎ HÀNG NỔI TO NỔI BẬT -->
+  <div class="guest-cart-floating-bar" id="guestCartFloatingBar">
     <div class="cart-info">Đã chọn: <b id="guestTotalCount">0</b> áo</div>
-    <button class="btn primary" id="guestCheckoutBtn">Xem giỏ &amp; Gửi đơn</button>
+    <button class="btn-submit-cart" id="guestCheckoutBtn">🛒 Xem giỏ &amp; Gửi đơn</button>
   </div>
 </div>
 
@@ -547,7 +584,6 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
-      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -559,7 +595,6 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
-      // Hồi chuông 2 (thanh hơn)
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -695,6 +730,7 @@
       Object.keys(guestCart[pid]).forEach(function (c) { grand += guestCart[pid][c]; });
     });
     $('guestTotalCount').textContent = grand;
+    $('headerTotalCount').textContent = grand;
   }
 
   function openGuestProductModal(pid) {
@@ -740,7 +776,7 @@
     });
   }
 
-  $('guestCheckoutBtn').addEventListener('click', function () {
+  function openGuestCheckoutModal() {
     var grand = 0;
     var items = [];
     Object.keys(guestCart).forEach(function (pid) {
@@ -755,7 +791,7 @@
       }
     });
 
-    if (grand === 0) { toast('Bạn chưa chọn số lượng áo nào.'); return; }
+    if (grand === 0) { toast('Bạn chưa chọn số lượng áo nào. Vui lòng bấm vào mẫu để chọn áo.'); return; }
 
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>Xác nhận gửi đơn đặt</h2><button class="ms-close" id="msCartCloseBtn">✕</button></div>' +
@@ -766,11 +802,11 @@
           '<div style="flex:1;"><b>' + esc(it.name) + '</b><br><span style="font-size:12px;color:var(--ink-soft);">' + b + '</span></div>' +
           '<b>' + it.total + ' áo</b></div>';
       }).join('') + '</div>' +
-      '<div style="font-weight:700;text-align:right;margin-bottom:14px;font-size:15px;">Tổng cộng: ' + grand + ' áo</div>' +
+      '<div style="font-weight:700;text-align:right;margin-bottom:14px;font-size:16px;">Tổng cộng: <span style="color:var(--stitch);font-size:20px;">' + grand + '</span> áo</div>' +
       '<div class="field-row"><label>Tên của bạn *</label><input type="text" id="leadCustName" placeholder="VD: Anh Nam"></div>' +
       '<div class="field-row"><label>Số điện thoại / Zalo để chốt đơn *</label><input type="text" id="leadCustPhone" placeholder="VD: 0987654321"></div>' +
       '<div class="field-row"><label>Ghi chú (nếu có)</label><textarea id="leadCustNote" rows="2" placeholder="VD: Cần gấp trong tuần này..."></textarea></div>' +
-      '<button class="btn primary full" id="submitLeadBtn">Gửi yêu cầu đặt hàng</button>' +
+      '<button class="btn primary full" id="submitLeadBtn" style="font-size:15px;padding:12px;">Gửi yêu cầu đặt hàng</button>' +
       '<p class="img-hint" style="text-align:center;margin-top:10px;">Tư vấn viên sẽ kết bạn Zalo để xác nhận và nhận cọc.</p>' +
       '</div>';
     $('guestCartModal').innerHTML = html;
@@ -809,7 +845,10 @@
         toast('Lỗi: ' + e.message);
       });
     });
-  });
+  }
+
+  $('guestCheckoutBtn').addEventListener('click', openGuestCheckoutModal);
+  $('guestHeaderCartBtn').addEventListener('click', openGuestCheckoutModal);
 
   /* ------------------- PHẦN SALE TÍCH "ĐÃ GHI VÀO HOÁ ĐƠN" & "ĐÃ ĐẶT IN" ------------------- */
   function renderLeads() {
@@ -1898,7 +1937,6 @@
 
     db.ref('products').on('value', function (snap) {
       products = normalizeProductsData(snap.val() || {});
-
       if (isGuestMode) renderGuestProducts();
       else if (currentUser) renderCurrentTab();
     });
