@@ -345,6 +345,13 @@
   .toggle-status-label.billed-active input { accent-color: var(--ok); }
   .toggle-status-label.printed-active { background: #eef4fb; border-color: var(--denim); color: var(--denim); }
   .toggle-status-label.printed-active input { accent-color: var(--denim); }
+
+  /* Nút kích hoạt chuông */
+  .sound-enable-banner {
+    background: #fff8e6; border: 1px solid #ffd57a; border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center;
+    justify-content: space-between; font-size: 13px; color: #7a5200;
+  }
 </style>
 </head>
 <body>
@@ -422,6 +429,10 @@
 
     <!-- TAB: KHÁCH GỬI YÊU CẦU - SALE TÍCH ĐÃ GHI VÀO HOÁ ĐƠN & ĐÃ ĐẶT IN -->
     <section class="view" id="view-leads">
+      <div id="soundBanner" class="sound-enable-banner">
+        <span>🔔 Bật chuông để nhận âm thanh khi có khách gửi đơn mới</span>
+        <button class="btn ghost small" id="enableSoundBtn">Bật chuông ngay</button>
+      </div>
       <div class="manage-form">
         <h2>Yêu cầu đặt hàng từ khách (Gửi qua Link)</h2>
         <p class="img-hint" style="margin-bottom:14px;">
@@ -506,6 +517,52 @@
   var saleRefId = urlParams.get('sale') || urlParams.get('ref');
   var isGuestMode = !!saleRefId;
   var guestCart = {};
+  var isFirstLeadLoad = true;
+
+  // Hệ thống chuông báo âm thanh bằng Web Audio API
+  var audioCtx = null;
+  function getAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function playOrderBell() {
+    try {
+      var ctx = getAudioContext();
+      var now = ctx.currentTime;
+
+      // Hồi chuông 1
+      var osc1 = ctx.createOscillator();
+      var gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now); // nốt E5
+      gain1.gain.setValueAtTime(0.4, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.5);
+
+      // Hồi chuông 2 (thanh hơn)
+      var osc2 = ctx.createOscillator();
+      var gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880.00, now + 0.18); // nốt A5
+      gain2.gain.setValueAtTime(0.5, now + 0.18);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.18);
+      osc2.stop(now + 0.8);
+    } catch (e) {
+      console.log('Audio error:', e);
+    }
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -743,7 +800,7 @@
     });
   });
 
-  /* ------------------- PHẦN SALE TÍCH "ĐÃ GHI VÀO HOÁ ĐƠN" & "ĐÃ ĐẶT IN" (KHÔNG XOÁ) ------------------- */
+  /* ------------------- PHẦN SALE TÍCH "ĐÃ GHI VÀO HOÁ ĐƠN" & "ĐÃ ĐẶT IN" ------------------- */
   function renderLeads() {
     var container = $('leadsList');
     var list = Object.keys(customerLeads).map(function (k) { return Object.assign({ id: k }, customerLeads[k]); })
@@ -835,6 +892,20 @@
           toast(state ? 'Đã tích: Đã đặt in.' : 'Đã bỏ tích đặt in.');
         });
       });
+    });
+  }
+
+  // Xử lý nút bật chuông âm thanh
+  var enableSoundBtn = $('enableSoundBtn');
+  if (enableSoundBtn) {
+    enableSoundBtn.addEventListener('click', function () {
+      getAudioContext();
+      playOrderBell();
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+      $('soundBanner').style.display = 'none';
+      toast('🔔 Đã kích hoạt chuông báo đơn mới thành công!');
     });
   }
 
@@ -1826,8 +1897,34 @@
       if (!isGuestMode && currentUser) renderCurrentTab();
     });
 
+    // Lắng nghe đơn khách và kích hoạt chuông báo cho Sale
     db.ref('customerLeads').on('value', function (snap) {
-      customerLeads = snap.val() || {};
+      var newLeads = snap.val() || {};
+
+      if (!isGuestMode && currentUser) {
+        if (!isFirstLeadLoad) {
+          // Kiểm tra xem có đơn mới được thêm vào không
+          var newKeys = Object.keys(newLeads).filter(function (k) { return !customerLeads[k]; });
+          newKeys.forEach(function (k) {
+            var lead = newLeads[k];
+            var isMyLead = isManager() || (lead.saleId === currentUser.id);
+            if (isMyLead) {
+              playOrderBell();
+              toast('🔔 Có đơn in mới từ khách: ' + lead.customerName + ' (' + lead.totalQty + ' áo)!');
+
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("🔔 Đơn in mới!", {
+                  body: "Khách: " + lead.customerName + " đặt " + lead.totalQty + " áo. Vào kiểm tra ngay!",
+                  icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧵</text></svg>"
+                });
+              }
+            }
+          });
+        }
+        isFirstLeadLoad = false;
+      }
+
+      customerLeads = newLeads;
       if (!isGuestMode && currentUser) renderCurrentTab();
     });
 
