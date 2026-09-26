@@ -452,6 +452,7 @@
       <button data-tab="order" class="active">Đơn may chính thức</button>
       <button data-tab="leads" id="tabLeadsBtn">Khách gửi yêu cầu <span class="nav-badge hidden" id="leadBadge">0</span></button>
       <button data-tab="agg" id="tabAggBtn">Tổng hợp</button>
+      <button data-tab="stats" id="tabStatsBtn">Dữ liệu thống kê</button>
       <button data-tab="manage" id="tabManageBtn">Quản lý mẫu</button>
       <button data-tab="accounts" id="tabAccountsBtn">Tài khoản</button>
     </nav>
@@ -500,27 +501,6 @@
 
     <!-- TAB: TỔNG HỢP (QUẢN LÝ) -->
     <section class="view" id="view-agg">
-      <!-- KHUNG THỐNG KÊ LƯỢT TRUY CẬP LINK DÀNH CHO QUẢN LÝ -->
-      <div class="manage-form" id="trafficStatsWrap">
-        <h2>📊 Thống kê lượt khách truy cập Link theo từng Sale</h2>
-        <p class="img-hint" style="margin-top:-6px;margin-bottom:12px;">Đo lường số lượt khách thực tế đã bấm vào link của từng bạn Sale để xem mẫu.</p>
-        <div class="scroll-x">
-          <table class="workshop-table" id="trafficStatsTable">
-            <thead>
-              <tr>
-                <th style="text-align:left;">Tên Sale</th>
-                <th style="text-align:center;">Truy cập hôm nay</th>
-                <th style="text-align:center;">Tổng lượt truy cập</th>
-                <th style="text-align:center;">Lần cuối xem link</th>
-              </tr>
-            </thead>
-            <tbody id="trafficStatsBody">
-              <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Đang tải số liệu...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
         <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
@@ -541,6 +521,29 @@
         <div class="scroll-x"><table class="workshop-table" id="workshopTable"></table></div>
       </div>
       <div id="aggProducts"></div>
+    </section>
+
+    <!-- TAB MỚI: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
+    <section class="view" id="view-stats">
+      <div class="manage-form">
+        <h2>📊 Dữ liệu thống kê lượt khách truy cập Link theo từng Sale</h2>
+        <p class="img-hint" style="margin-top:-6px;margin-bottom:14px;">Đo lường số lượt khách thực tế đã bấm vào link của từng bạn Sale để xem mẫu.</p>
+        <div class="scroll-x">
+          <table class="workshop-table" id="trafficStatsTable">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Tên Sale</th>
+                <th style="text-align:center;">Truy cập hôm nay</th>
+                <th style="text-align:center;">Tổng lượt truy cập</th>
+                <th style="text-align:center;">Lần cuối xem link</th>
+              </tr>
+            </thead>
+            <tbody id="trafficStatsBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Đang tải số liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- TAB: QUẢN LÝ MẪU -->
@@ -600,7 +603,6 @@
   // Ghi nhận lượt truy cập của khách vào link của Sale
   function recordGuestVisit(saleId) {
     if (!configOk || !saleId) return;
-    // Dùng sessionStorage để tránh spam F5 (chỉ đếm 1 lần trong 1 phiên duyệt web của khách)
     var sessionKey = 'visited_sale_' + saleId;
     if (sessionStorage.getItem(sessionKey)) return;
     sessionStorage.setItem(sessionKey, '1');
@@ -1053,15 +1055,10 @@
 
   /* ------------------- PHẦN BẢNG THỐNG KÊ TRUY CẬP LINK DÀNH CHO QUẢN LÝ ------------------- */
   function renderTrafficStats() {
-    var wrap = $('trafficStatsWrap');
-    if (!wrap) return;
-    if (!isManager()) {
-      wrap.style.display = 'none';
-      return;
-    }
-    wrap.style.display = '';
+    if (!isManager()) return;
 
     var tbody = $('trafficStatsBody');
+    if (!tbody) return;
     var allUsers = userList().filter(function(u) { return u.role !== 'manager'; });
     var today = todayStr();
 
@@ -1176,6 +1173,7 @@
     $('whoRole').textContent = roleLabel(currentUser.role);
     $('whoRole').className = 'role-chip' + (isManager() ? ' manager' : '');
     $('tabAggBtn').classList.toggle('hidden', !isManager());
+    $('tabStatsBtn').classList.toggle('hidden', !isManager());
     $('tabManageBtn').classList.toggle('hidden', !canManageProducts());
     $('tabAccountsBtn').classList.toggle('hidden', !isManager());
 
@@ -1191,7 +1189,7 @@
       }
     };
 
-    var allowedTab = currentTab === 'order' || currentTab === 'leads' || (currentTab === 'manage' && canManageProducts()) || ((currentTab === 'agg' || currentTab === 'accounts') && isManager());
+    var allowedTab = currentTab === 'order' || currentTab === 'leads' || (currentTab === 'manage' && canManageProducts()) || ((currentTab === 'agg' || currentTab === 'stats' || currentTab === 'accounts') && isManager());
     if (!allowedTab) switchTab('order');
     else renderCurrentTab();
   }
@@ -1200,6 +1198,7 @@
     if (currentTab === 'order') renderOrderList();
     if (currentTab === 'leads') renderLeads();
     if (currentTab === 'agg') renderAgg();
+    if (currentTab === 'stats') renderTrafficStats();
     if (currentTab === 'manage') renderManage();
     if (currentTab === 'accounts') renderAccounts();
   }
@@ -1571,7 +1570,6 @@
     if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
     var plist = productList();
     renderAggDateControls();
-    renderTrafficStats();
     if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
 
     var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
@@ -2089,12 +2087,12 @@
         }
       }
       renderShell();
-      if (!isGuestMode && isManager()) renderTrafficStats();
+      if (!isGuestMode && isManager() && currentTab === 'stats') renderTrafficStats();
     });
 
     db.ref('visitLogs').on('value', function (snap) {
       visitLogs = snap.val() || {};
-      if (!isGuestMode && isManager()) renderTrafficStats();
+      if (!isGuestMode && isManager() && currentTab === 'stats') renderTrafficStats();
     });
 
     db.ref('products').on('value', function (snap) {
