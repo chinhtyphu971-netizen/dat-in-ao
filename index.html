@@ -500,6 +500,27 @@
 
     <!-- TAB: TỔNG HỢP (QUẢN LÝ) -->
     <section class="view" id="view-agg">
+      <!-- KHUNG THỐNG KÊ LƯỢT TRUY CẬP LINK DÀNH CHO QUẢN LÝ -->
+      <div class="manage-form" id="trafficStatsWrap">
+        <h2>📊 Thống kê lượt khách truy cập Link theo từng Sale</h2>
+        <p class="img-hint" style="margin-top:-6px;margin-bottom:12px;">Đo lường số lượt khách thực tế đã bấm vào link của từng bạn Sale để xem mẫu.</p>
+        <div class="scroll-x">
+          <table class="workshop-table" id="trafficStatsTable">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Tên Sale</th>
+                <th style="text-align:center;">Truy cập hôm nay</th>
+                <th style="text-align:center;">Tổng lượt truy cập</th>
+                <th style="text-align:center;">Lần cuối xem link</th>
+              </tr>
+            </thead>
+            <tbody id="trafficStatsBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Đang tải số liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
         <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
@@ -560,6 +581,7 @@
   var printStatus = {};
   var printArchive = {};
   var customerLeads = {};
+  var visitLogs = {};
   var users = {};
   var usersLoaded = false;
   var currentUser = null;
@@ -575,6 +597,23 @@
   var guestCart = {};
   var isFirstLeadLoad = true;
 
+  // Ghi nhận lượt truy cập của khách vào link của Sale
+  function recordGuestVisit(saleId) {
+    if (!configOk || !saleId) return;
+    // Dùng sessionStorage để tránh spam F5 (chỉ đếm 1 lần trong 1 phiên duyệt web của khách)
+    var sessionKey = 'visited_sale_' + saleId;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, '1');
+
+    var d = todayStr();
+    db.ref('visitLogs/' + saleId).push({
+      date: d,
+      timestamp: Date.now()
+    }).catch(function(err) {
+      console.log('Lỗi ghi nhận lượt truy cập:', err);
+    });
+  }
+
   // Ghi nhớ trạng thái chuông báo vào localStorage (mặc định bật)
   var isSoundEnabled = localStorage.getItem('mm_sound_enabled') !== 'false';
 
@@ -589,7 +628,6 @@
     return audioCtx;
   }
 
-  // Tự động mở khoá AudioContext khi người dùng chạm vào web lần đầu
   function autoUnlockAudio() {
     if (isSoundEnabled) {
       getAudioContext();
@@ -606,7 +644,6 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
-      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -618,7 +655,6 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
-      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -724,6 +760,8 @@
     $('authScreen').classList.add('hidden');
     $('appShell').classList.add('hidden');
     $('guestLayout').classList.remove('hidden');
+
+    recordGuestVisit(saleRefId);
 
     var saleUser = users[saleRefId];
     if (saleUser) {
@@ -1011,6 +1049,66 @@
       }
       updateSoundUI();
     });
+  }
+
+  /* ------------------- PHẦN BẢNG THỐNG KÊ TRUY CẬP LINK DÀNH CHO QUẢN LÝ ------------------- */
+  function renderTrafficStats() {
+    var wrap = $('trafficStatsWrap');
+    if (!wrap) return;
+    if (!isManager()) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = '';
+
+    var tbody = $('trafficStatsBody');
+    var allUsers = userList().filter(function(u) { return u.role !== 'manager'; });
+    var today = todayStr();
+
+    if (!allUsers.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Chưa có nhân viên nào.</td></tr>';
+      return;
+    }
+
+    var rows = allUsers.map(function(u) {
+      var logs = visitLogs[u.id] || {};
+      var logKeys = Object.keys(logs);
+      var totalVisits = logKeys.length;
+
+      var todayVisits = 0;
+      var lastVisitTime = 0;
+
+      logKeys.forEach(function(k) {
+        var item = logs[k];
+        if (item.date === today) todayVisits++;
+        if (item.timestamp && item.timestamp > lastVisitTime) {
+          lastVisitTime = item.timestamp;
+        }
+      });
+
+      return {
+        user: u,
+        todayVisits: todayVisits,
+        totalVisits: totalVisits,
+        lastVisitTime: lastVisitTime
+      };
+    });
+
+    // Sắp xếp theo số lượt truy cập hôm nay giảm dần
+    rows.sort(function(a, b) {
+      if (b.todayVisits !== a.todayVisits) return b.todayVisits - a.todayVisits;
+      return b.totalVisits - a.totalVisits;
+    });
+
+    tbody.innerHTML = rows.map(function(r) {
+      var lastTimeText = r.lastVisitTime ? new Date(r.lastVisitTime).toLocaleString('vi-VN') : '–';
+      return '<tr>' +
+        '<td style="text-align:left;font-weight:600;">' + esc(r.user.name) + '</td>' +
+        '<td style="text-align:center;font-weight:700;color:' + (r.todayVisits > 0 ? 'var(--stitch)' : 'inherit') + ';">' + r.todayVisits + '</td>' +
+        '<td style="text-align:center;font-weight:700;">' + r.totalVisits + '</td>' +
+        '<td style="text-align:center;font-size:12.5px;color:var(--ink-soft);">' + esc(lastTimeText) + '</td>' +
+      '</tr>';
+    }).join('');
   }
 
   /* ------------------- PHẦN NỘI BỘ (APP SHELL) ------------------- */
@@ -1473,6 +1571,7 @@
     if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
     var plist = productList();
     renderAggDateControls();
+    renderTrafficStats();
     if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
 
     var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
@@ -1990,6 +2089,12 @@
         }
       }
       renderShell();
+      if (!isGuestMode && isManager()) renderTrafficStats();
+    });
+
+    db.ref('visitLogs').on('value', function (snap) {
+      visitLogs = snap.val() || {};
+      if (!isGuestMode && isManager()) renderTrafficStats();
     });
 
     db.ref('products').on('value', function (snap) {
