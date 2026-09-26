@@ -320,7 +320,8 @@
   .guest-cart-bar .cart-info b { font-size: 16px; color: var(--stitch); }
 
   /* Card yêu cầu đơn khách cho Sale */
-  .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); }
+  .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
+  .lead-card.is-billed { border-color: var(--ok); background: #f7faf7; }
   .lead-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
   .lead-cust { font-size: 15px; font-weight: 700; color: var(--ink); }
   .lead-phone { font-size: 13.5px; color: var(--denim); font-weight: 600; }
@@ -329,7 +330,16 @@
   .lead-item-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
   .lead-item-row img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
   .lead-note { font-size: 12.5px; color: var(--ink-soft); font-style: italic; margin-bottom: 10px; }
-  .lead-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+  .lead-actions { display: flex; justify-content: space-between; align-items: center; }
+
+  /* Nút Checkbox Đã ghi vào hoá đơn */
+  .billed-toggle-label {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink-soft); user-select: none;
+  }
+  .billed-toggle-label input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--ok); }
+  .billed-toggle-label.checked { background: #eaf5eb; border-color: var(--ok); color: var(--ok); }
 </style>
 </head>
 <body>
@@ -405,12 +415,12 @@
       <button class="btn ghost small" id="openMyArchiveBtn" style="margin-top:14px;">📜 Lịch sử đơn may của tôi</button>
     </section>
 
-    <!-- TAB: KHÁCH GỬI YÊU CẦU ĐỂ SALE XEM & TỰ LÊN TAY -->
+    <!-- TAB: KHÁCH GỬI YÊU CẦU - SALE TÍCH ĐÃ GHI VÀO HOÁ ĐƠN -->
     <section class="view" id="view-leads">
       <div class="manage-form">
         <h2>Yêu cầu đặt hàng từ khách (Gửi qua Link)</h2>
         <p class="img-hint" style="margin-bottom:14px;">
-          Khách đặt qua link của bạn sẽ hiện ở đây để bạn lấy thông tin nhắn tin Zalo và nhận cọc. Sau khi chốt cọc xong, <b>bạn tự vào tab "Đơn may chính thức" để lên số lượng bằng tay</b>, rồi bấm "Đã lên đơn xong" để dọn gọn danh sách.
+          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Sau khi nhắn tin Zalo và cọc tiền, bạn tự vào tab <b>"Đơn may chính thức"</b> để lên số lượng, rồi <b>tích vào ô "Đã ghi vào hoá đơn"</b> để đánh dấu.
         </p>
         <div id="leadsList"></div>
       </div>
@@ -711,7 +721,7 @@
         items: items,
         totalQty: grand,
         createdAt: Date.now(),
-        status: 'pending'
+        billed: false // Chưa ghi vào hoá đơn
       };
 
       db.ref('customerLeads').push(leadData).then(function () {
@@ -727,32 +737,40 @@
     });
   });
 
-  /* ------------------- PHẦN SALE XEM YÊU CẦU ĐỂ TỰ LÊN ĐƠN BẰNG TAY ------------------- */
+  /* ------------------- PHẦN SALE TÍCH ĐÃ GHI VÀO HOÁ ĐƠN (KHÔNG XOÁ) ------------------- */
   function renderLeads() {
     var container = $('leadsList');
     var list = Object.keys(customerLeads).map(function (k) { return Object.assign({ id: k }, customerLeads[k]); })
       .filter(function (lead) {
-        if (lead.status !== 'pending') return false;
         if (isManager()) return true;
         return lead.saleId === currentUser.id;
       })
-      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      .sort(function (a, b) {
+        // Đơn chưa ghi lên trên, đơn đã ghi xuống dưới; cùng trạng thái thì đơn mới lên trên
+        var billedA = a.billed ? 1 : 0;
+        var billedB = b.billed ? 1 : 0;
+        if (billedA !== billedB) return billedA - billedB;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
 
+    // Huy hiệu thông báo số lượng đơn CHƯA ghi vào hoá đơn
+    var unbilledCount = list.filter(function (l) { return !l.billed; }).length;
     var badge = $('leadBadge');
-    if (list.length > 0) {
-      badge.textContent = list.length;
+    if (unbilledCount > 0) {
+      badge.textContent = unbilledCount;
       badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
 
     if (!list.length) {
-      container.innerHTML = '<div class="empty">Hiện không có yêu cầu nào từ khách.</div>';
+      container.innerHTML = '<div class="empty">Hiện chưa có yêu cầu nào từ khách gửi qua Link.</div>';
       return;
     }
 
     container.innerHTML = list.map(function (lead) {
       var timeStr = lead.createdAt ? new Date(lead.createdAt).toLocaleString('vi-VN') : '';
+      var isBilled = !!lead.billed;
       var itemsHtml = (lead.items || []).map(function (it) {
         var p = products[it.pid];
         var img = (p && p.imageUrl) || it.imageUrl;
@@ -763,7 +781,7 @@
           '<b>' + it.total + ' áo</b></div>';
       }).join('');
 
-      return '<div class="lead-card" data-lid="' + esc(lead.id) + '">' +
+      return '<div class="lead-card' + (isBilled ? ' is-billed' : '') + '" data-lid="' + esc(lead.id) + '">' +
         '<div class="lead-head">' +
           '<div><div class="lead-cust">' + esc(lead.customerName) + ' <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
           '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div></div>' +
@@ -772,27 +790,26 @@
         (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
         '<div class="lead-items">' + itemsHtml + '</div>' +
         '<div class="lead-actions">' +
-          '<button class="btn danger small" data-action="delete-lead">Huỷ yêu cầu</button>' +
-          '<button class="btn ghost small" data-action="done-lead">✓ Đã lên đơn xong (Xoá lưu)</button>' +
+          '<div style="font-size:12.5px;color:var(--ink-soft);">' +
+            (isBilled ? '🟢 <i>Đã lưu vào danh sách đối soát</i>' : '⏳ <i>Chờ cọc và lên đơn tay</i>') +
+          '</div>' +
+          '<label class="billed-toggle-label' + (isBilled ? ' checked' : '') + '">' +
+            '<input type="checkbox" class="lead-billed-chk" data-lid="' + esc(lead.id) + '"' + (isBilled ? ' checked' : '') + '> ' +
+            (isBilled ? '✅ Đã ghi vào hoá đơn' : 'Ghi vào hoá đơn') +
+          '</label>' +
         '</div>' +
         '</div>';
     }).join('');
 
     bindLightboxes(container);
 
-    container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var lid = btn.closest('.lead-card').dataset.lid;
-        if (!confirm('Huỷ và xoá yêu cầu của khách này?')) return;
-        db.ref('customerLeads/' + lid).remove().then(function () { toast('Đã xoá yêu cầu.'); });
-      });
-    });
-
-    container.querySelectorAll('[data-action="done-lead"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var lid = btn.closest('.lead-card').dataset.lid;
-        if (!confirm('Xác nhận bạn đã tự lên đơn may cho khách này rồi và muốn dọn danh sách?')) return;
-        db.ref('customerLeads/' + lid).remove().then(function () { toast('Đã hoàn tất dọn danh sách.'); });
+    container.querySelectorAll('.lead-billed-chk').forEach(function (chk) {
+      chk.addEventListener('change', function () {
+        var lid = chk.dataset.lid;
+        var state = chk.checked;
+        db.ref('customerLeads/' + lid + '/billed').set(state).then(function () {
+          toast(state ? 'Đã tích ghi vào hoá đơn.' : 'Đã bỏ tích.');
+        });
       });
     });
   }
