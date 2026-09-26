@@ -59,7 +59,7 @@
   .tabs-vertical button {
     text-align: left; font-family: var(--font-body); font-weight: 600; font-size: 14.5px;
     background: none; border: none; border-left: 3px solid transparent; color: var(--ink-soft);
-    padding: 11px 12px; cursor: pointer; border-radius: 0 8px 8px 0;
+    padding: 11px 12px; cursor: pointer; border-radius: 0 8px 8px 0; position: relative;
   }
   .tabs-vertical button.active { color: var(--ink); border-color: var(--stitch); background: var(--paper); }
   .tabs-vertical button:hover { color: var(--ink); }
@@ -95,28 +95,25 @@
   .day-note { font-size: 13px; color: var(--ink-soft); margin: -4px 0 14px; }
   .day-note b { color: var(--ink); }
 
+  .sale-link-box {
+    background: #eef4fb; border: 1px solid #bfd3eb; border-radius: var(--radius-tag);
+    padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .sale-link-box .text { font-size: 13px; color: var(--denim); }
+  .sale-link-box .text b { color: #1c334d; }
+
+  .nav-badge {
+    background: #e0342f; color: #fff; font-size: 10.5px; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px; margin-left: 6px; vertical-align: middle;
+  }
+
   .product-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); box-shadow: var(--shadow-card); margin-bottom: 16px; overflow: hidden; }
-  .product-card .pc-head { display: flex; gap: 12px; padding: 14px; align-items: flex-start; }
   .pc-thumb { width: 104px; height: 104px; border-radius: 10px; object-fit: cover; background: var(--paper); border: 1px solid var(--line); flex-shrink: 0; }
   .pc-thumb.placeholder { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: 11px; text-align: center; }
-  .pc-title { font-family: var(--font-display); font-weight: 600; font-size: 16.5px; margin: 0 0 4px; }
-  .pc-meta { font-size: 12.5px; color: var(--ink-soft); }
-  .pc-headtext { flex: 1; min-width: 0; }
-  .pc-body { padding: 0 14px 14px; }
 
   .print-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-pill); margin-top: 6px; }
   .print-badge.done { background: var(--ok); color: #fff; }
   .print-badge.pending { background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
-
-  .color-order-rows { border-top: 1px solid var(--line); margin-bottom: 4px; }
-  .color-order-row { display: grid; grid-template-columns: 16px 56px 1fr 56px auto; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px dashed var(--line); }
-  .color-order-row:last-child { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
-  .color-order-row .col-label { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .color-order-row input[type=text], .color-order-row input[type=number] {
-    border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; font-size: 13.5px; font-family: var(--font-body); background: var(--paper); color: var(--ink); width: 100%;
-  }
-  .color-order-row input[type=number] { text-align: center; }
-  .color-order-row button { white-space: nowrap; }
 
   .cust-list { border-top: 1px solid var(--line); padding-top: 4px; }
   .cust-row { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
@@ -125,12 +122,6 @@
   .cust-row .cr-name { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cust-row .cr-color { color: var(--ink-soft); font-size: 12.5px; white-space: nowrap; }
   .cust-row .cr-qty { font-family: var(--font-display); font-weight: 700; min-width: 20px; text-align: right; }
-  .cust-row .cr-del { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
-  .cust-row .cr-del:hover { color: var(--stitch); }
-  .pc-empty-list { font-size: 12.5px; color: var(--ink-soft); padding: 6px 2px 2px; }
-  .pc-footer { display: flex; align-items: center; justify-content: flex-end; padding-top: 10px; }
-  .pc-total { font-size: 13px; color: var(--ink-soft); }
-  .pc-total b { color: var(--ink); font-family: var(--font-display); font-size: 15px; }
 
   button.btn { font-family: var(--font-body); font-weight: 600; font-size: 13.5px; border-radius: var(--radius-pill); padding: 9px 16px; border: 1px solid transparent; cursor: pointer; }
   button.btn.primary { background: var(--denim); color: #fff; }
@@ -139,15 +130,7 @@
   button.btn.danger:hover { background: var(--stitch); color: #fff; }
   button.btn.small { padding: 6px 12px; font-size: 12px; }
   button.btn:disabled { opacity: .5; cursor: default; }
-  button.btn.saved { background: var(--ok); }
   button.btn.full { width: 100%; }
-  .reprint-btn { position: relative; overflow: visible; }
-  .reprint-badge {
-    position: absolute; top: -7px; right: -7px; background: #e0342f; color: #fff;
-    font-size: 10.5px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 9px;
-    display: flex; align-items: center; justify-content: center; padding: 0 4px;
-    box-shadow: 0 0 0 2px var(--paper-raised);
-  }
 
   .agg-date-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .agg-date-bar label { font-size: 13px; color: var(--ink-soft); }
@@ -155,7 +138,6 @@
   .agg-date-bar .print-btn { margin-left: auto; }
   .print-only-toggle { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
   .print-only-toggle input { cursor: pointer; }
-  .print-only-toggle.disabled { opacity: 0.45; pointer-events: none; }
 
   #printArea { display: none; }
   @media print {
@@ -238,12 +220,11 @@
   .manage-form h2 { font-family: var(--font-display); font-size: 16px; margin: 0 0 14px; }
   .field-row { margin-bottom: 12px; }
   .field-row label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 5px; }
-  .field-row input[type=text] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .field-row input[type=text], .field-row textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .char-count { font-size: 11.5px; color: var(--ink-soft); text-align: right; margin-top: 4px; }
   .char-count.char-count-max { color: var(--stitch); font-weight: 600; }
   .img-hint { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; line-height: 1.5; }
 
-  /* Khung preview ảnh bên trái */
   .product-form-layout { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
   .img-preview-side {
     width: 110px; height: 110px; border-radius: 10px; border: 1.5px dashed var(--line);
@@ -318,47 +299,81 @@
   .ms-close { border: none; background: var(--paper); color: var(--ink-soft); width: 30px; height: 30px; border-radius: 50%; font-size: 15px; cursor: pointer; flex-shrink: 0; }
   .ms-image { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; cursor: zoom-in; }
   .ms-section-label { font-size: 12.5px; color: var(--ink-soft); margin: 14px 0 8px; }
-  .ms-colors { display: flex; gap: 8px; flex-wrap: wrap; }
-  .color-chip { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 7px 13px; font-size: 13px; cursor: pointer; background: var(--paper); color: var(--ink); }
-  .color-chip .swatch { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); }
-  .color-chip.active { border-color: var(--denim); box-shadow: 0 0 0 1.5px var(--denim) inset; font-weight: 600; background: var(--paper-raised); }
-  .ms-field { margin-top: 16px; }
-  .ms-field label { display: block; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
-  .ms-field input[type=text] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14.5px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .qty-stepper { display: flex; align-items: center; gap: 12px; }
   .qty-stepper button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 18px; cursor: pointer; color: var(--ink); line-height: 1; }
   .qty-stepper input { width: 54px; text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px; font-size: 15px; font-family: var(--font-body); background: var(--paper-raised); color: var(--ink); }
-  #productModal .btn.full { margin-top: 20px; }
   .qty-color-rows { margin-top: 6px; }
   .qty-color-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
   .qty-color-row:last-child { border-bottom: none; }
   .qty-color-row .col-label { flex: 1; font-size: 14px; color: var(--ink); }
+  .qty-color-row .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
 
   .pc-thumb, .agg-product-head img, .manage-list-item img { cursor: zoom-in; }
   .lightbox { position: fixed; inset: 0; background: rgba(20,18,14,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); cursor: zoom-out; }
   .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.6); }
   .lightbox .lb-close { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; background: rgba(255,255,255,0.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+
+  /* ---- Giao diện Khách Đặt ---- */
+  .guest-header { background: var(--paper-raised); border-bottom: 1px solid var(--line); padding: 16px 20px; }
+  .guest-header .gh-inner { max-width: 780px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+  .guest-cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--paper-raised); border-top: 1px solid var(--line); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -4px 16px rgba(0,0,0,0.08); z-index: 40; }
+  .guest-cart-bar .cart-info b { font-size: 16px; color: var(--stitch); }
+
+  /* Card yêu cầu đơn khách cho Sale */
+  .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); }
+  .lead-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .lead-cust { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .lead-phone { font-size: 13.5px; color: var(--denim); font-weight: 600; }
+  .lead-time { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .lead-items { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 8px 0; margin-bottom: 12px; }
+  .lead-item-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
+  .lead-item-row img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+  .lead-note { font-size: 12.5px; color: var(--ink-soft); font-style: italic; margin-bottom: 10px; }
+  .lead-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
 </style>
 </head>
 <body>
 
+<!-- GIAO DIỆN KHÁCH HÀNG (Nếu mở link ?sale=...) -->
+<div id="guestLayout" class="hidden">
+  <header class="guest-header">
+    <div class="gh-inner">
+      <div>
+        <h1 style="font-size:20px;margin:0;"><span class="tag-dot"></span>Đặt số lượng may</h1>
+        <div style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Tư vấn viên phụ trách: <b id="guestSaleName" style="color:var(--denim);">...</b></div>
+      </div>
+    </div>
+  </header>
+  <main class="wrap" style="padding-bottom:100px;">
+    <p class="subtitle" style="margin-bottom:16px;">Chọn mẫu và nhập số lượng dự kiến. Tư vấn viên sẽ liên hệ lại qua Zalo để xác nhận và gửi cọc.</p>
+    <div id="guestGrid" class="shop-grid"></div>
+  </main>
+  <div class="guest-cart-bar">
+    <div class="cart-info">Đã chọn: <b id="guestTotalCount">0</b> áo</div>
+    <button class="btn primary" id="guestCheckoutBtn">Xem giỏ &amp; Gửi đơn</button>
+  </div>
+</div>
+
+<!-- MÀN HÌNH ĐĂNG NHẬP NHÂN VIÊN/QUẢN LÝ -->
 <div id="authScreen" class="auth-wrap hidden">
   <div class="auth-card">
     <h1><span class="tag-dot"></span>Đặt số lượng may</h1>
     <p class="sub" id="authSub">Nhập tên và mã PIN quản lý đã cấp cho bạn.</p>
     <div class="auth-field"><label>Tên của bạn</label><input type="text" id="authName" placeholder="VD: Lan (Sale 1)"></div>
     <div class="auth-field"><label>Mã PIN (4-8 số hoặc chữ)</label><input type="password" id="authPin" placeholder="••••" inputmode="numeric" maxlength="8"></div>
-    <button class="btn primary full" id="authBtn">Đăng nhập / Tạo tài khoản</button>
+    <button class="btn primary full" id="authBtn">Đăng nhập</button>
     <p class="auth-error" id="authError"></p>
     <p class="auth-note" id="authNote"></p>
   </div>
 </div>
 
+<!-- KHUNG ỨNG DỤNG NỘI BỘ -->
 <div id="appShell" class="app-layout hidden">
   <aside class="sidebar">
     <div class="sidebar-brand"><h1><span class="tag-dot"></span><span>Đặt số lượng may</span></h1></div>
     <nav class="tabs-vertical">
-      <button data-tab="order" class="active">Đặt hàng</button>
+      <button data-tab="order" class="active">Đơn may chính thức</button>
+      <button data-tab="leads" id="tabLeadsBtn">Khách gửi yêu cầu <span class="nav-badge hidden" id="leadBadge">0</span></button>
       <button data-tab="agg" id="tabAggBtn">Tổng hợp</button>
       <button data-tab="manage" id="tabManageBtn">Quản lý mẫu</button>
       <button data-tab="accounts" id="tabAccountsBtn">Tài khoản</button>
@@ -371,27 +386,49 @@
   </aside>
 
   <main class="main-content">
-    <p class="subtitle main-subtitle">Chọn mẫu, nhập số lượng theo màu mỗi ngày. Quản lý in danh sách gửi xưởng, hệ thống tự lưu lịch sử và đặt lại số lượng.</p>
+    <p class="subtitle main-subtitle" id="mainSubDesc">Đơn may chính thức đã cọc gửi xưởng in.</p>
 
+    <!-- TAB: ĐẶT HÀNG CHÍNH THỨC -->
     <section class="view active" id="view-order">
+      <!-- Hộp copy link gửi khách -->
+      <div class="sale-link-box" id="saleLinkBox">
+        <div class="text">
+          Link gửi khách chọn mẫu của bạn: <b id="saleLinkUrl">Đang tải...</b>
+        </div>
+        <button class="btn ghost small" id="copySaleLinkBtn">📋 Sao chép</button>
+      </div>
+
       <div class="agg-date-bar"><label>Xem theo:</label><select id="orderDateSelect"></select></div>
       <p class="day-note" id="orderDayNote"></p>
       <div id="shopGrid" class="shop-grid"></div>
       <div id="myOrdersToday"></div>
-      <button class="btn ghost small" id="openMyArchiveBtn" style="margin-top:14px;">📜 Lịch sử đặt hàng của tôi</button>
+      <button class="btn ghost small" id="openMyArchiveBtn" style="margin-top:14px;">📜 Lịch sử đơn may của tôi</button>
     </section>
+
+    <!-- TAB MỚI: KHÁCH GỬI YÊU CẦU CHỜ CỌC -->
+    <section class="view" id="view-leads">
+      <div class="manage-form">
+        <h2>Yêu cầu đặt hàng từ khách (Chờ cọc Zalo)</h2>
+        <p class="img-hint" style="margin-bottom:14px;">
+          Khách đặt qua link của bạn sẽ hiện ở đây. Sau khi nhắn tin Zalo, nhận cọc xong, bấm <b>"✅ Đã cọc - Chuyển sang đơn may"</b> để chính thức đưa vào số lượng may gửi xưởng.
+        </p>
+        <div id="leadsList"></div>
+      </div>
+    </section>
+
+    <!-- TAB: TỔNG HỢP (QUẢN LÝ) -->
     <section class="view" id="view-agg">
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
         <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
         <button class="btn ghost small print-btn" id="printAggBtn">🖨️ In danh sách</button></div>
-      <p class="print-toggle-hint hidden" id="printToggleHint">💡 Đang xem gộp nhiều ngày — nếu tích "Lưu & đặt lại về 0", nó sẽ xoá số liệu ở TẤT CẢ các ngày liên quan đến mẫu vừa in, không chỉ hôm nay.</p>
+      <p class="print-toggle-hint hidden" id="printToggleHint">💡 Đang xem gộp nhiều ngày — nếu tích "Lưu & đặt lại về 0", nó sẽ xoá số liệu ở TẤT CẢ các ngày liên quan đến mẫu vừa in.</p>
       <div id="dailyStrip" class="daily-strip"></div>
       <div id="aggSummary" class="agg-summary"></div>
       <button class="btn ghost small" id="openArchiveBtn" style="margin-bottom:14px;">📜 Xem lịch sử đã lưu</button>
       <div class="manage-form" id="workshopTableWrap" style="display:none;">
         <div class="workshop-table-head">
-          <h2>Bảng tổng cho xưởng</h2>
+          <h2>Bảng tổng cho xưởng (Đơn đã chốt)</h2>
           <div class="workshop-table-actions">
             <button class="btn ghost small" id="copyTableBtn">📋 Sao chép</button>
             <button class="btn ghost small" id="exportExcelBtn">📊 Xuất Excel</button>
@@ -402,7 +439,10 @@
       </div>
       <div id="aggProducts"></div>
     </section>
+
+    <!-- TAB: QUẢN LÝ MẪU -->
     <section class="view" id="view-manage"><div id="manageContent"></div></section>
+    <!-- TAB: QUẢN LÝ TÀI KHOẢN -->
     <section class="view" id="view-accounts"><div id="accountsContent"></div></section>
   </main>
 </div>
@@ -411,6 +451,7 @@
 <div class="lightbox hidden" id="lightbox"><button class="lb-close" id="lbClose">✕</button><img id="lightboxImg" src="" alt=""></div>
 <div class="modal-overlay hidden" id="productModal"></div>
 <div class="modal-overlay hidden" id="archiveModal"></div>
+<div class="modal-overlay hidden" id="guestCartModal"></div>
 <div id="printArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -436,6 +477,7 @@
   var orders = {};
   var printStatus = {};
   var printArchive = {};
+  var customerLeads = {};
   var users = {};
   var usersLoaded = false;
   var currentUser = null;
@@ -444,6 +486,12 @@
   var editingProductId = null;
   var selectedAggDate = null;
   var lastAggSnapshot = null;
+
+  // Trạng thái dành cho khách hàng mở link sale
+  var urlParams = new URLSearchParams(window.location.search);
+  var saleRefId = urlParams.get('sale') || urlParams.get('ref');
+  var isGuestMode = !!saleRefId;
+  var guestCart = {}; // { pid: { color: qty } }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -462,7 +510,6 @@
     });
   }
   function slugKey(name) { return (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
-  // Chuẩn hoá tên màu để "Hồng" / "hồng" / "HỒNG" đều tính chung 1 màu.
   function normalizeColorName(s) {
     s = (s == null ? '' : String(s)).trim();
     if (!s) return s;
@@ -519,6 +566,274 @@
   function userList() { return Object.keys(users).map(function (id) { return Object.assign({ id: id }, users[id]); }); }
   function findByNameKey(nameKey) { return userList().find(function (u) { return u.nameKey === nameKey; }); }
 
+  /* ------------------- PHẦN DÀNH CHO KHÁCH HÀNG (GUEST MODE) ------------------- */
+  function initGuestMode() {
+    $('authScreen').classList.add('hidden');
+    $('appShell').classList.add('hidden');
+    $('guestLayout').classList.remove('hidden');
+
+    var saleUser = users[saleRefId];
+    if (saleUser) {
+      $('guestSaleName').textContent = saleUser.name;
+    } else {
+      $('guestSaleName').textContent = 'Chung (Hệ thống)';
+    }
+    renderGuestProducts();
+  }
+
+  function renderGuestProducts() {
+    var plist = productList().filter(function (p) { return !p.hidden; });
+    var grid = $('guestGrid');
+    if (!plist.length) { grid.innerHTML = '<div class="empty">Chưa có mẫu nào trên hệ thống.</div>'; return; }
+
+    grid.innerHTML = plist.map(function (p) {
+      var cartP = guestCart[p.id] || {};
+      var totalP = 0;
+      Object.keys(cartP).forEach(function (c) { totalP += cartP[c]; });
+      return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
+        '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
+        (totalP > 0 ? '<span class="sc-badge-hot">Đã chọn: ' + totalP + '</span>' : '') +
+        '</div>' +
+        '<div class="sc-body">' +
+          '<div class="sc-name">' + esc(p.name) + '</div>' +
+          '<div class="sc-sub"><span>' + colorsOf(p).length + ' màu</span></div>' +
+          '<button class="btn ghost small" style="margin-top:6px;">' + (totalP > 0 ? 'Sửa số lượng (' + totalP + ')' : 'Chọn số lượng') + '</button>' +
+        '</div></div>';
+    }).join('');
+
+    grid.querySelectorAll('.shop-card').forEach(function (card) {
+      card.addEventListener('click', function () { openGuestProductModal(card.dataset.pid); });
+    });
+    updateGuestCartBar();
+  }
+
+  function updateGuestCartBar() {
+    var grand = 0;
+    Object.keys(guestCart).forEach(function (pid) {
+      Object.keys(guestCart[pid]).forEach(function (c) { grand += guestCart[pid][c]; });
+    });
+    $('guestTotalCount').textContent = grand;
+  }
+
+  function openGuestProductModal(pid) {
+    var p = products[pid];
+    if (!p) return;
+    var colors = colorsOf(p);
+    var cartP = guestCart[pid] || {};
+    var html = '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
+      (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
+      '<div class="ms-section-label">Chọn số lượng áo theo màu</div>' +
+      '<div class="qty-color-rows">' + colors.map(function (c) {
+        var v = cartP[c] || 0;
+        return '<div class="qty-color-row" data-color="' + esc(c) + '">' +
+          '<span class="swatch" style="background:' + swatchColor(c) + '"></span>' +
+          '<span class="col-label">' + esc(c) + '</span>' +
+          '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
+          '</div>';
+      }).join('') + '</div>' +
+      '<button class="btn primary full" id="msGuestSaveBtn">Lưu vào giỏ</button>' +
+      '</div>';
+    $('productModal').innerHTML = html;
+    $('productModal').classList.remove('hidden');
+    bindLightboxes($('productModal'));
+
+    $('msGuestCloseBtn').addEventListener('click', function () { $('productModal').classList.add('hidden'); });
+    $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
+      var input = row.querySelector('.qc-input');
+      row.querySelector('[data-action="dec"]').addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); });
+      row.querySelector('[data-action="inc"]').addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; });
+    });
+    $('msGuestSaveBtn').addEventListener('click', function () {
+      var q = {};
+      var hasAny = false;
+      $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
+        var c = row.dataset.color;
+        var val = Math.max(0, Math.floor(Number(row.querySelector('.qc-input').value) || 0));
+        if (val > 0) { q[c] = val; hasAny = true; }
+      });
+      if (hasAny) guestCart[pid] = q; else delete guestCart[pid];
+      $('productModal').classList.add('hidden');
+      renderGuestProducts();
+    });
+  }
+
+  $('guestCheckoutBtn').addEventListener('click', function () {
+    var grand = 0;
+    var items = [];
+    Object.keys(guestCart).forEach(function (pid) {
+      var p = products[pid];
+      if (!p) return;
+      var q = guestCart[pid];
+      var pTot = 0;
+      Object.keys(q).forEach(function (c) { pTot += q[c]; });
+      if (pTot > 0) {
+        grand += pTot;
+        items.push({ pid: pid, name: p.name, imageUrl: p.imageUrl || '', quantities: q, total: pTot });
+      }
+    });
+
+    if (grand === 0) { toast('Bạn chưa chọn số lượng áo nào.'); return; }
+
+    var html = '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>Xác nhận gửi đơn đặt</h2><button class="ms-close" id="msCartCloseBtn">✕</button></div>' +
+      '<div class="lead-items">' + items.map(function (it) {
+        var b = Object.keys(it.quantities).map(function (c) { return esc(c) + '×' + it.quantities[c]; }).join(', ');
+        return '<div class="lead-item-row">' +
+          (it.imageUrl ? '<img src="' + esc(it.imageUrl) + '">' : '') +
+          '<div style="flex:1;"><b>' + esc(it.name) + '</b><br><span style="font-size:12px;color:var(--ink-soft);">' + b + '</span></div>' +
+          '<b>' + it.total + ' áo</b></div>';
+      }).join('') + '</div>' +
+      '<div style="font-weight:700;text-align:right;margin-bottom:14px;font-size:15px;">Tổng cộng: ' + grand + ' áo</div>' +
+      '<div class="field-row"><label>Tên của bạn *</label><input type="text" id="leadCustName" placeholder="VD: Anh Nam"></div>' +
+      '<div class="field-row"><label>Số điện thoại / Zalo để chốt đơn *</label><input type="text" id="leadCustPhone" placeholder="VD: 0987654321"></div>' +
+      '<div class="field-row"><label>Ghi chú (nếu có)</label><textarea id="leadCustNote" rows="2" placeholder="VD: Cần gấp trong tuần này..."></textarea></div>' +
+      '<button class="btn primary full" id="submitLeadBtn">Gửi yêu cầu đặt hàng</button>' +
+      '<p class="img-hint" style="text-align:center;margin-top:10px;">Tư vấn viên sẽ kết bạn Zalo để xác nhận và nhận cọc.</p>' +
+      '</div>';
+    $('guestCartModal').innerHTML = html;
+    $('guestCartModal').classList.remove('hidden');
+    $('msCartCloseBtn').addEventListener('click', function () { $('guestCartModal').classList.add('hidden'); });
+
+    $('submitLeadBtn').addEventListener('click', function () {
+      var name = $('leadCustName').value.trim();
+      var phone = $('leadCustPhone').value.trim();
+      var note = $('leadCustNote').value.trim();
+      if (!name) { toast('Vui lòng nhập tên của bạn.'); return; }
+      if (!phone) { toast('Vui lòng nhập số điện thoại hoặc Zalo.'); return; }
+
+      var btn = $('submitLeadBtn'); btn.disabled = true; btn.textContent = 'Đang gửi…';
+      var leadData = {
+        saleId: saleRefId || 'unknown',
+        saleName: users[saleRefId] ? users[saleRefId].name : 'Chung',
+        customerName: name,
+        phone: phone,
+        note: note,
+        items: items,
+        totalQty: grand,
+        createdAt: Date.now(),
+        status: 'pending' // pending: chờ cọc, approved: đã cọc chuyển đơn may
+      };
+
+      db.ref('customerLeads').push(leadData).then(function () {
+        $('guestCartModal').classList.add('hidden');
+        guestCart = {};
+        updateGuestCartBar();
+        renderGuestProducts();
+        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận cọc.');
+      }).catch(function (e) {
+        btn.disabled = false; btn.textContent = 'Gửi yêu cầu đặt hàng';
+        toast('Lỗi: ' + e.message);
+      });
+    });
+  });
+
+  /* ------------------- PHẦN QUẢN LÝ / SALE XỬ LÝ ĐƠN CHỜ CỌC ------------------- */
+  function renderLeads() {
+    var container = $('leadsList');
+    var list = Object.keys(customerLeads).map(function (k) { return Object.assign({ id: k }, customerLeads[k]); })
+      .filter(function (lead) {
+        if (lead.status !== 'pending') return false;
+        // Quản lý xem được hết, Sale chỉ xem đơn khách gửi cho mình
+        if (isManager()) return true;
+        return lead.saleId === currentUser.id;
+      })
+      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+
+    var badge = $('leadBadge');
+    if (list.length > 0) {
+      badge.textContent = list.length;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+
+    if (!list.length) {
+      container.innerHTML = '<div class="empty">Hiện không có yêu cầu nào đang chờ cọc.</div>';
+      return;
+    }
+
+    container.innerHTML = list.map(function (lead) {
+      var timeStr = lead.createdAt ? new Date(lead.createdAt).toLocaleString('vi-VN') : '';
+      var itemsHtml = (lead.items || []).map(function (it) {
+        var p = products[it.pid];
+        var img = (p && p.imageUrl) || it.imageUrl;
+        var b = Object.keys(it.quantities || {}).map(function (c) { return esc(c) + ' × ' + it.quantities[c]; }).join(', ');
+        return '<div class="lead-item-row">' +
+          (img ? '<img class="wt-thumb" data-lightbox="' + esc(img) + '" src="' + esc(img) + '">' : '') +
+          '<div style="flex:1;"><b>' + esc(it.name) + '</b>: ' + b + '</div>' +
+          '<b>' + it.total + ' áo</b></div>';
+      }).join('');
+
+      return '<div class="lead-card" data-lid="' + esc(lead.id) + '">' +
+        '<div class="lead-head">' +
+          '<div><div class="lead-cust">' + esc(lead.customerName) + ' <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
+          '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div></div>' +
+          '<div style="font-size:16px;font-weight:700;color:var(--stitch);">' + lead.totalQty + ' áo</div>' +
+        '</div>' +
+        (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
+        '<div class="lead-items">' + itemsHtml + '</div>' +
+        '<div class="lead-actions">' +
+          '<button class="btn danger small" data-action="delete-lead">Huỷ yêu cầu</button>' +
+          '<button class="btn primary small" data-action="approve-lead">✅ Đã cọc - Chuyển sang đơn may</button>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+
+    bindLightboxes(container);
+
+    container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lid = btn.closest('.lead-card').dataset.lid;
+        if (!confirm('Huỷ yêu cầu của khách này?')) return;
+        db.ref('customerLeads/' + lid).remove().then(function () { toast('Đã xoá yêu cầu.'); });
+      });
+    });
+
+    container.querySelectorAll('[data-action="approve-lead"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lid = btn.closest('.lead-card').dataset.lid;
+        approveLeadOrder(lid);
+      });
+    });
+  }
+
+  function approveLeadOrder(leadId) {
+    var lead = customerLeads[leadId];
+    if (!lead) return;
+    if (!confirm('Khách "' + lead.customerName + '" đã cọc tiền? Đơn sẽ được cộng vào đơn may chính thức hôm nay của bạn để gửi xưởng.')) return;
+
+    var today = todayStr();
+    var updates = {};
+    // Cập nhật trạng thái lead
+    updates['customerLeads/' + leadId + '/status'] = 'approved';
+    updates['customerLeads/' + leadId + '/approvedAt'] = Date.now();
+    updates['customerLeads/' + leadId + '/approvedBy'] = currentUser.name;
+
+    // Cộng dồn vào bảng đơn hàng chính thức
+    (lead.items || []).forEach(function (it) {
+      var pid = it.pid;
+      var curQuantities = (orders[today] && orders[today][pid] && orders[today][pid][currentUser.id] && orders[today][pid][currentUser.id].quantities) || {};
+      var newQuantities = Object.assign({}, curQuantities);
+      Object.keys(it.quantities || {}).forEach(function (c) {
+        newQuantities[c] = (newQuantities[c] || 0) + it.quantities[c];
+      });
+      updates['orders/' + today + '/' + pid + '/' + currentUser.id] = {
+        employeeName: currentUser.name,
+        quantities: newQuantities,
+        updatedAt: Date.now()
+      };
+    });
+
+    db.ref().update(updates).then(function () {
+      toast('Đã chuyển đơn khách vào đơn may hôm nay!');
+      switchTab('order');
+    }).catch(function (e) {
+      toast('Lỗi khi chuyển đơn: ' + e.message);
+    });
+  }
+
+  /* ------------------- PHẦN QUẢN LÝ / NHÂN VIÊN (APP SHELL) ------------------- */
   function showAuthError(msg) { var e = $('authError'); e.textContent = msg; e.classList.add('show'); }
   function clearAuthError() { $('authError').classList.remove('show'); }
 
@@ -563,14 +878,21 @@
   $('logoutBtn').addEventListener('click', logout);
 
   function renderShell() {
+    if (isGuestMode) {
+      initGuestMode();
+      return;
+    }
+
     if (!usersLoaded) return;
     if (!currentUser) {
       $('authScreen').classList.remove('hidden');
       $('appShell').classList.add('hidden');
+      $('guestLayout').classList.add('hidden');
       renderAuthNote();
       return;
     }
     $('authScreen').classList.add('hidden');
+    $('guestLayout').classList.add('hidden');
     $('appShell').classList.remove('hidden');
     $('whoName').textContent = currentUser.name;
     $('whoRole').textContent = roleLabel(currentUser.role);
@@ -578,13 +900,26 @@
     $('tabAggBtn').classList.toggle('hidden', !isManager());
     $('tabManageBtn').classList.toggle('hidden', !canManageProducts());
     $('tabAccountsBtn').classList.toggle('hidden', !isManager());
-    var allowedTab = currentTab === 'order' || (currentTab === 'manage' && canManageProducts()) || ((currentTab === 'agg' || currentTab === 'accounts') && isManager());
+
+    // Cập nhật link sale
+    var baseLink = window.location.origin + window.location.pathname + '?sale=' + currentUser.id;
+    $('saleLinkUrl').textContent = baseLink;
+    $('copySaleLinkBtn').onclick = function () {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(baseLink).then(function () { toast('Đã sao chép link cá nhân gửi khách!'); });
+      } else {
+        prompt('Copy link này gửi khách:', baseLink);
+      }
+    };
+
+    var allowedTab = currentTab === 'order' || currentTab === 'leads' || (currentTab === 'manage' && canManageProducts()) || ((currentTab === 'agg' || currentTab === 'accounts') && isManager());
     if (!allowedTab) switchTab('order');
     else renderCurrentTab();
   }
 
   function renderCurrentTab() {
     if (currentTab === 'order') renderOrderList();
+    if (currentTab === 'leads') renderLeads();
     if (currentTab === 'agg') renderAgg();
     if (currentTab === 'manage') renderManage();
     if (currentTab === 'accounts') renderAccounts();
@@ -598,8 +933,6 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
-  // Giữ lại chữ đang gõ dở trong các ô input khi phải render lại do dữ liệu
-  // realtime thay đổi (vd: người khác vừa thêm/sửa mẫu khác cùng lúc).
   var PRESERVE_FIELD_IDS = ['nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
   function snapshotFormState() {
     var snap = {};
@@ -646,11 +979,9 @@
       ['staff', 'product_manager', 'manager'].map(function (r) { return '<option value="' + r + '">' + roleLabel(r) + '</option>'; }).join('') +
       '</select></div>' +
       '<button class="btn primary" id="createAcctBtn">Tạo tài khoản</button>' +
-      '<p class="img-hint" style="margin-top:10px;">Dùng khi anh muốn tự đặt sẵn tên + PIN cho nhân viên (họ không cần tự đăng ký) — báo lại PIN cho họ để đăng nhập.</p>' +
+      '<p class="img-hint" style="margin-top:10px;">Dùng khi quản lý tự cấp sẵn tài khoản cho nhân viên.</p>' +
       '</div>' +
-      '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div>' +
-      '<p class="img-hint" style="margin-top:12px;">Nhân viên không tự tạo được tài khoản — chỉ quản lý tạo ở trên rồi báo tên + PIN cho họ đăng nhập. Ở đây quản lý chỉnh vai trò / đặt lại PIN / xoá tài khoản.<br>' +
-      '<b>Nhân viên</b>: chỉ đặt hàng. <b>Người thêm mẫu</b>: thêm mẫu mới, chỉ sửa/xoá được mẫu của chính mình. <b>Quản lý</b>: toàn quyền, sửa/xoá được mọi mẫu.</p></div>';
+      '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div></div>';
     restoreFormState(formSnap);
 
     $('createAcctBtn').addEventListener('click', createAccountByManager);
@@ -681,27 +1012,23 @@
         if (u.role === 'manager' && newRole !== 'manager' && managerCount <= 1) {
           toast('Cần giữ lại ít nhất 1 quản lý.'); sel.value = u.role; return;
         }
-        db.ref('users/' + uid + '/role').set(newRole).then(function () { toast('Đã đổi vai trò.'); }).catch(function () { toast('Lỗi khi đổi quyền.'); sel.value = u.role; });
+        db.ref('users/' + uid + '/role').set(newRole).then(function () { toast('Đã đổi vai trò.'); }).catch(function () { toast('Lỗi.'); sel.value = u.role; });
       });
     });
     listEl.querySelectorAll('[data-action="reset-pin"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var uid = btn.closest('.acct-row').dataset.uid;
-        var newPin = prompt('Nhập mã PIN mới cho tài khoản này (từ 4 ký tự):');
-        if (newPin === null) return;
-        if (newPin.trim().length < 4) { toast('PIN cần ít nhất 4 ký tự.'); return; }
-        db.ref('users/' + uid + '/pin').set(newPin.trim()).then(function () { toast('Đã đặt lại PIN.'); }).catch(function () { toast('Lỗi khi đặt PIN.'); });
+        var newPin = prompt('Nhập mã PIN mới:');
+        if (newPin && newPin.trim().length >= 4) {
+          db.ref('users/' + uid + '/pin').set(newPin.trim()).then(function () { toast('Đã đặt lại PIN.'); });
+        }
       });
     });
     listEl.querySelectorAll('[data-action="delete"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var uid = btn.closest('.acct-row').dataset.uid;
-        var u = users[uid];
-        if (!confirm('Xoá tài khoản "' + u.name + '"? Đơn hàng cũ của người này vẫn còn trong lịch sử.')) return;
-        db.ref('users/' + uid).remove().then(function () {
-          toast('Đã xoá tài khoản.');
-          if (uid === currentUser.id) logout();
-        }).catch(function () { toast('Lỗi khi xoá.'); });
+        if (!confirm('Xoá tài khoản này?')) return;
+        db.ref('users/' + uid).remove().then(function () { toast('Đã xoá.'); if (uid === currentUser.id) logout(); });
       });
     });
   }
@@ -710,14 +1037,11 @@
     var name = $('newAcctName').value.trim();
     var pin = $('newAcctPin').value.trim();
     var role = $('newAcctRole').value;
-    if (!name) { toast('Nhập tên nhân viên.'); return; }
-    if (!pin || pin.length < 4) { toast('Mã PIN cần ít nhất 4 ký tự.'); return; }
+    if (!name || !pin || pin.length < 4) { toast('Điền tên và PIN ít nhất 4 ký tự.'); return; }
     var nameKey = slugKey(name);
-    if (findByNameKey(nameKey)) { toast('Đã có tài khoản tên này rồi, đổi tên khác hoặc sửa PIN cho tài khoản cũ.'); return; }
-    var btn = $('createAcctBtn'); btn.disabled = true; btn.textContent = 'Đang tạo…';
+    if (findByNameKey(nameKey)) { toast('Đã có tên này rồi.'); return; }
     db.ref('users').push({ name: name, nameKey: nameKey, pin: pin, role: role, createdAt: Date.now() })
-      .then(function () { toast('Đã tạo tài khoản cho "' + name + '". Báo PIN cho họ để đăng nhập.'); renderAccounts(); })
-      .catch(function (e) { btn.disabled = false; btn.textContent = 'Tạo tài khoản'; toast('Lỗi: ' + e.message); });
+      .then(function () { toast('Đã tạo tài khoản!'); renderAccounts(); });
   }
 
   function productList() {
@@ -778,12 +1102,13 @@
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     $('orderDayNote').innerHTML = selectedOrderDate === 'all'
-      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Bấm vào mẫu để nhập số lượng cho <b>hôm nay</b>.'
+      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Bấm vào mẫu để nhập/chỉnh số lượng cho <b>hôm nay</b>.'
       : (selectedOrderDate === today
-        ? 'Đơn cho ngày <b>' + fmtDate(today) + '</b>. Mai vào lại sẽ là đợt đặt mới.'
-        : 'Đang xem/sửa đơn ngày <b>' + fmtDate(selectedOrderDate) + '</b>.');
+        ? 'Đơn cho ngày <b>' + fmtDate(today) + '</b>.'
+        : 'Đang xem đơn ngày <b>' + fmtDate(selectedOrderDate) + '</b>.');
+
     if (!plist.length) {
-      $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.' + (isManager() ? ' Vào tab "Quản lý mẫu" để thêm ảnh mẫu.' : ' Chờ quản lý thêm ảnh mẫu nhé.') + '</div>';
+      $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>';
       $('myOrdersToday').innerHTML = '';
       return;
     }
@@ -843,7 +1168,7 @@
         return '<div class="cust-row"><span class="cr-name">' + esc(pname) + '</span>' +
           '<span class="cr-color">' + breakdown + '</span>' +
           '<span class="cr-qty">' + r.total + '</span></div>';
-      }).join('') + '</div><p class="img-hint">Bấm vào mẫu áo ở trên để sửa lại số lượng cho hôm nay.</p></div>';
+      }).join('') + '</div></div>';
   }
 
   function openProductModal(pid) {
@@ -865,8 +1190,8 @@
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
-      '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in — báo khách nhận hàng' : '⏳ Chưa in') + '</span>' +
-      '<p class="img-hint" style="margin-top:8px;">Đang nhập cho ngày: <b>' + esc(fmtDate(d)) + (d === today ? '' : ' (không phải hôm nay)') + '</b></p>' +
+      '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
+      '<p class="img-hint" style="margin-top:8px;">Nhập số lượng may cho ngày: <b>' + esc(fmtDate(d)) + '</b></p>' +
       '<div class="ms-section-label">Số lượng theo màu</div>' +
       '<div class="qty-color-rows">' + colors.map(function (c) {
         var v = mine[c] != null ? mine[c] : 0;
@@ -876,7 +1201,7 @@
           '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
           '</div>';
       }).join('') + '</div>' +
-      '<button class="btn primary full" id="msSaveBtn">Lưu số lượng</button>' +
+      '<button class="btn primary full" id="msSaveBtn">Lưu số lượng may</button>' +
       '</div>';
     $('productModal').innerHTML = html;
     bindLightboxes($('productModal'));
@@ -904,7 +1229,7 @@
     }).then(function () {
       toast('Đã lưu số lượng cho "' + p.name + '".');
       closeProductModal();
-    }).catch(function (e) { btn.disabled = false; btn.textContent = 'Lưu số lượng'; toast('Lỗi: ' + e.message); });
+    }).catch(function (e) { btn.disabled = false; btn.textContent = 'Lưu'; toast('Lỗi: ' + e.message); });
   }
 
   $('productModal').addEventListener('click', function (e) { if (e.target === $('productModal')) closeProductModal(); });
@@ -969,7 +1294,7 @@
     if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
     var plist = productList();
     renderAggDateControls();
-    if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo hoặc đơn hàng nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
+    if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
 
     var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
     var singleDate = dates.length === 1 ? dates[0] : null;
@@ -989,9 +1314,9 @@
       if (pTotalQty > 0) byProduct[p.id] = { byColor: byColor, byPerson: byPerson, totalQty: pTotalQty };
     });
 
-    summaryEl.innerHTML = '<div class="agg-stat"><div class="num">' + grandTotal + '</div><div class="lbl">Tổng số áo · ' + esc(fmtDate(selectedAggDate)) + '</div></div>' +
+    summaryEl.innerHTML = '<div class="agg-stat"><div class="num">' + grandTotal + '</div><div class="lbl">Tổng áo chốt may · ' + esc(fmtDate(selectedAggDate)) + '</div></div>' +
       '<div class="agg-stat"><div class="num">' + Object.keys(byProduct).length + '</div><div class="lbl">Mẫu có đơn</div></div>' +
-      '<div class="agg-stat"><div class="num">' + Object.keys(peopleSet).length + '</div><div class="lbl">Sale đã đặt</div></div>';
+      '<div class="agg-stat"><div class="num">' + Object.keys(peopleSet).length + '</div><div class="lbl">Sale đã chốt</div></div>';
 
     var filteredList = plist.filter(function (p) { return byProduct[p.id]; });
     filteredList.sort(function (a, b) {
@@ -1000,7 +1325,7 @@
     lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate), datesUsed: dates };
     renderWorkshopTable();
 
-    if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn hàng nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
+    if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn may nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
     var html = '';
     filteredList.forEach(function (p) {
@@ -1046,7 +1371,6 @@
     });
   }
 
-  // ---- logic dùng chung cho mọi nút "in": lọc mẫu chưa in + sau khi in xong thì lưu lịch sử/reset hoặc đánh dấu đã in ----
   function getPrintableList() {
     var snap = lastAggSnapshot;
     var datesUsed = snap.datesUsed || [selectedAggDate];
@@ -1073,7 +1397,7 @@
       if (doResetAfter) {
         var dateCount = datesUsed.length;
         var scopeText = dateCount > 1 ? (dateCount + ' ngày (' + snap.dateLabel + ')') : snap.dateLabel;
-        if (!confirm('In xong! Lưu ' + list.length + ' mẫu vào lịch sử và đặt lại số lượng về 0 cho ' + scopeText + '?\n\nKhông thể hoàn tác — nhân viên sẽ đặt lại từ đầu cho các mẫu này.')) return;
+        if (!confirm('In xong! Lưu ' + list.length + ' mẫu vào lịch sử và đặt lại số lượng về 0 cho ' + scopeText + '?')) return;
         var archiveKey = db.ref('printArchive').push().key;
         var archiveItems = list.map(function (p) {
           return { productId: p.id, name: p.name, imageUrl: p.imageUrl || null, byColor: snap.byProduct[p.id].byColor, totalQty: snap.byProduct[p.id].totalQty, byPerson: snap.byProduct[p.id].byPerson };
@@ -1092,19 +1416,18 @@
         });
         db.ref().update(updates)
           .then(function () { toast('Đã lưu vào lịch sử và đặt lại ' + list.length + ' mẫu về 0.'); })
-          .catch(function () { toast('Lỗi khi lưu/đặt lại.'); });
+          .catch(function () { toast('Lỗi.'); });
         return;
       }
 
-      if (pendingMarkIds.length && confirm('Đánh dấu ' + pendingMarkIds.length + ' mẫu vừa in là "Đã in" để tránh in trùng lần sau?')) {
+      if (pendingMarkIds.length && confirm('Đánh dấu ' + pendingMarkIds.length + ' mẫu vừa in là "Đã in"?')) {
         var markUpdates = {};
         pendingMarkIds.forEach(function (pid) {
           productDates(pid).forEach(function (d) {
             markUpdates['printStatus/' + d + '/' + pid] = { printed: true, printedAt: Date.now(), printedBy: currentUser.name };
           });
         });
-        db.ref().update(markUpdates).then(function () { toast('Đã đánh dấu ' + pendingMarkIds.length + ' mẫu là đã in.'); })
-          .catch(function () { toast('Không cập nhật được trạng thái đã in.'); });
+        db.ref().update(markUpdates).then(function () { toast('Đã đánh dấu đã in.'); });
       }
     };
     setTimeout(function () { window.print(); }, 50);
@@ -1114,7 +1437,7 @@
     if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có đơn hàng nào để in.'); return; }
     var ctx = getPrintableList();
     var snap = ctx.snap, list = ctx.list, isPrinted = ctx.isPrinted, onlyUnprinted = ctx.onlyUnprinted;
-    if (!list.length) { toast('Tất cả mẫu trong phạm vi đang xem đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+    if (!list.length) { toast('Tất cả mẫu đã in rồi.'); return; }
 
     var runningTotal = 0;
     var rowsHtml = list.map(function (p) {
@@ -1138,11 +1461,9 @@
 
     finalizePrintFlow(ctx);
   }
-  var printAggBtnEl = $('printAggBtn');
-  if (printAggBtnEl) printAggBtnEl.addEventListener('click', printAggregateReport);
+  $('printAggBtn').addEventListener('click', printAggregateReport);
 
-  // ---------- workshop grid table: rows = mẫu, columns = màu, kèm xuất Excel / sao chép ----------
-  var productSelection = {}; // pid -> true/false, mặc định true (đã tick) khi mới xuất hiện
+  var productSelection = {};
   function isProductSelected(pid) { return productSelection[pid] !== false; }
   function ensureSelectionDefaults(list) {
     list.forEach(function (p) { if (productSelection[p.id] === undefined) productSelection[p.id] = true; });
@@ -1159,7 +1480,6 @@
     snap.filteredList.forEach(function (p) {
       colorsOf(p).forEach(function (c) { if (!seen[c]) { seen[c] = true; cols.push(c); } });
     });
-    // chỉ giữ cột màu nào thực sự có số lượng > 0 ở đâu đó
     return cols.filter(function (c) {
       return snap.filteredList.some(function (p) { return (snap.byProduct[p.id].byColor[c] || 0) > 0; });
     });
@@ -1235,25 +1555,13 @@
     if (!tsv) { toast('Chưa có dữ liệu để sao chép.'); return; }
     var header = 'Bảng tổng cho xưởng · ' + (lastAggSnapshot ? lastAggSnapshot.dateLabel : '') + '\n\n';
     var text = header + tsv;
-    function done() { toast('Đã sao chép — dán vào Zalo, Excel, Sheet đều được.'); }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
-    } else {
-      fallbackCopy(text, done);
-    }
-  }
-  function fallbackCopy(text, done) {
-    var ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    try { document.execCommand('copy'); done(); } catch (e) { toast('Không sao chép được, thử lại nhé.'); }
-    document.body.removeChild(ta);
+    function done() { toast('Đã sao chép vào bộ nhớ tạm.'); }
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done);
   }
 
   function exportWorkshopExcel() {
     var tsv = buildWorkshopTsv();
     if (!tsv) { toast('Chưa có dữ liệu để xuất.'); return; }
-    // CSV có dấu phẩy làm ngăn cách để Excel tự nhận cột; thêm BOM để Excel hiển thị đúng tiếng Việt
     var csv = tsv.split('\n').map(function (line) {
       return line.split('\t').map(function (cell) {
         var s = String(cell);
@@ -1266,20 +1574,17 @@
     var dateForFile = (lastAggSnapshot.dateLabel || '').replace(/[^0-9a-zA-Z]+/g, '_');
     a.href = url; a.download = 'bang-tong-xuong_' + dateForFile + '.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-    toast('Đã tải file — mở bằng Excel bình thường.');
+    toast('Đã tải file Excel.');
   }
 
-  var copyTableBtnEl = $('copyTableBtn');
-  if (copyTableBtnEl) copyTableBtnEl.addEventListener('click', copyWorkshopTable);
-  var exportExcelBtnEl = $('exportExcelBtn');
-  if (exportExcelBtnEl) exportExcelBtnEl.addEventListener('click', exportWorkshopExcel);
+  $('copyTableBtn').addEventListener('click', copyWorkshopTable);
+  $('exportExcelBtn').addEventListener('click', exportWorkshopExcel);
 
   function printWorkshopTable() {
     if (!lastAggSnapshot || !lastAggSnapshot.filteredList.length) { toast('Chưa có dữ liệu để in.'); return; }
     var ctx = getPrintableList();
     var snap = ctx.snap, list = ctx.list, isPrinted = ctx.isPrinted, onlyUnprinted = ctx.onlyUnprinted;
-    if (!list.length) { toast('Tất cả mẫu trong phạm vi đang xem đã được đánh dấu "Đã in" rồi — không còn mẫu nào để in mới.'); return; }
+    if (!list.length) { toast('Tất cả mẫu đã được in.'); return; }
 
     var cols = workshopTableColumns();
     var colTotals = {}; cols.forEach(function (c) { colTotals[c] = 0; });
@@ -1308,16 +1613,13 @@
 
     finalizePrintFlow(ctx);
   }
-  var printTableBtnEl = $('printTableBtn');
-  if (printTableBtnEl) printTableBtnEl.addEventListener('click', printWorkshopTable);
+  $('printTableBtn').addEventListener('click', printWorkshopTable);
 
   var archiveModalMode = 'all';
   function openArchiveModal(mode) { archiveModalMode = mode || 'all'; renderArchiveModal(); $('archiveModal').classList.remove('hidden'); }
   function closeArchiveModal() { $('archiveModal').classList.add('hidden'); $('archiveModal').innerHTML = ''; }
-  var openArchiveBtnEl = $('openArchiveBtn');
-  if (openArchiveBtnEl) openArchiveBtnEl.addEventListener('click', function () { openArchiveModal('all'); });
-  var openMyArchiveBtnEl = $('openMyArchiveBtn');
-  if (openMyArchiveBtnEl) openMyArchiveBtnEl.addEventListener('click', function () { openArchiveModal('mine'); });
+  $('openArchiveBtn').addEventListener('click', function () { openArchiveModal('all'); });
+  $('openMyArchiveBtn').addEventListener('click', function () { openArchiveModal('mine'); });
   $('archiveModal').addEventListener('click', function (e) { if (e.target === $('archiveModal')) closeArchiveModal(); });
 
   function renderArchiveModal() {
@@ -1339,13 +1641,10 @@
       }).filter(Boolean);
     }
 
-    var bodyHtml;
-    if (!entries.length) {
-      bodyHtml = '<div class="empty">' + (isMine ? 'Bạn chưa có đơn nào trong lịch sử đã lưu.' : 'Chưa có đợt in nào được lưu lại.') + '</div>';
-    } else {
-      bodyHtml = entries.map(function (en) {
+    var bodyHtml = !entries.length
+      ? '<div class="empty">Chưa có lịch sử đã lưu.</div>'
+      : entries.map(function (en) {
         var when = en.printedAt ? new Date(en.printedAt).toLocaleString('vi-VN') : '';
-        var reprintCount = en.reprints ? Object.keys(en.reprints).length : 0;
         var itemsHtml = (en.items || []).map(function (it) {
           var colorsText = Object.keys(it.byColor || {}).map(function (c) { return esc(c) + ': ' + it.byColor[c]; }).join(' · ');
           return '<div class="cd-row">' + (it.imageUrl ? '<img class="cd-thumb" data-lightbox="' + esc(it.imageUrl) + '" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="cd-thumb cd-thumb-empty">–</div>') +
@@ -1353,15 +1652,14 @@
         }).join('');
         return '<div class="agg-product" data-aid="' + esc(en.id) + '">' +
           '<div class="agg-product-head"><div class="apn"><div class="name">' + esc(en.dateLabel || en.date) + ' · ' + (en.items || []).length + ' mẫu · <b>' + (en.grandTotal || 0) + '</b> áo</div>' +
-          '<div class="sub">' + (isMine ? '' : 'In bởi ' + esc(en.printedBy || '') + ' · ') + when + (reprintCount > 0 ? ' · Đã in lại ' + reprintCount + ' lần' : '') + '</div></div>' +
-          (isMine ? '' : '<button class="btn ghost small reprint-btn" data-action="reprint" data-aid="' + esc(en.id) + '">🖨️ In lại' + (reprintCount > 0 ? '<span class="reprint-badge">' + reprintCount + '</span>' : '') + '</button>') +
-          '<button class="btn ghost small" data-action="toggle-archive-detail">Xem chi tiết</button></div>' +
-          '<div class="cust-detail hidden" id="archive-detail-' + esc(en.id) + '">' + itemsHtml + '</div>' +
+          '<div class="sub">' + when + '</div></div>' +
+          '<button class="btn ghost small" data-action="toggle-archive-detail">Chi tiết</button></div>' +
+          '<div class="cust-detail hidden">' + itemsHtml + '</div>' +
           '</div>';
       }).join('');
-    }
+
     $('archiveModal').innerHTML = '<div class="modal-sheet">' +
-      '<div class="modal-head"><h2>' + (isMine ? 'Lịch sử đặt hàng của tôi' : 'Lịch sử các đợt đã in &amp; lưu') + '</h2><button class="ms-close" id="archiveCloseBtn">✕</button></div>' +
+      '<div class="modal-head"><h2>Lịch sử các đợt đã in</h2><button class="ms-close" id="archiveCloseBtn">✕</button></div>' +
       bodyHtml + '</div>';
     $('archiveCloseBtn').addEventListener('click', closeArchiveModal);
     bindLightboxes($('archiveModal'));
@@ -1369,45 +1667,8 @@
       btn.addEventListener('click', function () {
         var box = btn.closest('.agg-product').querySelector('.cust-detail');
         box.classList.toggle('hidden');
-        btn.textContent = box.classList.contains('hidden') ? 'Xem chi tiết' : 'Ẩn chi tiết';
       });
     });
-    $('archiveModal').querySelectorAll('[data-action="reprint"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { printArchivedEntry(btn.dataset.aid); });
-    });
-  }
-
-  function printArchivedEntry(entryId) {
-    var entry = printArchive[entryId];
-    if (!entry) { toast('Không tìm thấy đợt in này.'); return; }
-    var reprints = entry.reprints ? Object.keys(entry.reprints) : [];
-    var printNumber = reprints.length + 2; // đợt gốc = lần 1, mỗi lần in lại +1
-
-    var rowsHtml = (entry.items || []).map(function (it) {
-      var colorsText = Object.keys(it.byColor || {}).map(function (c) { return esc(c) + ': ' + it.byColor[c]; }).join(' · ');
-      return '<div class="pr-row">' +
-        (it.imageUrl ? '<img src="' + esc(it.imageUrl) + '" alt="">' : '<div class="pr-noimg">Không ảnh</div>') +
-        '<div class="pr-info"><div class="pr-name">' + esc(it.name) + '</div><div class="pr-colors">' + colorsText + '</div></div>' +
-        '<div class="pr-total">' + it.totalQty + ' áo</div>' +
-        '</div>';
-    }).join('');
-
-    $('printArea').innerHTML =
-      '<div class="pr-header"><h1>Bảng tổng hợp đặt may <span class="pr-reprint-tag">(In lại lần ' + printNumber + ')</span></h1>' +
-      '<p>Ngày gốc: ' + esc(entry.dateLabel || entry.date) + ' · In lại lúc ' + new Date().toLocaleString('vi-VN') + '</p></div>' +
-      rowsHtml +
-      '<div class="pr-grand"><span>Tổng cộng</span><span>' + (entry.grandTotal || 0) + ' áo</span></div>';
-
-    window.onafterprint = function () {
-      window.onafterprint = null;
-      var reprintKey = db.ref('printArchive/' + entryId + '/reprints').push().key;
-      var updates = {};
-      updates['printArchive/' + entryId + '/reprints/' + reprintKey] = { printedAt: Date.now(), printedBy: currentUser.name };
-      db.ref().update(updates)
-        .then(function () { toast('Đã ghi nhận lần in lại thứ ' + printNumber + '.'); })
-        .catch(function () { toast('In được nhưng không ghi lại được lịch sử in lại.'); });
-    };
-    setTimeout(function () { window.print(); }, 50);
   }
 
   function renderManage() {
@@ -1419,108 +1680,72 @@
     el.innerHTML =
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
-        '<div class="img-preview-side" id="newImgPreviewBox">' +
-          '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>' +
-        '</div>' +
+        '<div class="img-preview-side" id="newImgPreviewBox"><div class="pv-placeholder">🖼️ Xem trước ảnh</div></div>' +
         '<div class="form-fields-side">' +
-          '<div class="field-row">' +
-            '<label>Link ảnh mẫu</label>' +
-            '<input type="text" id="imgUrlInput" placeholder="Dán link ảnh https://...">' +
-          '</div>' +
-          '<div class="field-row">' +
-            '<label>Tên mẫu</label>' +
-            '<input type="text" id="nameInput" maxlength="25" placeholder="VD: Áo hoodie gấu bông">' +
-            '<div class="char-count" id="nameCharCount">0/25</div>' +
-          '</div>' +
+          '<div class="field-row"><label>Link ảnh mẫu</label><input type="text" id="imgUrlInput" placeholder="https://..."></div>' +
+          '<div class="field-row"><label>Tên mẫu</label><input type="text" id="nameInput" maxlength="25" placeholder="VD: Áo thun Basic"><div class="char-count" id="nameCharCount">0/25</div></div>' +
         '</div>' +
       '</div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
       '<button class="btn primary" id="addProductBtn">Thêm mẫu</button>' +
-      '<p class="img-hint" style="margin-top:10px;">Link ảnh từ Imgur, Postimages, Google Drive, Shopee, Facebook... vừa dán vào ô là hình sẽ hiện ngay ở khung bên trái.' +
-      (!isManager() ? ' Bạn chỉ sửa/ẩn/xoá được mẫu do chính mình thêm — mẫu của người khác chỉ Quản lý mới sửa được.' : '') + '</p>' +
       '</div>' +
       '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2><div id="productListManage"></div></div>';
 
     var imgInput = $('imgUrlInput');
-    function updateNewPreview() {
+    imgInput.addEventListener('input', function () {
       var url = imgInput.value.trim();
       var box = $('newImgPreviewBox');
-      if (url) {
-        box.innerHTML = '<img src="' + esc(url) + '" data-lightbox="' + esc(url) + '" onerror="this.outerHTML=\'<div class=\\\'pv-error\\\'>❌ Link ảnh lỗi hoặc không tải được</div>\'">';
-        bindLightboxes(box);
-      } else {
-        box.innerHTML = '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>';
-      }
-    }
-    imgInput.addEventListener('input', updateNewPreview);
-    imgInput.addEventListener('change', updateNewPreview);
+      box.innerHTML = url ? '<img src="' + esc(url) + '">' : '<div class="pv-placeholder">🖼️ Xem trước ảnh</div>';
+    });
 
     var nameInputEl = $('nameInput');
-    function updateNameCharCount() {
+    nameInputEl.addEventListener('input', function () {
       var n = nameInputEl.value.length;
-      var box = $('nameCharCount');
-      box.textContent = n + '/25';
-      box.classList.toggle('char-count-max', n >= 25);
-    }
-    nameInputEl.addEventListener('input', updateNameCharCount);
+      $('nameCharCount').textContent = n + '/25';
+    });
 
     $('addProductBtn').addEventListener('click', addProduct);
 
     var listEl = $('productListManage');
-    if (!plist.length) { listEl.innerHTML = '<div class="empty">Chưa có mẫu nào.</div>'; }
-    else {
-      listEl.innerHTML = plist.map(function (p) {
-        if (p.id === editingProductId) return renderEditProductForm(p);
-        var colors = colorsOf(p);
-        var hidden = !!p.hidden;
-        var editable = canEditProduct(p);
-        var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
-        var ownerNote = (p.createdByName || createdText)
-          ? '<div class="mli-owner">' + (p.createdByName ? 'Thêm bởi: ' + esc(p.createdByName) : '') + (p.createdByName && createdText ? ' · ' : '') + (createdText ? 'Lúc ' + esc(createdText) : '') + '</div>'
-          : '';
-        var actions = editable
-          ? '<button class="btn ghost small" data-action="edit" data-pid="' + esc(p.id) + '">Sửa</button>' +
-            '<button class="btn ghost small" data-action="toggle-hide" data-pid="' + esc(p.id) + '">' + (hidden ? 'Hiện lại' : 'Ẩn') + '</button>' +
-            '<button class="btn danger small" data-action="delete" data-pid="' + esc(p.id) + '">Xoá</button>'
-          : '<span class="locked-note">🔒 Không có quyền sửa</span>';
-        return '<div class="manage-list-item' + (hidden ? ' is-hidden' : '') + '">' +
-          (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;font-size:9px;">–</div>') +
-          '<div class="mli-info"><div class="mli-name">' + esc(p.name) + (hidden ? ' <span class="hidden-tag">Đang ẩn</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + ownerNote + '</div>' +
-          '<div class="mli-actions">' + actions + '</div></div>';
-      }).join('');
-      listEl.querySelectorAll('[data-action="delete"]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
-      listEl.querySelectorAll('[data-action="edit"]').forEach(function (btn) { btn.addEventListener('click', function () { startEditProduct(btn.dataset.pid); }); });
-      listEl.querySelectorAll('[data-action="toggle-hide"]').forEach(function (btn) {
-        btn.addEventListener('click', function () { toggleProductHidden(btn.dataset.pid, products[btn.dataset.pid].hidden); });
-      });
-      bindEditFormEvents(listEl);
-      bindLightboxes(listEl);
-    }
+    listEl.innerHTML = plist.map(function (p) {
+      if (p.id === editingProductId) return renderEditProductForm(p);
+      var colors = colorsOf(p);
+      var hidden = !!p.hidden;
+      var editable = canEditProduct(p);
+      var actions = editable
+        ? '<button class="btn ghost small" data-action="edit" data-pid="' + esc(p.id) + '">Sửa</button>' +
+          '<button class="btn ghost small" data-action="toggle-hide" data-pid="' + esc(p.id) + '">' + (hidden ? 'Hiện' : 'Ẩn') + '</button>' +
+          '<button class="btn danger small" data-action="delete" data-pid="' + esc(p.id) + '">Xoá</button>'
+        : '<span class="locked-note">🔒 Không có quyền sửa</span>';
+      return '<div class="manage-list-item' + (hidden ? ' is-hidden' : '') + '">' +
+        (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;">–</div>') +
+        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + (hidden ? ' <span class="hidden-tag">Đang ẩn</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div></div>' +
+        '<div class="mli-actions">' + actions + '</div></div>';
+    }).join('');
+
+    listEl.querySelectorAll('[data-action="delete"]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
+    listEl.querySelectorAll('[data-action="edit"]').forEach(function (btn) { btn.addEventListener('click', function () { startEditProduct(btn.dataset.pid); }); });
+    listEl.querySelectorAll('[data-action="toggle-hide"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { toggleProductHidden(btn.dataset.pid, products[btn.dataset.pid].hidden); });
+    });
+    bindEditFormEvents(listEl);
+    bindLightboxes(listEl);
     restoreFormState(formSnap);
   }
 
   function renderEditProductForm(p) {
     var colors = colorsOf(p);
-    return '<div class="manage-form edit-product-form" data-editing-pid="' + esc(p.id) + '" style="margin:10px 0;">' +
+    return '<div class="manage-form edit-product-form" data-editing-pid="' + esc(p.id) + '">' +
       '<div class="product-form-layout">' +
-        '<div class="img-preview-side" id="editImgPreviewBox">' +
-          (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" data-lightbox="' + esc(p.imageUrl) + '">' : '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>') +
-        '</div>' +
+        '<div class="img-preview-side" id="editImgPreviewBox">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '">' : '') + '</div>' +
         '<div class="form-fields-side">' +
-          '<div class="field-row">' +
-            '<label>Link ảnh mẫu</label>' +
-            '<input type="text" id="editImgUrlInput" placeholder="https://..." value="' + esc(p.imageUrl || '') + '">' +
-          '</div>' +
-          '<div class="field-row">' +
-            '<label>Tên mẫu</label>' +
-            '<input type="text" id="editNameInput" maxlength="25" value="' + esc(p.name) + '">' +
-            '<div class="char-count" id="editNameCharCount">' + (p.name || '').length + '/25</div>' +
-          '</div>' +
+          '<div class="field-row"><label>Link ảnh mẫu</label><input type="text" id="editImgUrlInput" value="' + esc(p.imageUrl || '') + '"></div>' +
+          '<div class="field-row"><label>Tên mẫu</label><input type="text" id="editNameInput" maxlength="25" value="' + esc(p.name) + '"><div class="char-count" id="editNameCharCount">' + p.name.length + '/25</div></div>' +
         '</div>' +
       '</div>' +
-      '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="editColorsInput" value="' + esc(colors.join(', ')) + '"></div>' +
+      '<div class="field-row"><label>Các màu</label><input type="text" id="editColorsInput" value="' + esc(colors.join(', ')) + '"></div>' +
       '<div style="display:flex; gap:8px;">' +
-      '<button class="btn primary" id="saveEditBtn" data-pid="' + esc(p.id) + '">Lưu thay đổi</button>' +
+      '<button class="btn primary" id="saveEditBtn" data-pid="' + esc(p.id) + '">Lưu</button>' +
       '<button class="btn ghost" id="cancelEditBtn">Huỷ</button>' +
       '</div></div>';
   }
@@ -1528,128 +1753,92 @@
   function bindEditFormEvents(listEl) {
     var form = listEl.querySelector('.edit-product-form');
     if (!form) return;
-    
-    var editImgInput = $('editImgUrlInput');
-    function updateEditPreview() {
-      var url = editImgInput.value.trim();
-      var box = $('editImgPreviewBox');
-      if (url) {
-        box.innerHTML = '<img src="' + esc(url) + '" data-lightbox="' + esc(url) + '" onerror="this.outerHTML=\'<div class=\\\'pv-error\\\'>❌ Link ảnh lỗi</div>\'">';
-        bindLightboxes(box);
-      } else {
-        box.innerHTML = '<div class="pv-placeholder">🖼️ Xem trước ảnh bên trái</div>';
-      }
-    }
-    editImgInput.addEventListener('input', updateEditPreview);
-    editImgInput.addEventListener('change', updateEditPreview);
-
-    var editNameInputEl = $('editNameInput');
-    function updateEditNameCharCount() {
-      var n = editNameInputEl.value.length;
-      var box = $('editNameCharCount');
-      box.textContent = n + '/25';
-      box.classList.toggle('char-count-max', n >= 25);
-    }
-    editNameInputEl.addEventListener('input', updateEditNameCharCount);
-
     $('cancelEditBtn').addEventListener('click', function () { editingProductId = null; renderManage(); });
     $('saveEditBtn').addEventListener('click', function () { saveEditProduct(form.dataset.editingPid); });
   }
 
-  function startEditProduct(pid) {
-    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
-    editingProductId = pid;
-    renderManage();
-  }
+  function startEditProduct(pid) { editingProductId = pid; renderManage(); }
 
   function saveEditProduct(pid) {
-    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
     var name = $('editNameInput').value.trim();
     var colorsRaw = $('editColorsInput').value.trim();
     var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
-    if (!colors.length) colors = DEFAULT_COLORS.slice();
-    if (!name) { toast('Nhập tên mẫu áo.'); return; }
-    if (name.length > 25) { toast('Tên mẫu áo tối đa 25 ký tự (kể cả khoảng trắng), đang dài ' + name.length + ' ký tự.'); return; }
     var imageUrl = $('editImgUrlInput').value.trim();
-    if (!imageUrl) { toast('Thêm link ảnh mẫu áo trước đã.'); return; }
-    var btn = $('saveEditBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+    if (!name || name.length > 25 || !imageUrl) { toast('Kiểm tra tên (<=25 ký tự) và ảnh.'); return; }
     db.ref('products/' + pid).update({ name: name, imageUrl: imageUrl, colors: colors })
-      .then(function () {
-        editingProductId = null;
-        toast('Đã cập nhật mẫu áo.'); renderManage();
-      })
-      .catch(function (e) { btn.disabled = false; btn.textContent = 'Lưu thay đổi'; toast('Lỗi: ' + e.message); });
+      .then(function () { editingProductId = null; toast('Đã cập nhật mẫu.'); renderManage(); });
   }
 
   function toggleProductHidden(pid, currentlyHidden) {
-    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
-    db.ref('products/' + pid + '/hidden').set(!currentlyHidden)
-      .then(function () { toast(!currentlyHidden ? 'Đã ẩn mẫu áo khỏi tab Đặt hàng.' : 'Đã hiện lại mẫu áo.'); })
-      .catch(function () { toast('Không cập nhật được.'); });
+    db.ref('products/' + pid + '/hidden').set(!currentlyHidden);
   }
 
   function addProduct() {
-    if (!canManageProducts()) return;
     var name = $('nameInput').value.trim();
     var colorsRaw = $('colorsInput').value.trim();
     var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
-    if (!colors.length) colors = DEFAULT_COLORS.slice();
-    if (!name) { toast('Nhập tên mẫu áo.'); return; }
-    if (name.length > 25) { toast('Tên mẫu áo tối đa 25 ký tự (kể cả khoảng trắng), đang dài ' + name.length + ' ký tự.'); return; }
     var imageUrl = $('imgUrlInput').value.trim();
-    if (!imageUrl) { toast('Thêm link ảnh mẫu áo trước đã.'); return; }
-    var btn = $('addProductBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+    if (!name || name.length > 25 || !imageUrl) { toast('Kiểm tra tên (<=25 ký tự) và ảnh.'); return; }
     db.ref('products').push({ name: name, imageUrl: imageUrl, colors: colors, createdAt: Date.now(), createdBy: currentUser.id, createdByName: currentUser.name })
-      .then(function () { toast('Đã thêm mẫu áo.'); renderManage(); })
-      .catch(function (e) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; toast('Lỗi: ' + e.message); });
+      .then(function () { toast('Đã thêm mẫu.'); renderManage(); });
   }
 
   function deleteProduct(pid) {
-    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền xoá mẫu này.'); return; }
-    if (!confirm('Xoá mẫu áo này? Số liệu đặt hàng cũ cho mẫu này vẫn còn trong lịch sử nhưng sẽ không hiện được ảnh/tên nữa.')) return;
-    db.ref('products/' + pid).remove().then(function () { toast('Đã xoá mẫu áo.'); }).catch(function () { toast('Không xoá được mẫu áo.'); });
+    if (!confirm('Xoá mẫu này?')) return;
+    db.ref('products/' + pid).remove().then(function () { toast('Đã xoá mẫu.'); });
   }
 
   function setupWarningHtml() {
-    return '<div class="setup-warning">⚠️ Chưa cấu hình Firebase. Mở file <code>index.html</code>, tìm dòng <code>FIREBASE_CONFIG</code> gần cuối file và dán config từ Firebase Console vào.</div>';
+    return '<div class="setup-warning">⚠️ Chưa cấu hình Firebase.</div>';
   }
 
   if (configOk) {
     db.ref('users').on('value', function (snap) {
       users = snap.val() || {};
       usersLoaded = true;
-      if (!currentUser) {
-        var savedUid = localStorage.getItem('mm_uid');
-        if (savedUid && users[savedUid]) {
-          currentUser = { id: savedUid, name: users[savedUid].name, role: users[savedUid].role };
+      if (!isGuestMode) {
+        if (!currentUser) {
+          var savedUid = localStorage.getItem('mm_uid');
+          if (savedUid && users[savedUid]) {
+            currentUser = { id: savedUid, name: users[savedUid].name, role: users[savedUid].role };
+          }
+        } else if (users[currentUser.id]) {
+          currentUser.name = users[currentUser.id].name;
+          currentUser.role = users[currentUser.id].role;
+        } else {
+          currentUser = null;
+          localStorage.removeItem('mm_uid');
         }
-      } else if (users[currentUser.id]) {
-        currentUser.name = users[currentUser.id].name;
-        currentUser.role = users[currentUser.id].role;
-      } else {
-        currentUser = null;
-        localStorage.removeItem('mm_uid');
       }
       renderShell();
     });
+
     db.ref('products').on('value', function (snap) {
       products = normalizeProductsData(snap.val() || {});
-      if (currentUser) renderCurrentTab();
+      if (isGuestMode) renderGuestProducts();
+      else if (currentUser) renderCurrentTab();
     });
+
     db.ref('orders').on('value', function (snap) {
       orders = normalizeOrdersData(snap.val() || {});
-      if (currentUser) renderCurrentTab();
+      if (!isGuestMode && currentUser) renderCurrentTab();
     });
+
+    db.ref('customerLeads').on('value', function (snap) {
+      customerLeads = snap.val() || {};
+      if (!isGuestMode && currentUser) renderCurrentTab();
+    });
+
     db.ref('printStatus').on('value', function (snap) {
       printStatus = snap.val() || {};
-      if (currentUser) renderCurrentTab();
+      if (!isGuestMode && currentUser) renderCurrentTab();
     });
+
     db.ref('printArchive').on('value', function (snap) {
       printArchive = snap.val() || {};
     });
   } else {
     $('authScreen').classList.remove('hidden');
-    $('authSub').innerHTML = '';
     $('authScreen').querySelector('.auth-card').innerHTML = setupWarningHtml();
   }
 })();
