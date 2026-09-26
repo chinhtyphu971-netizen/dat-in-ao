@@ -80,6 +80,13 @@
   .sidebar-who .role-chip.manager { background: var(--denim); color: #fff; }
   .sidebar-who button { align-self: flex-start; border: none; background: none; color: var(--ink-soft); font-size: 12.5px; font-weight: 600; padding: 4px 0; cursor: pointer; text-decoration: underline; }
 
+  .sound-sidebar-toggle {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+    color: var(--ink-soft); background: var(--paper); border: 1px solid var(--line);
+    padding: 4px 8px; border-radius: var(--radius-pill); cursor: pointer; text-decoration: none !important;
+  }
+  .sound-sidebar-toggle.active { color: var(--ok); border-color: var(--ok); background: #eaf5eb; }
+
   .main-content { flex: 1; min-width: 0; max-width: 780px; padding: 24px 20px 64px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); }
   .main-subtitle { margin-bottom: 22px; }
   h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.01em; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
@@ -389,7 +396,7 @@
   .toggle-status-label.printed-active { background: #eef4fb; border-color: var(--denim); color: var(--denim); }
   .toggle-status-label.printed-active input { accent-color: var(--denim); }
 
-  /* Nút kích hoạt chuông */
+  /* Banner kích hoạt chuông */
   .sound-enable-banner {
     background: #fff8e6; border: 1px solid #ffd57a; border-radius: 8px;
     padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center;
@@ -451,6 +458,7 @@
     <div class="sidebar-who">
       <span class="who-name" id="whoName"></span>
       <span class="role-chip" id="whoRole"></span>
+      <button class="sound-sidebar-toggle" id="soundToggleSidebarBtn">🔔 Chuông: Đang bật</button>
       <button id="logoutBtn">Đổi tài khoản</button>
     </div>
   </aside>
@@ -477,7 +485,7 @@
 
     <!-- TAB: KHÁCH GỬI YÊU CẦU - SALE TÍCH ĐÃ GHI VÀO HOÁ ĐƠN & ĐÃ ĐẶT IN -->
     <section class="view" id="view-leads">
-      <div id="soundBanner" class="sound-enable-banner">
+      <div id="soundBanner" class="sound-enable-banner hidden">
         <span>🔔 Bật chuông để nhận âm thanh khi có khách gửi đơn mới</span>
         <button class="btn ghost small" id="enableSoundBtn">Bật chuông ngay</button>
       </div>
@@ -567,7 +575,9 @@
   var guestCart = {};
   var isFirstLeadLoad = true;
 
-  // Hệ thống chuông báo âm thanh bằng Web Audio API
+  // Ghi nhớ trạng thái chuông báo vào localStorage (mặc định bật)
+  var isSoundEnabled = localStorage.getItem('mm_sound_enabled') !== 'false';
+
   var audioCtx = null;
   function getAudioContext() {
     if (!audioCtx) {
@@ -579,11 +589,24 @@
     return audioCtx;
   }
 
+  // Tự động mở khoá AudioContext khi người dùng chạm vào web lần đầu
+  function autoUnlockAudio() {
+    if (isSoundEnabled) {
+      getAudioContext();
+    }
+    window.removeEventListener('click', autoUnlockAudio);
+    window.removeEventListener('touchstart', autoUnlockAudio);
+  }
+  window.addEventListener('click', autoUnlockAudio);
+  window.addEventListener('touchstart', autoUnlockAudio);
+
   function playOrderBell() {
+    if (!isSoundEnabled) return;
     try {
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
+      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -595,6 +618,7 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
+      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -607,6 +631,18 @@
       osc2.stop(now + 0.8);
     } catch (e) {
       console.log('Audio error:', e);
+    }
+  }
+
+  function updateSoundUI() {
+    var btn = $('soundToggleSidebarBtn');
+    if (btn) {
+      btn.textContent = isSoundEnabled ? '🔔 Chuông: Bật' : '🔕 Chuông: Tắt';
+      btn.classList.toggle('active', isSoundEnabled);
+    }
+    var banner = $('soundBanner');
+    if (banner) {
+      banner.classList.toggle('hidden', isSoundEnabled);
     }
   }
 
@@ -945,16 +981,35 @@
     });
   }
 
+  // Bật/tắt và ghi nhớ chuông
   var enableSoundBtn = $('enableSoundBtn');
   if (enableSoundBtn) {
     enableSoundBtn.addEventListener('click', function () {
+      isSoundEnabled = true;
+      localStorage.setItem('mm_sound_enabled', 'true');
       getAudioContext();
       playOrderBell();
       if ("Notification" in window && Notification.permission !== "granted") {
         Notification.requestPermission();
       }
-      $('soundBanner').style.display = 'none';
-      toast('🔔 Đã kích hoạt chuông báo đơn mới thành công!');
+      updateSoundUI();
+      toast('🔔 Đã bật và ghi nhớ chuông báo!');
+    });
+  }
+
+  var soundToggleSidebarBtn = $('soundToggleSidebarBtn');
+  if (soundToggleSidebarBtn) {
+    soundToggleSidebarBtn.addEventListener('click', function () {
+      isSoundEnabled = !isSoundEnabled;
+      localStorage.setItem('mm_sound_enabled', isSoundEnabled ? 'true' : 'false');
+      if (isSoundEnabled) {
+        getAudioContext();
+        playOrderBell();
+        toast('🔔 Đã bật chuông báo.');
+      } else {
+        toast('🔕 Đã tắt chuông báo.');
+      }
+      updateSoundUI();
     });
   }
 
@@ -1025,6 +1080,8 @@
     $('tabAggBtn').classList.toggle('hidden', !isManager());
     $('tabManageBtn').classList.toggle('hidden', !canManageProducts());
     $('tabAccountsBtn').classList.toggle('hidden', !isManager());
+
+    updateSoundUI();
 
     var baseLink = window.location.origin + window.location.pathname + '?sale=' + currentUser.id;
     $('saleLinkUrl').textContent = baseLink;
@@ -1937,6 +1994,7 @@
 
     db.ref('products').on('value', function (snap) {
       products = normalizeProductsData(snap.val() || {});
+
       if (isGuestMode) renderGuestProducts();
       else if (currentUser) renderCurrentTab();
     });
