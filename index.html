@@ -100,7 +100,7 @@
     padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   }
   .sale-link-box .text { font-size: 13px; color: var(--denim); }
-  .sale-link-box .text b { color: #1c334d; }
+  .sale-link-box .text b { color: #1c334d; word-break: break-all; }
 
   .nav-badge {
     background: #e0342f; color: #fff; font-size: 10.5px; font-weight: 700;
@@ -405,12 +405,12 @@
       <button class="btn ghost small" id="openMyArchiveBtn" style="margin-top:14px;">📜 Lịch sử đơn may của tôi</button>
     </section>
 
-    <!-- TAB MỚI: KHÁCH GỬI YÊU CẦU CHỜ CỌC -->
+    <!-- TAB: KHÁCH GỬI YÊU CẦU ĐỂ SALE XEM & TỰ LÊN TAY -->
     <section class="view" id="view-leads">
       <div class="manage-form">
-        <h2>Yêu cầu đặt hàng từ khách (Chờ cọc Zalo)</h2>
+        <h2>Yêu cầu đặt hàng từ khách (Gửi qua Link)</h2>
         <p class="img-hint" style="margin-bottom:14px;">
-          Khách đặt qua link của bạn sẽ hiện ở đây. Sau khi nhắn tin Zalo, nhận cọc xong, bấm <b>"✅ Đã cọc - Chuyển sang đơn may"</b> để chính thức đưa vào số lượng may gửi xưởng.
+          Khách đặt qua link của bạn sẽ hiện ở đây để bạn lấy thông tin nhắn tin Zalo và nhận cọc. Sau khi chốt cọc xong, <b>bạn tự vào tab "Đơn may chính thức" để lên số lượng bằng tay</b>, rồi bấm "Đã lên đơn xong" để dọn gọn danh sách.
         </p>
         <div id="leadsList"></div>
       </div>
@@ -487,11 +487,10 @@
   var selectedAggDate = null;
   var lastAggSnapshot = null;
 
-  // Trạng thái dành cho khách hàng mở link sale
   var urlParams = new URLSearchParams(window.location.search);
   var saleRefId = urlParams.get('sale') || urlParams.get('ref');
   var isGuestMode = !!saleRefId;
-  var guestCart = {}; // { pid: { color: qty } }
+  var guestCart = {};
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -712,7 +711,7 @@
         items: items,
         totalQty: grand,
         createdAt: Date.now(),
-        status: 'pending' // pending: chờ cọc, approved: đã cọc chuyển đơn may
+        status: 'pending'
       };
 
       db.ref('customerLeads').push(leadData).then(function () {
@@ -720,7 +719,7 @@
         guestCart = {};
         updateGuestCartBar();
         renderGuestProducts();
-        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận cọc.');
+        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận.');
       }).catch(function (e) {
         btn.disabled = false; btn.textContent = 'Gửi yêu cầu đặt hàng';
         toast('Lỗi: ' + e.message);
@@ -728,13 +727,12 @@
     });
   });
 
-  /* ------------------- PHẦN QUẢN LÝ / SALE XỬ LÝ ĐƠN CHỜ CỌC ------------------- */
+  /* ------------------- PHẦN SALE XEM YÊU CẦU ĐỂ TỰ LÊN ĐƠN BẰNG TAY ------------------- */
   function renderLeads() {
     var container = $('leadsList');
     var list = Object.keys(customerLeads).map(function (k) { return Object.assign({ id: k }, customerLeads[k]); })
       .filter(function (lead) {
         if (lead.status !== 'pending') return false;
-        // Quản lý xem được hết, Sale chỉ xem đơn khách gửi cho mình
         if (isManager()) return true;
         return lead.saleId === currentUser.id;
       })
@@ -749,7 +747,7 @@
     }
 
     if (!list.length) {
-      container.innerHTML = '<div class="empty">Hiện không có yêu cầu nào đang chờ cọc.</div>';
+      container.innerHTML = '<div class="empty">Hiện không có yêu cầu nào từ khách.</div>';
       return;
     }
 
@@ -775,7 +773,7 @@
         '<div class="lead-items">' + itemsHtml + '</div>' +
         '<div class="lead-actions">' +
           '<button class="btn danger small" data-action="delete-lead">Huỷ yêu cầu</button>' +
-          '<button class="btn primary small" data-action="approve-lead">✅ Đã cọc - Chuyển sang đơn may</button>' +
+          '<button class="btn ghost small" data-action="done-lead">✓ Đã lên đơn xong (Xoá lưu)</button>' +
         '</div>' +
         '</div>';
     }).join('');
@@ -785,55 +783,21 @@
     container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lid = btn.closest('.lead-card').dataset.lid;
-        if (!confirm('Huỷ yêu cầu của khách này?')) return;
+        if (!confirm('Huỷ và xoá yêu cầu của khách này?')) return;
         db.ref('customerLeads/' + lid).remove().then(function () { toast('Đã xoá yêu cầu.'); });
       });
     });
 
-    container.querySelectorAll('[data-action="approve-lead"]').forEach(function (btn) {
+    container.querySelectorAll('[data-action="done-lead"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lid = btn.closest('.lead-card').dataset.lid;
-        approveLeadOrder(lid);
+        if (!confirm('Xác nhận bạn đã tự lên đơn may cho khách này rồi và muốn dọn danh sách?')) return;
+        db.ref('customerLeads/' + lid).remove().then(function () { toast('Đã hoàn tất dọn danh sách.'); });
       });
     });
   }
 
-  function approveLeadOrder(leadId) {
-    var lead = customerLeads[leadId];
-    if (!lead) return;
-    if (!confirm('Khách "' + lead.customerName + '" đã cọc tiền? Đơn sẽ được cộng vào đơn may chính thức hôm nay của bạn để gửi xưởng.')) return;
-
-    var today = todayStr();
-    var updates = {};
-    // Cập nhật trạng thái lead
-    updates['customerLeads/' + leadId + '/status'] = 'approved';
-    updates['customerLeads/' + leadId + '/approvedAt'] = Date.now();
-    updates['customerLeads/' + leadId + '/approvedBy'] = currentUser.name;
-
-    // Cộng dồn vào bảng đơn hàng chính thức
-    (lead.items || []).forEach(function (it) {
-      var pid = it.pid;
-      var curQuantities = (orders[today] && orders[today][pid] && orders[today][pid][currentUser.id] && orders[today][pid][currentUser.id].quantities) || {};
-      var newQuantities = Object.assign({}, curQuantities);
-      Object.keys(it.quantities || {}).forEach(function (c) {
-        newQuantities[c] = (newQuantities[c] || 0) + it.quantities[c];
-      });
-      updates['orders/' + today + '/' + pid + '/' + currentUser.id] = {
-        employeeName: currentUser.name,
-        quantities: newQuantities,
-        updatedAt: Date.now()
-      };
-    });
-
-    db.ref().update(updates).then(function () {
-      toast('Đã chuyển đơn khách vào đơn may hôm nay!');
-      switchTab('order');
-    }).catch(function (e) {
-      toast('Lỗi khi chuyển đơn: ' + e.message);
-    });
-  }
-
-  /* ------------------- PHẦN QUẢN LÝ / NHÂN VIÊN (APP SHELL) ------------------- */
+  /* ------------------- PHẦN NỘI BỘ (APP SHELL) ------------------- */
   function showAuthError(msg) { var e = $('authError'); e.textContent = msg; e.classList.add('show'); }
   function clearAuthError() { $('authError').classList.remove('show'); }
 
@@ -901,12 +865,12 @@
     $('tabManageBtn').classList.toggle('hidden', !canManageProducts());
     $('tabAccountsBtn').classList.toggle('hidden', !isManager());
 
-    // Cập nhật link sale
+    // Cập nhật link sale cá nhân
     var baseLink = window.location.origin + window.location.pathname + '?sale=' + currentUser.id;
     $('saleLinkUrl').textContent = baseLink;
     $('copySaleLinkBtn').onclick = function () {
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(baseLink).then(function () { toast('Đã sao chép link cá nhân gửi khách!'); });
+        navigator.clipboard.writeText(baseLink).then(function () { toast('Đã sao chép link gửi khách!'); });
       } else {
         prompt('Copy link này gửi khách:', baseLink);
       }
@@ -979,7 +943,6 @@
       ['staff', 'product_manager', 'manager'].map(function (r) { return '<option value="' + r + '">' + roleLabel(r) + '</option>'; }).join('') +
       '</select></div>' +
       '<button class="btn primary" id="createAcctBtn">Tạo tài khoản</button>' +
-      '<p class="img-hint" style="margin-top:10px;">Dùng khi quản lý tự cấp sẵn tài khoản cho nhân viên.</p>' +
       '</div>' +
       '<div class="manage-form"><h2>Tài khoản (' + list.length + ')</h2><div id="acctList"></div></div>';
     restoreFormState(formSnap);
@@ -1102,7 +1065,7 @@
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     $('orderDayNote').innerHTML = selectedOrderDate === 'all'
-      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Bấm vào mẫu để nhập/chỉnh số lượng cho <b>hôm nay</b>.'
+      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Bấm vào mẫu để nhập số lượng cho <b>hôm nay</b>.'
       : (selectedOrderDate === today
         ? 'Đơn cho ngày <b>' + fmtDate(today) + '</b>.'
         : 'Đang xem đơn ngày <b>' + fmtDate(selectedOrderDate) + '</b>.');
@@ -1184,7 +1147,6 @@
     var p = modalProduct;
     var colors = colorsOf(p);
     var d = modalEntryDate;
-    var today = todayStr();
     var printed = !!(printStatus[d] && printStatus[d][p.id] && printStatus[d][p.id].printed);
     var mine = (orders[d] && orders[d][p.id] && orders[d][p.id][currentUser.id] && orders[d][p.id][currentUser.id].quantities) || {};
     var html = '<div class="modal-sheet">' +
