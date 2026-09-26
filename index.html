@@ -88,7 +88,6 @@
   .sound-sidebar-toggle.active { color: var(--ok); border-color: var(--ok); background: #eaf5eb; }
 
   .main-content { flex: 1; min-width: 0; max-width: 780px; padding: 24px 20px 64px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); }
-  .main-subtitle { margin-bottom: 22px; }
   h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.01em; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
   h1 .tag-dot { width: 12px; height: 12px; border-radius: 3px; background: var(--thread); display: inline-block; transform: rotate(45deg); flex-shrink: 0; }
   .subtitle { color: var(--ink-soft); font-size: 14.5px; margin: 0; }
@@ -370,10 +369,6 @@
   }
 
   /* Card yêu cầu đơn khách cho Sale */
-  .lead-filter-bar { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
-  .lead-filter-btn { border: 1px solid var(--line); background: var(--paper); border-radius: var(--radius-pill); padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
-  .lead-filter-btn.active { background: var(--denim); color: #fff; border-color: var(--denim); }
-
   .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
   .lead-card.is-billed { border-color: var(--ok); background: #f7faf7; }
   .lead-card.is-printed { border-color: var(--denim); }
@@ -469,8 +464,6 @@
   </aside>
 
   <main class="main-content">
-    <p class="subtitle main-subtitle" id="mainSubDesc">Đơn may chính thức đã cọc gửi xưởng in.</p>
-
     <!-- TAB: ĐẶT HÀNG CHÍNH THỨC -->
     <section class="view active" id="view-order">
       <!-- Hộp copy link gửi khách -->
@@ -635,7 +628,6 @@
   var guestCart = {};
   var isFirstLeadLoad = true;
 
-  // Ghi nhận lượt truy cập của khách vào link của Sale
   function recordGuestVisit(saleId) {
     if (!configOk || !saleId) return;
     var sessionKey = 'visited_sale_' + saleId;
@@ -651,7 +643,6 @@
     });
   }
 
-  // Ghi nhớ trạng thái chuông báo vào localStorage (mặc định bật)
   var isSoundEnabled = localStorage.getItem('mm_sound_enabled') !== 'false';
 
   var audioCtx = null;
@@ -681,7 +672,6 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
-      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -693,7 +683,6 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
-      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -981,7 +970,6 @@
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
 
-    // Cập nhật số badge chuông đơn chưa ghi hoá đơn
     var allMyLeads = Object.keys(customerLeads).map(function (k) { return customerLeads[k]; })
       .filter(function(l) { return isManager() || (l.saleId === currentUser.id); });
     var unbilledCount = allMyLeads.filter(function (l) { return !l.billed; }).length;
@@ -1064,7 +1052,6 @@
     });
   }
 
-  // Bắt sự kiện thanh lọc trạng thái đơn khách
   document.querySelectorAll('.lead-filter-btn').forEach(function(b) {
     b.addEventListener('click', function() {
       document.querySelectorAll('.lead-filter-btn').forEach(function(x) { x.classList.remove('active'); });
@@ -1074,7 +1061,6 @@
     });
   });
 
-  // Bật/tắt và ghi nhớ chuông
   var enableSoundBtn = $('enableSoundBtn');
   if (enableSoundBtn) {
     enableSoundBtn.addEventListener('click', function () {
@@ -1120,7 +1106,6 @@
       return;
     }
 
-    // Đếm số đơn mà từng sale nhận được từ link
     var leadsBySale = {};
     Object.keys(customerLeads).forEach(function(k) {
       var l = customerLeads[k];
@@ -1156,7 +1141,6 @@
       };
     });
 
-    // Sắp xếp theo số đơn khách gửi giảm dần
     rows.sort(function(a, b) {
       if (b.totalLeads !== a.totalLeads) return b.totalLeads - a.totalLeads;
       return b.totalVisits - a.totalVisits;
@@ -1174,7 +1158,6 @@
       '</tr>';
     }).join('');
 
-    // Bảng chi tiết toàn bộ các đơn khách đã gửi từ link
     var histBody = $('leadsHistoryBody');
     if (histBody) {
       var allLeads = Object.keys(customerLeads).map(function(k) { return customerLeads[k]; })
