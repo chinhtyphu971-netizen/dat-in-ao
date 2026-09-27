@@ -19,6 +19,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- THƯ VIỆN GHÉP VÀ XUẤT ẢNH DÁN ZALO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
   :root {
     --paper: #f2f0e9;
@@ -235,6 +239,7 @@
 
   /* KHUNG ẢNH TỔNG HỢP CHO XƯỞNG DƯỚI LỊCH SỬ IN (THEO MẪU ẢNH THỰC TẾ) */
   .workshop-summary-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 12px 14px 16px; background: #faf9f5; border-top: 1px dashed var(--line); }
+  .ws-card-wrapper { display: flex; flex-direction: column; gap: 8px; }
   .ws-card-banner {
     position: relative; border-radius: 14px; overflow: hidden; background: #fff;
     box-shadow: 0 4px 14px rgba(0,0,0,0.1); aspect-ratio: 3/4; display: flex;
@@ -259,6 +264,7 @@
     font-size: 15px; font-weight: 800; line-height: 1.3; box-shadow: 0 4px 10px rgba(0,0,0,0.25);
     max-width: 85%; word-break: break-word;
   }
+  .ws-card-actions { display: flex; gap: 6px; }
 
   .manage-form { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 18px; margin-bottom: 22px; box-shadow: var(--shadow-card); }
   .manage-form h2 { font-family: var(--font-display); font-size: 16px; margin: 0 0 14px; }
@@ -557,7 +563,7 @@
       <div id="aggProducts"></div>
     </section>
 
-    <!-- TAB: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
+    <!-- TAB MỚI: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
     <section class="view" id="view-stats">
       <div class="manage-form">
         <h2>📊 Dữ liệu thống kê khách vào Link &amp; Đã gửi đơn</h2>
@@ -703,6 +709,7 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
+      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -714,6 +721,7 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
+      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -1130,7 +1138,6 @@
     var tbody = $('trafficStatsBody');
     if (!tbody) return;
     
-    // Lấy TẤT CẢ tài khoản (gồm cả quản lý và nhân viên)
     var allUsers = userList();
     var today = todayStr();
 
@@ -2030,6 +2037,7 @@
       ? '<div class="empty">Chưa có lịch sử đã lưu.</div>'
       : entries.map(function (en) {
         var when = en.printedAt ? new Date(en.printedAt).toLocaleString('vi-VN') : '';
+        var printerName = en.printedBy ? ('Người in: <b>' + esc(en.printedBy) + '</b> · ') : '';
         var itemsHtml = (en.items || []).map(function (it) {
           var colorsText = Object.keys(it.byColor || {}).map(function (c) { return esc(c) + ': ' + it.byColor[c]; }).join(' · ');
           return '<div class="cd-row">' + (it.imageUrl ? '<img class="cd-thumb" data-lightbox="' + esc(it.imageUrl) + '" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="cd-thumb cd-thumb-empty">–</div>') +
@@ -2037,19 +2045,26 @@
         }).join('');
 
         // TẠO CÁC CARD ẢNH TỔNG HỢP CHO TỪNG MẪU ÁO THEO PHONG CÁCH ẢNH THỰC TẾ
-        var visualBannersHtml = (en.items || []).map(function (it) {
+        var visualBannersHtml = (en.items || []).map(function (it, idx) {
+          var cardId = 'wsBanner_' + en.id + '_' + idx;
           var colorParts = Object.keys(it.byColor || {}).filter(function(c) { return (it.byColor[c] || 0) > 0; })
             .map(function (c) { return it.byColor[c] + ' ' + c.toLowerCase(); }).join(' - ');
-          return '<div class="ws-card-banner">' +
-            (it.imageUrl ? '<img data-lightbox="' + esc(it.imageUrl) + '" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="ws-noimg">Không có ảnh</div>') +
-            '<div class="ws-tag-top">' + esc(colorParts || 'Không chọn màu') + '</div>' +
-            '<div class="ws-tag-bottom">' + esc(it.name) + '</div>' +
+          return '<div class="ws-card-wrapper">' +
+            '<div class="ws-card-banner" id="' + cardId + '">' +
+              (it.imageUrl ? '<img crossorigin="anonymous" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="ws-noimg">Không có ảnh</div>') +
+              '<div class="ws-tag-top">' + esc(colorParts || 'Không chọn màu') + '</div>' +
+              '<div class="ws-tag-bottom">' + esc(it.name) + '</div>' +
+            '</div>' +
+            '<div class="ws-card-actions">' +
+              '<button class="btn primary small full" onclick="copyCardAsImage(\'' + cardId + '\')">📋 Sao chép ảnh (Dán Zalo)</button>' +
+              '<button class="btn ghost small" onclick="downloadCardAsImage(\'' + cardId + '\', \'' + esc(it.name) + '\')">💾 Tải ảnh</button>' +
+            '</div>' +
           '</div>';
         }).join('');
 
         return '<div class="agg-product" data-aid="' + esc(en.id) + '">' +
           '<div class="agg-product-head"><div class="apn"><div class="name">' + esc(en.dateLabel || en.date) + ' · ' + (en.items || []).length + ' mẫu · <b>' + (en.grandTotal || 0) + '</b> áo</div>' +
-          '<div class="sub">' + when + '</div></div>' +
+          '<div class="sub">' + printerName + when + '</div></div>' +
           '<button class="btn ghost small" data-action="toggle-archive-detail">Chi tiết</button></div>' +
           '<div class="cust-detail hidden">' +
             itemsHtml +
@@ -2070,6 +2085,54 @@
         box.classList.toggle('hidden');
       });
     });
+  }
+
+  // HÀM XUẤT ẢNH HOÀN CHỈNH KÈM SỐ LƯỢNG VÀ TÊN ÁO ĐỂ DÁN VÀO ZALO
+  window.copyCardAsImage = function(elemId) {
+    var el = document.getElementById(elemId);
+    if (!el) return;
+    toast('Đang xử lý ghép ảnh...');
+    html2canvas(el, { useCORS: true, scale: 2 }).then(function(canvas) {
+      canvas.toBlob(function(blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]).then(function() {
+            toast('✅ Đã sao chép ảnh! Sang Zalo bấm Ctrl+V để gửi.');
+          }).catch(function() {
+            downloadBlob(blob, 'anh_mau_in.png');
+            toast('Đã tải ảnh về máy do trình duyệt chặn copy trực tiếp.');
+          });
+        } else {
+          downloadBlob(blob, 'anh_mau_in.png');
+          toast('Đã tải ảnh về máy để gửi.');
+        }
+      });
+    }).catch(function(err) {
+      toast('Lỗi tạo ảnh, vui lòng thử lại.');
+    });
+  };
+
+  window.downloadCardAsImage = function(elemId, name) {
+    var el = document.getElementById(elemId);
+    if (!el) return;
+    toast('Đang tạo ảnh tải về...');
+    html2canvas(el, { useCORS: true, scale: 2 }).then(function(canvas) {
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = (name || 'mau_in') + '.png';
+      a.click();
+      toast('Đã tải ảnh về máy thành công!');
+    });
+  };
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
   function renderManage() {
