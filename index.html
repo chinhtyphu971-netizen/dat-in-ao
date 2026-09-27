@@ -233,6 +233,33 @@
   .cust-detail .cd-thumb-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: 10px; background: var(--paper); cursor: default; }
   .cust-detail .cd-meta { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
 
+  /* KHUNG ẢNH TỔNG HỢP CHO XƯỞNG DƯỚI LỊCH SỬ IN (THEO MẪU ẢNH THỰC TẾ) */
+  .workshop-summary-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 12px 14px 16px; background: #faf9f5; border-top: 1px dashed var(--line); }
+  .ws-card-banner {
+    position: relative; border-radius: 14px; overflow: hidden; background: #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1); aspect-ratio: 3/4; display: flex;
+    flex-direction: column; justify-content: space-between; border: 1px solid var(--line);
+  }
+  .ws-card-banner img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;
+  }
+  .ws-card-banner .ws-noimg {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-soft); font-size: 13px; background: var(--paper); z-index: 1;
+  }
+  .ws-tag-top {
+    position: relative; z-index: 2; margin: 12px; align-self: center;
+    background: #19946e; color: #ffffff; padding: 10px 14px; border-radius: 12px;
+    font-size: 16px; font-weight: 800; text-align: center; line-height: 1.4;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25); text-transform: lowercase; max-width: 90%;
+  }
+  .ws-tag-bottom {
+    position: relative; z-index: 2; margin: 12px; align-self: flex-start;
+    background: #3a86ff; color: #ffffff; padding: 8px 14px; border-radius: 10px;
+    font-size: 15px; font-weight: 800; line-height: 1.3; box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    max-width: 85%; word-break: break-word;
+  }
+
   .manage-form { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 18px; margin-bottom: 22px; box-shadow: var(--shadow-card); }
   .manage-form h2 { font-family: var(--font-display); font-size: 16px; margin: 0 0 14px; }
   .field-row { margin-bottom: 12px; }
@@ -530,7 +557,7 @@
       <div id="aggProducts"></div>
     </section>
 
-    <!-- TAB MỚI: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
+    <!-- TAB: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
     <section class="view" id="view-stats">
       <div class="manage-form">
         <h2>📊 Dữ liệu thống kê khách vào Link &amp; Đã gửi đơn</h2>
@@ -676,7 +703,6 @@
       var ctx = getAudioContext();
       var now = ctx.currentTime;
 
-      // Hồi chuông 1
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -688,7 +714,6 @@
       osc1.start(now);
       osc1.stop(now + 0.5);
 
-      // Hồi chuông 2
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -2010,15 +2035,31 @@
           return '<div class="cd-row">' + (it.imageUrl ? '<img class="cd-thumb" data-lightbox="' + esc(it.imageUrl) + '" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="cd-thumb cd-thumb-empty">–</div>') +
             '<span class="cd-name">' + esc(it.name) + '</span><span class="cd-meta">' + colorsText + ' · <b>' + it.totalQty + '</b></span></div>';
         }).join('');
+
+        // TẠO CÁC CARD ẢNH TỔNG HỢP CHO TỪNG MẪU ÁO THEO PHONG CÁCH ẢNH THỰC TẾ
+        var visualBannersHtml = (en.items || []).map(function (it) {
+          var colorParts = Object.keys(it.byColor || {}).filter(function(c) { return (it.byColor[c] || 0) > 0; })
+            .map(function (c) { return it.byColor[c] + ' ' + c.toLowerCase(); }).join(' - ');
+          return '<div class="ws-card-banner">' +
+            (it.imageUrl ? '<img data-lightbox="' + esc(it.imageUrl) + '" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="ws-noimg">Không có ảnh</div>') +
+            '<div class="ws-tag-top">' + esc(colorParts || 'Không chọn màu') + '</div>' +
+            '<div class="ws-tag-bottom">' + esc(it.name) + '</div>' +
+          '</div>';
+        }).join('');
+
         return '<div class="agg-product" data-aid="' + esc(en.id) + '">' +
           '<div class="agg-product-head"><div class="apn"><div class="name">' + esc(en.dateLabel || en.date) + ' · ' + (en.items || []).length + ' mẫu · <b>' + (en.grandTotal || 0) + '</b> áo</div>' +
           '<div class="sub">' + when + '</div></div>' +
           '<button class="btn ghost small" data-action="toggle-archive-detail">Chi tiết</button></div>' +
-          '<div class="cust-detail hidden">' + itemsHtml + '</div>' +
+          '<div class="cust-detail hidden">' +
+            itemsHtml +
+            '<div style="font-weight:700;font-size:14px;margin:14px 0 8px;color:var(--denim);">🖼️ Hình ảnh tổng hợp từng mẫu gửi xưởng:</div>' +
+            '<div class="workshop-summary-cards">' + visualBannersHtml + '</div>' +
+          '</div>' +
           '</div>';
       }).join('');
 
-    $('archiveModal').innerHTML = '<div class="modal-sheet">' +
+    $('archiveModal').innerHTML = '<div class="modal-sheet" style="max-width:680px;">' +
       '<div class="modal-head"><h2>Lịch sử các đợt đã in</h2><button class="ms-close" id="archiveCloseBtn">✕</button></div>' +
       bodyHtml + '</div>';
     $('archiveCloseBtn').addEventListener('click', closeArchiveModal);
