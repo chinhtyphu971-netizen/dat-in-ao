@@ -302,8 +302,14 @@
   .manage-list-item .mli-owner { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
   .manage-list-item .locked-note { font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
   .manage-list-item.is-hidden { opacity: 0.55; }
-  .manage-list-item .mli-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+  .manage-list-item .mli-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; align-items: center; }
   .hidden-tag { font-size: 10px; font-weight: 700; color: var(--ink-soft); background: var(--paper); border: 1px solid var(--line); padding: 2px 7px; border-radius: var(--radius-pill); vertical-align: middle; }
+  .pending-tag { font-size: 10px; font-weight: 700; color: #855302; background: var(--thread-soft); border: 1px solid var(--thread); padding: 2px 7px; border-radius: var(--radius-pill); vertical-align: middle; }
+  .pending-review-panel { border: 2px solid var(--thread); background: #fffaf0; }
+  .pending-review-panel h2 { color: #855302; }
+  .pending-review-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px dashed var(--thread); }
+  .pending-review-item:last-child { border-bottom: none; }
+  .pending-review-item img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; cursor: zoom-in; }
 
   .acct-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 13.5px; flex-wrap: wrap; }
   .acct-row:last-child { border-bottom: none; }
@@ -840,7 +846,8 @@
   }
 
   function renderGuestProducts() {
-    var plist = productList().filter(function (p) { return !p.hidden; });
+    // Chỉ hiển thị mẫu không bị ẩn và không phải mẫu đang chờ duyệt
+    var plist = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
     var grid = $('guestGrid');
     if (!plist.length) { grid.innerHTML = '<div class="empty">Chưa có mẫu nào trên hệ thống.</div>'; return; }
 
@@ -1491,7 +1498,8 @@
   function renderOrderList() {
     if (!configOk) { $('shopGrid').innerHTML = setupWarningHtml(); return; }
     renderOrderDateControls();
-    var plist = productList().filter(function (p) { return !p.hidden; });
+    // Ẩn các mẫu bị ẩn và các mẫu đang chờ duyệt
+    var plist = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     $('orderDayNote').innerHTML = selectedOrderDate === 'all'
@@ -2056,8 +2064,8 @@
               '<div class="ws-tag-bottom">' + esc(it.name) + '</div>' +
             '</div>' +
             '<div class="ws-card-actions">' +
-              '<button class="btn primary small full" onclick="copyCardAsImage(\'' + cardId + '\')">📋 Sao chép ảnh (Dán Zalo)</button>' +
-              '<button class="btn ghost small" onclick="downloadCardAsImage(\'' + cardId + '\', \'' + esc(it.name) + '\')">💾 Tải ảnh</button>' +
+              '<button class="btn primary small full" data-action="copy-card-img" data-card-id="' + cardId + '">📋 Sao chép ảnh (Dán Zalo)</button>' +
+              '<button class="btn ghost small" data-action="download-card-img" data-card-id="' + cardId + '" data-card-name="' + esc(it.name) + '">💾 Tải ảnh</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -2084,6 +2092,12 @@
         var box = btn.closest('.agg-product').querySelector('.cust-detail');
         box.classList.toggle('hidden');
       });
+    });
+    $('archiveModal').querySelectorAll('[data-action="copy-card-img"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { copyCardAsImage(btn.dataset.cardId); });
+    });
+    $('archiveModal').querySelectorAll('[data-action="download-card-img"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { downloadCardAsImage(btn.dataset.cardId, btn.dataset.cardName); });
     });
   }
 
@@ -2123,6 +2137,8 @@
       a.download = (name || 'mau_in') + '.png';
       a.click();
       toast('Đã tải ảnh về máy thành công!');
+    }).catch(function (err) {
+      toast('Lỗi tạo ảnh, vui lòng thử lại. (Có thể do ảnh mẫu không hỗ trợ tải từ nguồn này)');
     });
   };
 
@@ -2141,6 +2157,20 @@
     if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
     var formSnap = snapshotFormState();
     var plist = productList().slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var pendingList = isManager() ? plist.filter(function (p) { return p.status === 'pending_approval'; }) : [];
+    var pendingPanelHtml = '';
+    if (pendingList.length) {
+      pendingPanelHtml = '<div class="manage-form pending-review-panel"><h2>⏳ Mẫu chờ duyệt (' + pendingList.length + ')</h2>' +
+        '<p class="img-hint" style="margin:-4px 0 12px;">Xem kỹ ảnh và thông tin trước khi bấm Duyệt — mẫu chỉ hiển thị cho khách/nhân viên khác sau khi được duyệt.</p>' +
+        pendingList.map(function (p) {
+          var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
+          return '<div class="pending-review-item">' +
+            (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:52px;height:52px;">–</div>') +
+            '<div class="mli-info"><div class="mli-name">' + esc(p.name) + '</div><div class="mli-owner">Thêm bởi: ' + esc(p.createdByName || '') + ' · Lúc ' + esc(createdText) + '</div></div>' +
+            '<button class="btn primary small" data-action="review-product" data-pid="' + esc(p.id) + '">🔍 Xem & Duyệt</button>' +
+            '</div>';
+        }).join('') + '</div>';
+    }
     el.innerHTML =
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
@@ -2152,7 +2182,9 @@
       '</div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
       '<button class="btn primary" id="addProductBtn">Thêm mẫu</button>' +
+      (!isManager() ? '<p class="img-hint" style="margin-top:10px;color:var(--stitch);">💡 Lưu ý: Mẫu do bạn thêm sẽ cần Quản lý duyệt trước khi hiển thị cho khách và nhân viên khác đặt.</p>' : '') +
       '</div>' +
+      pendingPanelHtml +
       '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2><div id="productListManage"></div></div>';
 
     var imgInput = $('imgUrlInput');
@@ -2175,18 +2207,43 @@
       if (p.id === editingProductId) return renderEditProductForm(p);
       var colors = colorsOf(p);
       var hidden = !!p.hidden;
+      var isPending = p.status === 'pending_approval';
       var editable = canEditProduct(p);
-      var actions = editable
-        ? '<button class="btn ghost small" data-action="edit" data-pid="' + esc(p.id) + '">Sửa</button>' +
+      var actions = '';
+
+      if (isManager() && isPending) {
+        actions += '<button class="btn primary small" data-action="review-product" data-pid="' + esc(p.id) + '">🔍 Xem & Duyệt</button>';
+      }
+
+      if (editable) {
+        actions += '<button class="btn ghost small" data-action="edit" data-pid="' + esc(p.id) + '">Sửa</button>' +
           '<button class="btn ghost small" data-action="toggle-hide" data-pid="' + esc(p.id) + '">' + (hidden ? 'Hiện' : 'Ẩn') + '</button>' +
-          '<button class="btn danger small" data-action="delete" data-pid="' + esc(p.id) + '">Xoá</button>'
-        : '<span class="locked-note">🔒 Không có quyền sửa</span>';
-      return '<div class="manage-list-item' + (hidden ? ' is-hidden' : '') + '">' +
+          '<button class="btn danger small" data-action="delete" data-pid="' + esc(p.id) + '">Xoá</button>';
+      } else if (!actions) {
+        actions = '<span class="locked-note">🔒 Không có quyền sửa</span>';
+      }
+
+      var tagStatus = '';
+      if (isPending) {
+        tagStatus = ' <span class="pending-tag">⏳ Chờ quản lý duyệt</span>';
+      } else if (hidden) {
+        tagStatus = ' <span class="hidden-tag">Đang ẩn</span>';
+      }
+
+      var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
+      var ownerNote = (p.createdByName || createdText)
+        ? '<div class="mli-owner">' + (p.createdByName ? 'Thêm bởi: ' + esc(p.createdByName) : '') + (p.createdByName && createdText ? ' · ' : '') + (createdText ? 'Lúc ' + esc(createdText) : '') + '</div>'
+        : '';
+
+      return '<div class="manage-list-item' + (hidden || isPending ? ' is-hidden' : '') + '">' +
         (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;">–</div>') +
-        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + (hidden ? ' <span class="hidden-tag">Đang ẩn</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div></div>' +
+        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + ownerNote + '</div>' +
         '<div class="mli-actions">' + actions + '</div></div>';
     }).join('');
 
+    listEl.querySelectorAll('[data-action="review-product"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openProductReviewModal(btn.dataset.pid); });
+    });
     listEl.querySelectorAll('[data-action="delete"]').forEach(function (btn) { btn.addEventListener('click', function () { deleteProduct(btn.dataset.pid); }); });
     listEl.querySelectorAll('[data-action="edit"]').forEach(function (btn) { btn.addEventListener('click', function () { startEditProduct(btn.dataset.pid); }); });
     listEl.querySelectorAll('[data-action="toggle-hide"]').forEach(function (btn) {
@@ -2194,7 +2251,59 @@
     });
     bindEditFormEvents(listEl);
     bindLightboxes(listEl);
+
+    var pendingPanelEl = el.querySelector('.pending-review-panel');
+    if (pendingPanelEl) {
+      pendingPanelEl.querySelectorAll('[data-action="review-product"]').forEach(function (btn) {
+        btn.addEventListener('click', function () { openProductReviewModal(btn.dataset.pid); });
+      });
+      bindLightboxes(pendingPanelEl);
+    }
     restoreFormState(formSnap);
+  }
+
+  function openProductReviewModal(pid) {
+    var p = products[pid];
+    if (!p) return;
+    var colors = colorsOf(p);
+    var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
+    var html = '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>Duyệt mẫu áo</h2><button class="ms-close" id="msReviewCloseBtn">✕</button></div>' +
+      (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
+      '<div class="field-row"><label>Tên mẫu</label><div style="font-weight:700;font-size:15px;">' + esc(p.name) + '</div></div>' +
+      '<div class="field-row"><label>Các màu</label><div>' + esc(colors.join(', ')) + '</div></div>' +
+      '<div class="field-row"><label>Người thêm</label><div>' + esc(p.createdByName || '') + ' · Lúc ' + esc(createdText) + '</div></div>' +
+      '<div style="display:flex; gap:8px; margin-top:16px;">' +
+      '<button class="btn primary full" id="msApproveBtn" data-pid="' + esc(p.id) + '">✅ Duyệt hiển thị</button>' +
+      '</div>' +
+      '<button class="btn danger full" id="msRejectBtn" data-pid="' + esc(p.id) + '" style="margin-top:8px;">❌ Xoá mẫu này</button>' +
+      '</div>';
+    $('productModal').innerHTML = html;
+    $('productModal').classList.remove('hidden');
+    bindLightboxes($('productModal'));
+    $('msReviewCloseBtn').addEventListener('click', function () { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; });
+    $('msApproveBtn').addEventListener('click', function () {
+      approveProduct(pid);
+      $('productModal').classList.add('hidden'); $('productModal').innerHTML = '';
+    });
+    $('msRejectBtn').addEventListener('click', function () {
+      $('productModal').classList.add('hidden'); $('productModal').innerHTML = '';
+      deleteProduct(pid);
+    });
+  }
+
+  function approveProduct(pid) {
+    if (!isManager()) return;
+    db.ref('products/' + pid).update({
+      status: 'approved',
+      approvedAt: Date.now(),
+      approvedBy: currentUser.name
+    }).then(function() {
+      toast('✅ Đã duyệt mẫu áo hiển thị!');
+      renderManage();
+    }).catch(function(err) {
+      toast('Lỗi duyệt mẫu: ' + err.message);
+    });
   }
 
   function renderEditProductForm(p) {
@@ -2224,32 +2333,64 @@
   function startEditProduct(pid) { editingProductId = pid; renderManage(); }
 
   function saveEditProduct(pid) {
+    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
     var name = $('editNameInput').value.trim();
     var colorsRaw = $('editColorsInput').value.trim();
     var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
     var imageUrl = $('editImgUrlInput').value.trim();
     if (!name || name.length > 25 || !imageUrl) { toast('Kiểm tra tên (<=25 ký tự) và ảnh.'); return; }
+    var btn = $('saveEditBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu…'; }
     db.ref('products/' + pid).update({ name: name, imageUrl: imageUrl, colors: colors })
-      .then(function () { editingProductId = null; toast('Đã cập nhật mẫu.'); renderManage(); });
+      .then(function () { editingProductId = null; toast('Đã cập nhật mẫu.'); renderManage(); })
+      .catch(function (e) { if (btn) { btn.disabled = false; btn.textContent = 'Lưu'; } toast('Lỗi: ' + e.message); });
   }
 
   function toggleProductHidden(pid, currentlyHidden) {
-    db.ref('products/' + pid + '/hidden').set(!currentlyHidden);
+    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
+    db.ref('products/' + pid + '/hidden').set(!currentlyHidden)
+      .then(function () { toast(!currentlyHidden ? 'Đã ẩn mẫu áo.' : 'Đã hiện lại mẫu áo.'); })
+      .catch(function () { toast('Không cập nhật được.'); });
   }
 
   function addProduct() {
+    if (!canManageProducts()) return;
     var name = $('nameInput').value.trim();
     var colorsRaw = $('colorsInput').value.trim();
     var colors = colorsRaw.split(',').map(function (s) { return normalizeColorName(s.trim()); }).filter(Boolean);
     var imageUrl = $('imgUrlInput').value.trim();
     if (!name || name.length > 25 || !imageUrl) { toast('Kiểm tra tên (<=25 ký tự) và ảnh.'); return; }
-    db.ref('products').push({ name: name, imageUrl: imageUrl, colors: colors, createdAt: Date.now(), createdBy: currentUser.id, createdByName: currentUser.name })
-      .then(function () { toast('Đã thêm mẫu.'); renderManage(); });
+    
+    // Nếu là Quản lý: Duyệt luôn hiển thị. Nếu là Người thêm mẫu: Tự động chờ quản lý duyệt
+    var prodStatus = isManager() ? 'approved' : 'pending_approval';
+
+    var btn = $('addProductBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu…'; }
+    db.ref('products').push({
+      name: name,
+      imageUrl: imageUrl,
+      colors: colors,
+      createdAt: Date.now(),
+      createdBy: currentUser.id,
+      createdByName: currentUser.name,
+      status: prodStatus
+    }).then(function () {
+      if (isManager()) {
+        toast('Đã thêm mẫu áo thành công.');
+      } else {
+        toast('Đã thêm mẫu! Mẫu đang ở trạng thái chờ Quản lý duyệt hiển thị.');
+      }
+      renderManage();
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; }
+      toast('Lỗi: ' + e.message);
+    });
   }
 
   function deleteProduct(pid) {
+    if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền xoá mẫu này.'); return; }
     if (!confirm('Xoá mẫu này?')) return;
-    db.ref('products/' + pid).remove().then(function () { toast('Đã xoá mẫu.'); });
+    db.ref('products/' + pid).remove()
+      .then(function () { toast('Đã xoá mẫu.'); })
+      .catch(function () { toast('Không xoá được mẫu áo.'); });
   }
 
   function setupWarningHtml() {
