@@ -98,16 +98,50 @@
 
   @media (max-width: 720px) {
     .app-layout { flex-direction: column; }
-    .sidebar { width: 100%; height: auto; position: static; flex-direction: row; align-items: center; padding: 12px 14px; padding-top: calc(12px + env(safe-area-inset-top, 0px)); gap: 12px; }
+    /* Thanh menu 2 hàng: hàng 1 = logo + tài khoản, hàng 2 = các tab trượt ngang (luôn bấm được) */
+    .sidebar {
+      width: 100%; height: auto; position: sticky; top: 0; z-index: 40;
+      flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+      padding: 8px 12px 0; padding-top: calc(8px + env(safe-area-inset-top, 0px));
+      border-right: none; border-bottom: 1px solid var(--line);
+    }
     .sidebar-brand { flex-shrink: 0; }
     .sidebar-brand h1 span:not(.tag-dot) { display: none; }
-    .tabs-vertical { flex-direction: row; overflow-x: auto; flex: 1; gap: 4px; }
-    .tabs-vertical button { border-left: none; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; white-space: nowrap; padding: 9px 10px; }
-    .tabs-vertical button.active { border-color: var(--stitch); }
-    .sidebar-who { flex-direction: row; align-items: center; border-top: none; border-left: 1px solid var(--line); padding-top: 0; padding-left: 12px; gap: 10px; flex-shrink: 0; }
+    .sidebar-who {
+      order: 2; flex: 1 1 0; min-width: 0; margin-left: auto;
+      flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+      border-top: none; border-left: none; padding: 0; gap: 6px 8px;
+    }
     .sidebar-who .who-name { display: none; }
-    .main-content { padding: 18px 16px 64px; }
+    .sound-sidebar-toggle { padding: 6px 10px; font-size: 12px; }
+    .tabs-vertical {
+      order: 3; flex: 1 1 100%; width: 100%; min-width: 0;
+      flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 2px;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .tabs-vertical::-webkit-scrollbar { display: none; }
+    .tabs-vertical button {
+      flex: 0 0 auto; border-left: none; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0;
+      white-space: nowrap; padding: 11px 12px; min-height: 44px;
+    }
+    .tabs-vertical button.active { border-color: var(--stitch); }
+    .main-content { padding: 16px 14px 90px; }
+
+    /* Nút to hơn, dễ chạm trên điện thoại; chữ ô nhập >=16px để iPhone không tự phóng to khi bấm vào */
+    button.btn { min-height: 40px; }
+    button.btn.small { padding: 9px 14px; }
+    .qty-stepper button { width: 40px; height: 40px; }
+    input, select, textarea { font-size: 16px !important; }
+    .sale-link-box { flex-wrap: wrap; }
+    /* Danh sách mẫu/khách: nút thao tác xuống hàng riêng để không bị chật và bấm dễ hơn */
+    .manage-list-item, .pending-review-item { flex-wrap: wrap; }
+    .manage-list-item .mli-actions { flex: 1 1 100%; }
+    .pending-review-item .btn { flex: 1 1 100%; }
+    .agg-date-bar { gap: 8px; }
+    .agg-date-bar .print-btn { margin-left: 0; }
   }
+  /* Bỏ độ trễ 300ms và chống phóng to khi chạm 2 lần vào nút */
+  button, .btn, label, select, .shop-card, .tabs-vertical button { touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.08); }
 
   section.view { display: none; }
   section.view.active { display: block; }
@@ -348,8 +382,8 @@
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(20,18,14,0.55); z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
   @media (min-width: 560px) { .modal-overlay { align-items: center; padding: 20px; } }
-  .modal-sheet { background: var(--paper-raised); width: 100%; max-width: 440px; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); box-shadow: var(--shadow-card); }
-  @media (min-width: 560px) { .modal-sheet { border-radius: var(--radius-tag); max-height: 85vh; } }
+  .modal-sheet { background: var(--paper-raised); width: 100%; max-width: 440px; max-height: 88vh; max-height: 88dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border-radius: 18px 18px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); box-shadow: var(--shadow-card); }
+  @media (min-width: 560px) { .modal-sheet { border-radius: var(--radius-tag); max-height: 85vh; max-height: 85dvh; } }
   .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
   .modal-head h2 { font-family: var(--font-display); font-size: 17px; margin: 0; }
   .ms-close { border: none; background: var(--paper); color: var(--ink-soft); width: 30px; height: 30px; border-radius: 50%; font-size: 15px; cursor: pointer; flex-shrink: 0; }
@@ -382,7 +416,7 @@
 
   /* Thanh giỏ hàng nổi to ở giữa dưới màn hình */
   .guest-cart-floating-bar {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
     width: calc(100% - 32px); max-width: 520px; background: #1c2633; color: #ffffff;
     border-radius: var(--radius-pill); padding: 10px 14px 10px 20px;
     display: flex; justify-content: space-between; align-items: center;
@@ -1491,7 +1525,7 @@
     var sel = $('orderDateSelect');
     var opts = '<option value="all"' + (selectedOrderDate === 'all' ? ' selected' : '') + '>Tất cả (chưa in, gộp)</option>';
     opts += dates.map(function (d) { return '<option value="' + d + '"' + (d === selectedOrderDate ? ' selected' : '') + '>' + fmtDate(d) + '</option>'; }).join('');
-    sel.innerHTML = opts;
+    if (sel.dataset.sig !== opts) { sel.innerHTML = opts; sel.dataset.sig = opts; }  // không dựng lại khi danh sách không đổi (tránh menu chọn ngày tự đóng khi có dữ liệu mới)
     sel.onchange = function () { selectedOrderDate = sel.value; renderOrderList(); };
   }
 
@@ -1673,7 +1707,7 @@
     var sel = $('aggDateSelect');
     var opts = dates.map(function (d) { return '<option value="' + d + '"' + (d === selectedAggDate ? ' selected' : '') + '>' + fmtDate(d) + '</option>'; }).join('');
     opts += '<option value="all"' + (selectedAggDate === 'all' ? ' selected' : '') + '>Tất cả các ngày (gộp)</option>';
-    sel.innerHTML = opts;
+    if (sel.dataset.sig !== opts) { sel.innerHTML = opts; sel.dataset.sig = opts; }
     sel.onchange = function () { selectedAggDate = sel.value; renderAgg(); };
 
     var strip = $('dailyStrip');
@@ -2397,6 +2431,25 @@
     return '<div class="setup-warning">⚠️ Chưa cấu hình Firebase.</div>';
   }
 
+  // Gom các lần vẽ lại do dữ liệu realtime (nhân viên khác vừa lưu, khách vừa gửi đơn...) và HOÃN lại
+  // nếu ngón tay đang chạm màn hình — tránh việc giao diện bị vẽ lại giữa lúc bấm làm mất cú chạm trên điện thoại.
+  var isTouchingScreen = false;
+  var touchStamp = 0;
+  var renderTimer = null;
+  document.addEventListener('touchstart', function () { isTouchingScreen = true; touchStamp = Date.now(); }, { passive: true });
+  ['touchend', 'touchcancel'].forEach(function (evt) {
+    document.addEventListener(evt, function () { isTouchingScreen = false; }, { passive: true });
+  });
+  function requestRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(function tick() {
+      if (isTouchingScreen && Date.now() - touchStamp < 1500) { renderTimer = setTimeout(tick, 150); return; }
+      isTouchingScreen = false;
+      if (isGuestMode) renderGuestProducts();
+      else if (currentUser) renderCurrentTab();
+    }, 200);
+  }
+
   if (configOk) {
     db.ref('users').on('value', function (snap) {
       users = snap.val() || {};
@@ -2427,13 +2480,12 @@
     db.ref('products').on('value', function (snap) {
       products = normalizeProductsData(snap.val() || {});
 
-      if (isGuestMode) renderGuestProducts();
-      else if (currentUser) renderCurrentTab();
+      requestRender();
     });
 
     db.ref('orders').on('value', function (snap) {
       orders = normalizeOrdersData(snap.val() || {});
-      if (!isGuestMode && currentUser) renderCurrentTab();
+      if (!isGuestMode) requestRender();
     });
 
     // Lắng nghe đơn khách và kích hoạt chuông báo cho Sale
@@ -2463,15 +2515,12 @@
       }
 
       customerLeads = newLeads;
-      if (!isGuestMode && currentUser) {
-        renderCurrentTab();
-        if (isManager() && currentTab === 'stats') renderTrafficStats();
-      }
+      if (!isGuestMode) requestRender();
     });
 
     db.ref('printStatus').on('value', function (snap) {
       printStatus = snap.val() || {};
-      if (!isGuestMode && currentUser) renderCurrentTab();
+      if (!isGuestMode) requestRender();
     });
 
     db.ref('printArchive').on('value', function (snap) {
