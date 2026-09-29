@@ -1733,7 +1733,13 @@
   $('productModal').addEventListener('click', function (e) { if (e.target === $('productModal')) closeProductModal(); });
 
   function availableDates() {
-    var dates = Object.keys(orders).sort().reverse();
+    var set = {};
+    Object.keys(orders).forEach(function (d) { set[d] = true; });
+    Object.keys(printArchive || {}).forEach(function (aid) {
+      var en = printArchive[aid];
+      if (en && en.date && en.date !== 'multiple') set[en.date] = true;
+    });
+    var dates = Object.keys(set).sort().reverse();
     return dates.length ? dates : [todayStr()];
   }
   function mergedProductOrders(productId, dates) {
@@ -1761,6 +1767,12 @@
         var q = node[empKey].quantities || {};
         colors.forEach(function (c) { t += Number(q[c]) || 0; });
       });
+    });
+    // Cộng thêm phần đã in & lưu vào lịch sử của đúng ngày này — để ngày đã in xong (bị xoá về 0)
+    // vẫn hiện đúng tổng đã đặt hôm đó, không bị mất số.
+    Object.keys(printArchive || {}).forEach(function (aid) {
+      var en = printArchive[aid];
+      if (en && en.date === d) t += (en.grandTotal || 0);
     });
     return t;
   }
