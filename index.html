@@ -2091,10 +2091,11 @@
           var cardId = 'wsBanner_' + en.id + '_' + idx;
           var colorParts = Object.keys(it.byColor || {}).filter(function(c) { return (it.byColor[c] || 0) > 0; })
             .map(function (c) { return it.byColor[c] + ' ' + c.toLowerCase(); }).join(' - ');
+          var colorPartsWithTotal = (colorParts || 'Không chọn màu') + ' · Tổng ' + (it.totalQty || 0);
           return '<div class="ws-card-wrapper">' +
             '<div class="ws-card-banner" id="' + cardId + '">' +
               (it.imageUrl ? '<img crossorigin="anonymous" src="' + esc(it.imageUrl) + '" alt="">' : '<div class="ws-noimg">Không có ảnh</div>') +
-              '<div class="ws-tag-top">' + esc(colorParts || 'Không chọn màu') + '</div>' +
+              '<div class="ws-tag-top">' + esc(colorPartsWithTotal) + '</div>' +
               '<div class="ws-tag-bottom">' + esc(it.name) + '</div>' +
             '</div>' +
             '<div class="ws-card-actions">' +
