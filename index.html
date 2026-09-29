@@ -449,6 +449,7 @@
   .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
   .lead-card.is-billed { border-color: var(--ok); background: #f7faf7; }
   .lead-card.is-printed { border-color: var(--denim); }
+  .lead-card.is-deleted { border-color: var(--stitch); background: #fdf5f4; opacity: 0.85; }
   .lead-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
   .lead-cust { font-size: 15px; font-weight: 700; color: var(--ink); }
   .lead-phone { font-size: 13.5px; color: var(--denim); font-weight: 600; }
@@ -571,6 +572,7 @@
           <button class="lead-filter-btn" data-filter="unbilled">Chưa ghi hoá đơn</button>
           <button class="lead-filter-btn" data-filter="billed">Đã ghi hoá đơn</button>
           <button class="lead-filter-btn" data-filter="printed">Đã đặt in</button>
+          <button class="lead-filter-btn hidden" data-filter="deleted" id="leadDeletedFilterBtn">🗑️ Đã xoá</button>
         </div>
         <p class="img-hint" style="margin-bottom:14px;">
           Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Sau khi nhắn tin Zalo và cọc tiền, bạn tự vào tab <b>"Đơn may chính thức"</b> để lên số lượng, rồi <b>tích vào ô "Đã ghi vào hoá đơn"</b> hoặc <b>"Đã đặt in"</b> để theo dõi tiến độ.
@@ -1035,8 +1037,14 @@
   /* ------------------- PHẦN SALE TÍCH "ĐÃ GHI VÀO HOÁ ĐƠN" & "ĐÃ ĐẶT IN" ------------------- */
   function renderLeads() {
     var container = $('leadsList');
+    $('leadDeletedFilterBtn').classList.toggle('hidden', !isManager());
+    if (!isManager() && currentLeadFilter === 'deleted') { currentLeadFilter = 'all'; }
+
+    var isTrashView = currentLeadFilter === 'deleted';
     var list = Object.keys(customerLeads).map(function (k) { return Object.assign({ id: k }, customerLeads[k]); })
       .filter(function (lead) {
+        if (isTrashView) return isManager() && !!lead.deletedAt;
+        if (lead.deletedAt) return false; // ẩn khỏi mọi tab khác, kể cả của chính sale đó
         if (!isManager() && lead.saleId !== currentUser.id) return false;
         if (currentLeadFilter === 'unbilled') return !lead.billed;
         if (currentLeadFilter === 'billed') return !!lead.billed;
@@ -1044,6 +1052,7 @@
         return true;
       })
       .sort(function (a, b) {
+        if (isTrashView) return (b.deletedAt || 0) - (a.deletedAt || 0);
         var billedA = a.billed ? 1 : 0;
         var billedB = b.billed ? 1 : 0;
         if (billedA !== billedB) return billedA - billedB;
@@ -1051,7 +1060,7 @@
       });
 
     var allMyLeads = Object.keys(customerLeads).map(function (k) { return customerLeads[k]; })
-      .filter(function(l) { return isManager() || (l.saleId === currentUser.id); });
+      .filter(function(l) { return !l.deletedAt && (isManager() || (l.saleId === currentUser.id)); });
     var unbilledCount = allMyLeads.filter(function (l) { return !l.billed; }).length;
     var badge = $('leadBadge');
     if (unbilledCount > 0) {
@@ -1062,7 +1071,7 @@
     }
 
     if (!list.length) {
-      container.innerHTML = '<div class="empty">Không có đơn nào theo bộ lọc đang chọn.</div>';
+      container.innerHTML = '<div class="empty">' + (isTrashView ? 'Chưa có đơn nào bị xoá.' : 'Không có đơn nào theo bộ lọc đang chọn.') + '</div>';
       return;
     }
 
@@ -1070,6 +1079,7 @@
       var timeStr = lead.createdAt ? new Date(lead.createdAt).toLocaleString('vi-VN') : '';
       var isBilled = !!lead.billed;
       var isPrinted = !!lead.printed;
+      var canDelete = isManager() || lead.saleId === currentUser.id;
       var itemsHtml = (lead.items || []).map(function (it) {
         var p = products[it.pid];
         var img = (p && p.imageUrl) || it.imageUrl;
@@ -1080,17 +1090,17 @@
           '<b>' + it.total + ' áo</b></div>';
       }).join('');
 
-      var cardClass = 'lead-card' + (isBilled ? ' is-billed' : '') + (isPrinted ? ' is-printed' : '');
+      var cardClass = 'lead-card' + (isBilled ? ' is-billed' : '') + (isPrinted ? ' is-printed' : '') + (isTrashView ? ' is-deleted' : '');
 
-      return '<div class="' + cardClass + '" data-lid="' + esc(lead.id) + '">' +
-        '<div class="lead-head">' +
-          '<div><div class="lead-cust">' + esc(lead.customerName) + ' <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
-          '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div></div>' +
-          '<div style="font-size:16px;font-weight:700;color:var(--stitch);">' + lead.totalQty + ' áo</div>' +
-        '</div>' +
-        (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
-        '<div class="lead-items">' + itemsHtml + '</div>' +
-        '<div class="lead-actions">' +
+      var actionsHtml;
+      if (isTrashView) {
+        var delTimeStr = lead.deletedAt ? new Date(lead.deletedAt).toLocaleString('vi-VN') : '';
+        actionsHtml = '<div class="lead-actions">' +
+          '<div style="font-size:12.5px;color:var(--ink-soft);">🗑️ <i>Đã xoá bởi ' + esc(lead.deletedBy || '') + ' lúc ' + esc(delTimeStr) + '</i></div>' +
+          '<button class="btn primary small" data-action="restore-lead" data-lid="' + esc(lead.id) + '">↩️ Khôi phục</button>' +
+          '</div>';
+      } else {
+        actionsHtml = '<div class="lead-actions">' +
           '<div style="font-size:12.5px;color:var(--ink-soft);">' +
             (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và lên đơn tay</i>') +
             (isPrinted ? ' · 🔵 <b>Đã đặt in</b>' : '') +
@@ -1104,8 +1114,20 @@
               '<input type="checkbox" class="lead-printed-chk" data-lid="' + esc(lead.id) + '"' + (isPrinted ? ' checked' : '') + '> ' +
               (isPrinted ? '🖨️ Đã đặt in' : 'Đã đặt in') +
             '</label>' +
+            (canDelete ? '<button class="btn danger small" data-action="delete-lead" data-lid="' + esc(lead.id) + '">🗑️ Xoá</button>' : '') +
           '</div>' +
+          '</div>';
+      }
+
+      return '<div class="' + cardClass + '" data-lid="' + esc(lead.id) + '">' +
+        '<div class="lead-head">' +
+          '<div><div class="lead-cust">' + esc(lead.customerName) + ' <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
+          '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div></div>' +
+          '<div style="font-size:16px;font-weight:700;color:var(--stitch);">' + lead.totalQty + ' áo</div>' +
         '</div>' +
+        (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
+        '<div class="lead-items">' + itemsHtml + '</div>' +
+        actionsHtml +
         '</div>';
     }).join('');
 
@@ -1128,6 +1150,25 @@
         db.ref('customerLeads/' + lid + '/printed').set(state).then(function () {
           toast(state ? 'Đã tích: Đã đặt in.' : 'Đã bỏ tích đặt in.');
         });
+      });
+    });
+
+    container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lid = btn.dataset.lid;
+        if (!confirm('Xoá yêu cầu này? Quản lý vẫn xem và khôi phục lại được.')) return;
+        db.ref('customerLeads/' + lid).update({ deletedAt: Date.now(), deletedBy: currentUser.name })
+          .then(function () { toast('Đã xoá. Quản lý có thể khôi phục ở tab "Đã xoá".'); })
+          .catch(function (e) { toast('Lỗi: ' + e.message); });
+      });
+    });
+
+    container.querySelectorAll('[data-action="restore-lead"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lid = btn.dataset.lid;
+        db.ref('customerLeads/' + lid).update({ deletedAt: null, deletedBy: null })
+          .then(function () { toast('Đã khôi phục đơn.'); })
+          .catch(function (e) { toast('Lỗi: ' + e.message); });
       });
     });
   }
