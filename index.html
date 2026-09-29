@@ -351,6 +351,8 @@
   .acct-row .acct-name .you-tag { font-weight: 400; color: var(--ink-soft); font-size: 12px; }
   .acct-row .acct-meta { font-size: 11.5px; color: var(--ink-soft); font-weight: 400; margin-top: 2px; }
   .acct-row .acct-meta b { color: var(--stitch); font-family: var(--font-display); letter-spacing: 0.02em; }
+  .pin-hidden { filter: blur(4px); cursor: pointer; user-select: none; transition: filter .15s ease; display: inline-block; }
+  .pin-hidden:hover, .pin-hidden:focus, .pin-hidden.revealed { filter: none; user-select: text; }
   .acct-row .acct-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .role-select { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 10px; cursor: pointer; }
   .role-select:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1470,14 +1472,35 @@
       var createdText = u.createdAt ? new Date(u.createdAt).toLocaleString('vi-VN') : '';
       return '<div class="acct-row" data-uid="' + esc(u.id) + '">' +
         '<div class="acct-name">' + esc(u.name) + (isYou ? ' <span class="you-tag">(bạn)</span>' : '') +
-        '<div class="acct-meta">PIN: <b>' + esc(u.pin || '') + '</b> · Tạo lúc ' + esc(createdText) + '</div></div>' +
+        '<div class="acct-meta">PIN: <b class="pin-hidden" tabindex="0" title="Bấm hoặc rê chuột để xem">' + esc(u.pin || '') + '</b> · Tạo lúc ' + esc(createdText) + '</div></div>' +
         '<span class="role-chip' + (u.role === 'manager' ? ' manager' : '') + '">' + roleLabel(u.role) + '</span>' +
         '<span class="acct-actions">' +
         '<select class="role-select" data-action="set-role"' + (isLastManager ? ' disabled title="Cần giữ lại ít nhất 1 quản lý"' : '') + '>' + roleOptions + '</select>' +
+        '<button class="btn ghost small" data-action="rename">✏️ Sửa tên</button>' +
         '<button class="btn ghost small" data-action="reset-pin">Đặt lại PIN</button>' +
         '<button class="btn danger small" data-action="delete"' + (isLastManager ? ' disabled title="Cần giữ lại ít nhất 1 quản lý"' : '') + '>Xoá</button>' +
         '</span></div>';
     }).join('');
+
+    listEl.querySelectorAll('.pin-hidden').forEach(function (el2) {
+      el2.addEventListener('click', function () { el2.classList.toggle('revealed'); });
+    });
+    listEl.querySelectorAll('[data-action="rename"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var uid = btn.closest('.acct-row').dataset.uid;
+        var u = users[uid];
+        var newName = prompt('Đổi tên tài khoản:', u.name);
+        if (newName === null) return;
+        newName = newName.trim();
+        if (!newName) { toast('Tên không được để trống.'); return; }
+        var newKey = slugKey(newName);
+        var existing = findByNameKey(newKey);
+        if (existing && existing.id !== uid) { toast('Đã có tài khoản khác trùng tên này.'); return; }
+        db.ref('users/' + uid).update({ name: newName, nameKey: newKey })
+          .then(function () { toast('Đã đổi tên.'); })
+          .catch(function (e) { toast('Lỗi: ' + e.message); });
+      });
+    });
 
     listEl.querySelectorAll('[data-action="set-role"]').forEach(function (sel) {
       sel.addEventListener('change', function () {
