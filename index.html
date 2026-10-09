@@ -475,6 +475,23 @@
   .shop-card .btn.picked { background: #d63a2f; border-color: #d63a2f; color: #fff; }
   .guest-cart-floating-bar .cart-info b.has-items { color: #ff6b5b; }
   .guest-cart-floating-bar .is-empty { opacity: .55; }
+  .gh-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .header-orders-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-raised); color: var(--denim); border: 1px solid var(--line); padding: 5px 12px; border-radius: var(--radius-pill); font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
+  .gho-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fff; }
+  .gho-card.is-cancel { opacity: .6; }
+  .gho-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .gho-time { font-size: 12.5px; color: var(--ink-soft); }
+  .gho-total b { color: var(--stitch); font-size: 18px; font-family: var(--font-display); }
+  .gho-status { margin: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .gho-st { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .st-wait { background: #fff3d6; color: #855302; }
+  .st-ok { background: #e3f1e4; color: var(--ok); }
+  .st-print { background: #e6eef7; color: var(--denim); }
+  .st-cancel { background: #f1e1de; color: var(--stitch); }
+  .gho-item { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+  .gho-colors { font-size: 12px; color: var(--ink-soft); }
+  .gho-note { font-size: 12.5px; color: var(--ink-soft); font-style: italic; margin-top: 6px; }
+  .gho-reorder { margin-top: 10px; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -602,9 +619,12 @@
         <div style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;">Tư vấn viên phụ trách: <b id="guestSaleName" style="color:var(--denim);">...</b></div>
         <div class="gh-contact hidden" id="guestContact"></div>
       </div>
-      <button class="header-cart-btn" id="guestHeaderCartBtn">
-        🛒 Giỏ hàng (<span id="headerTotalCount">0</span>)
-      </button>
+      <div class="gh-right">
+        <button class="header-cart-btn" id="guestHeaderCartBtn">
+          🛒 Giỏ hàng (<span id="headerTotalCount">0</span>)
+        </button>
+        <button class="header-orders-btn hidden" id="guestHistoryBtn">📜 Đơn đã đặt (<span id="guestHistoryCount">0</span>)</button>
+      </div>
     </div>
   </header>
   <main class="wrap" style="padding-bottom:120px;">
@@ -789,6 +809,7 @@
 <div class="modal-overlay hidden" id="productModal"></div>
 <div class="modal-overlay hidden" id="archiveModal"></div>
 <div class="modal-overlay hidden" id="guestCartModal"></div>
+<div class="modal-overlay hidden" id="guestHistoryModal"></div>
 <div id="printArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -1049,7 +1070,25 @@
   var urlParams = new URLSearchParams(window.location.search);
   var saleRefId = urlParams.get('sale') || urlParams.get('ref');
   var isGuestMode = !!saleRefId;
-  var guestCart = {};
+  // Giỏ hàng của khách được lưu ngay trên điện thoại/máy của khách (riêng cho từng link tư vấn viên):
+  // đóng trang hoặc mở lại link trong vòng 7 ngày vẫn còn nguyên số lượng đã chọn.
+  var GUEST_CART_KEY = 'guest_cart_v1_' + (saleRefId || '');
+  var GUEST_CONTACT_KEY = 'guest_contact_v1';
+  function loadGuestCart() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || 'null');
+      if (!raw || !raw.cart || Date.now() - (raw.t || 0) > 7 * 24 * 3600 * 1000) return {};
+      return raw.cart;
+    } catch (e) { return {}; }
+  }
+  function saveGuestCart() {
+    try {
+      if (Object.keys(guestCart).length) localStorage.setItem(GUEST_CART_KEY, JSON.stringify({ t: Date.now(), cart: guestCart }));
+      else localStorage.removeItem(GUEST_CART_KEY);
+    } catch (e) { /* trình duyệt chặn lưu: bỏ qua, giỏ vẫn dùng bình thường trong phiên này */ }
+  }
+  var guestCart = isGuestMode ? loadGuestCart() : {};
+  var guestCartNeedsCheck = Object.keys(guestCart).length > 0;   // lần đầu hiện mẫu sẽ dọn các mẫu/màu không còn rồi báo "đã khôi phục"
   var isFirstLeadLoad = true;
 
   function recordGuestVisit(saleId) {
@@ -1394,6 +1433,23 @@
     });
 
     var plist = scope.filter(function (p) { return productMatchesFilters(p, guestFilters) && productMatchesSearch(p, guestSearch); });
+    if (Object.keys(products).length) {
+      var cartChanged = false;
+      Object.keys(guestCart).forEach(function (pid) {
+        var gp = products[pid];
+        if (!gp || gp.hidden || gp.status === 'pending_approval' || gp.soldOut) { delete guestCart[pid]; cartChanged = true; return; }
+        var gcols = colorsOf(gp);
+        Object.keys(guestCart[pid]).forEach(function (c) { if (gcols.indexOf(c) === -1 || !(guestCart[pid][c] > 0)) { delete guestCart[pid][c]; cartChanged = true; } });
+        if (!Object.keys(guestCart[pid]).length) { delete guestCart[pid]; cartChanged = true; }
+      });
+      if (cartChanged) saveGuestCart();
+      if (guestCartNeedsCheck) {
+        guestCartNeedsCheck = false;
+        var restored = 0;
+        Object.keys(guestCart).forEach(function (pid) { Object.keys(guestCart[pid]).forEach(function (c) { restored += guestCart[pid][c]; }); });
+        if (restored > 0) toast('Đã khôi phục giỏ hàng bạn chọn lần trước: ' + restored + ' áo.');
+      }
+    }
     var grid = $('guestGrid');
     var countEl = $('guestFilterCount');
     if (!all.length) { countEl.innerHTML = ''; grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">Chưa có mẫu nào trên hệ thống.</div>'; return; }
@@ -1441,6 +1497,98 @@
   }
   $('guestSearchInput').addEventListener('input', function (e) { guestSearch = e.target.value; renderGuestProducts(); });
 
+  // ---------- LỊCH SỬ ĐƠN CỦA KHÁCH ----------
+  // Mã các đơn khách đã gửi được lưu trên máy khách; app chỉ đọc đúng các đơn đó (không tải đơn của người khác).
+  var GUEST_ORDERS_KEY = 'guest_orders_v1';
+  var guestMyLeads = {};          // id -> dữ liệu đơn (cập nhật trực tiếp: undefined = đang tải, null = đã bị xoá hẳn)
+  var guestOrderWatchers = {};
+  function loadGuestOrderEntries() {
+    try {
+      var a = JSON.parse(localStorage.getItem(GUEST_ORDERS_KEY) || '[]');
+      return Array.isArray(a) ? a.filter(function (x) { return x && x.id; }) : [];
+    } catch (e) { return []; }
+  }
+  function saveGuestOrderEntry(id) {
+    try {
+      var a = loadGuestOrderEntries().filter(function (x) { return x.id !== id; });
+      a.unshift({ id: id, t: Date.now(), saleId: saleRefId, saleName: (users[saleRefId] || {}).name || '' });
+      localStorage.setItem(GUEST_ORDERS_KEY, JSON.stringify(a.slice(0, 50)));
+    } catch (e) {}
+  }
+  function updateGuestHistoryBtn() {
+    var n = loadGuestOrderEntries().length;
+    $('guestHistoryCount').textContent = n;
+    $('guestHistoryBtn').classList.toggle('hidden', n === 0);
+  }
+  function watchGuestOrders() {
+    updateGuestHistoryBtn();
+    loadGuestOrderEntries().forEach(function (en) {
+      if (guestOrderWatchers[en.id]) return;
+      guestOrderWatchers[en.id] = true;
+      try {
+        db.ref('customerLeads/' + en.id).on('value', function (snap) {
+          guestMyLeads[en.id] = snap.val();
+          if (!$('guestHistoryModal').classList.contains('hidden')) renderGuestHistory();
+        });
+      } catch (e) {}
+    });
+  }
+  function guestOrderStatusHtml(lead) {
+    if (lead.deletedAt) return '<span class="gho-st st-cancel">❌ Đã huỷ</span>';
+    var out = [];
+    if (lead.billed) out.push('<span class="gho-st st-ok">🟢 Đã ghi vào hoá đơn</span>');
+    if (lead.printed) out.push('<span class="gho-st st-print">🖨️ Đã đặt in</span>');
+    if (!out.length) out.push('<span class="gho-st st-wait">⏳ Chờ tư vấn viên xác nhận</span>');
+    return out.join('');
+  }
+  function openGuestHistory() { renderGuestHistory(); $('guestHistoryModal').classList.remove('hidden'); }
+  function closeGuestHistory() { $('guestHistoryModal').classList.add('hidden'); }
+  function renderGuestHistory() {
+    var cards = loadGuestOrderEntries().map(function (en) {
+      var lead = guestMyLeads[en.id];
+      if (lead === null) return '';
+      if (lead === undefined) return '<div class="gho-card"><div class="gho-time">' + esc(new Date(en.t).toLocaleString('vi-VN')) + '</div><div class="img-hint">Đang tải…</div></div>';
+      var itemsHtml = Object.keys(lead.items || {}).map(function (k) {
+        var it = lead.items[k], pr = products[it.pid], nm = it.name;
+        if (pr) { var dn = displayName(pr); nm = (dn.code ? dn.code + ' ' : '') + dn.title; }
+        var b = Object.keys(it.quantities || {}).filter(function (c) { return it.quantities[c] > 0; }).map(function (c) { return esc(c) + ' ×' + it.quantities[c]; }).join(', ');
+        return '<div class="gho-item"><div><b>' + esc(nm) + '</b><div class="gho-colors">' + b + '</div></div><b>' + (it.total || 0) + ' áo</b></div>';
+      }).join('');
+      return '<div class="gho-card' + (lead.deletedAt ? ' is-cancel' : '') + '">' +
+        '<div class="gho-top"><div class="gho-time">' + esc(new Date(lead.createdAt || en.t).toLocaleString('vi-VN')) + (en.saleName ? ' · TVV ' + esc(en.saleName) : '') + '</div>' +
+        '<div class="gho-total"><b>' + (lead.totalQty || 0) + '</b> áo' + (lead.totalAmount > 0 ? ' · ' + fmtVnd(lead.totalAmount) : '') + '</div></div>' +
+        '<div class="gho-status">' + guestOrderStatusHtml(lead) + '</div>' + itemsHtml +
+        (lead.note ? '<div class="gho-note">Ghi chú: ' + esc(lead.note) + '</div>' : '') +
+        '<button class="btn ghost small gho-reorder" data-id="' + esc(en.id) + '">🔁 Đặt lại đơn này</button></div>';
+    }).join('');
+    $('guestHistoryModal').innerHTML = '<div class="modal-sheet"><div class="modal-head"><h2>Đơn bạn đã đặt</h2><button class="ms-close" id="ghCloseBtn">✕</button></div>' +
+      (cards || '<div class="empty">Chưa có đơn nào.</div>') + guestContactBox() + '</div>';
+    $('ghCloseBtn').addEventListener('click', closeGuestHistory);
+    $('guestHistoryModal').querySelectorAll('.gho-reorder').forEach(function (b) { b.addEventListener('click', function () { reorderGuestLead(b.dataset.id); }); });
+  }
+  function reorderGuestLead(id) {
+    var lead = guestMyLeads[id];
+    if (!lead) return;
+    var added = 0;
+    Object.keys(lead.items || {}).forEach(function (k) {
+      var it = lead.items[k], pr = products[it.pid];
+      if (!pr || pr.hidden || pr.status === 'pending_approval' || pr.soldOut) return;
+      var cols = colorsOf(pr), q = {};
+      Object.keys(it.quantities || {}).forEach(function (c) {
+        var v = Number(it.quantities[c]) || 0;
+        if (v > 0 && cols.indexOf(c) !== -1) { q[c] = v; added += v; }
+      });
+      if (Object.keys(q).length) guestCart[it.pid] = q;
+    });
+    if (!added) { toast('Các mẫu trong đơn này hiện không còn đặt được.'); return; }
+    updateGuestCartBar();
+    renderGuestProducts();
+    closeGuestHistory();
+    toast('Đã thêm ' + added + ' áo vào giỏ — kiểm tra lại rồi gửi đơn.');
+  }
+  $('guestHistoryBtn').addEventListener('click', openGuestHistory);
+  $('guestHistoryModal').addEventListener('click', function (e) { if (e.target === $('guestHistoryModal')) closeGuestHistory(); });
+
   function updateGuestCartBar() {
     var grand = 0;
     Object.keys(guestCart).forEach(function (pid) {
@@ -1449,6 +1597,7 @@
     $('guestTotalCount').textContent = grand;
     $('headerTotalCount').textContent = grand;
     $('guestTotalCount').classList.toggle('has-items', grand > 0);
+    saveGuestCart();
     $('guestCheckoutBtn').classList.toggle('is-empty', grand === 0);
   }
 
@@ -1567,6 +1716,10 @@
       '</div>';
     $('guestCartModal').innerHTML = html;
     $('guestCartModal').classList.remove('hidden');
+    try {
+      var savedContact = JSON.parse(localStorage.getItem(GUEST_CONTACT_KEY) || 'null');
+      if (savedContact) { $('leadCustName').value = savedContact.name || ''; $('leadCustPhone').value = savedContact.phone || ''; }
+    } catch (e) {}
     $('msCartCloseBtn').addEventListener('click', function () { $('guestCartModal').classList.add('hidden'); });
 
     $('submitLeadBtn').addEventListener('click', function () {
@@ -1592,13 +1745,15 @@
         printed: false
       };
 
-      db.ref('customerLeads').push(leadData).then(function () {
+      db.ref('customerLeads').push(leadData).then(function (leadRef) {
+        if (leadRef && leadRef.key) { saveGuestOrderEntry(leadRef.key); watchGuestOrders(); }
+        try { localStorage.setItem(GUEST_CONTACT_KEY, JSON.stringify({ name: name, phone: phone })); } catch (e) {}
         $('guestCartModal').classList.add('hidden');
         guestCart = {};
         updateGuestCartBar();
         renderGuestProducts();
         var salePh = users[saleRefId] && users[saleRefId].phone;
-        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận.' + (salePh ? '\nCần gấp thì gọi / nhắn Zalo tư vấn viên: ' + fmtPhone(salePh) + '.' : ''));
+        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận. Bạn xem lại đơn ở nút "Đơn đã đặt" trên đầu trang.' + (salePh ? '\nCần gấp thì gọi / nhắn Zalo tư vấn viên: ' + fmtPhone(salePh) + '.' : ''));
       }).catch(function (e) {
         btn.disabled = false; btn.textContent = 'Gửi yêu cầu đặt hàng';
         toast('Lỗi: ' + e.message);
@@ -3516,8 +3671,13 @@
   }
 
   if (configOk) {
-    db.ref('users').on('value', function (snap) {
-      users = snap.val() || {};
+    // Khách chỉ cần thông tin của đúng tư vấn viên (tên, số liên hệ) — không tải cả danh sách tài khoản (có mã PIN)
+    var usersRef = null;
+    if (isGuestMode) { try { usersRef = db.ref('users/' + saleRefId); } catch (e) { usersRef = null; } }
+    else usersRef = db.ref('users');
+    if (usersRef) usersRef.on('value', function (snap) {
+      var uv = snap.val();
+      users = isGuestMode ? (uv ? (function () { var o = {}; o[saleRefId] = uv; return o; })() : {}) : (uv || {});
       usersLoaded = true;
       rebuildOrders();
       if (!isGuestMode) {
@@ -3537,10 +3697,11 @@
       renderShell();
       if (!isGuestMode && isManager() && currentTab === 'stats') renderTrafficStats();
     });
+    else { users = {}; usersLoaded = true; renderShell(); }
 
-    db.ref('visitLogs').on('value', function (snap) {
+    if (!isGuestMode) db.ref('visitLogs').on('value', function (snap) {
       visitLogs = snap.val() || {};
-      if (!isGuestMode && isManager() && currentTab === 'stats') renderTrafficStats();
+      if (isManager() && currentTab === 'stats') renderTrafficStats();
     });
 
     db.ref('products').on('value', function (snap) {
@@ -3550,6 +3711,7 @@
       requestRender();
     });
 
+    if (!isGuestMode) {   // khách không cần (và không tải) dữ liệu đơn / in của người khác
     db.ref('orders').on('value', function (snap) {
       ordersRaw = normalizeOrdersData(snap.val() || {});
       rebuildOrders();
@@ -3595,6 +3757,8 @@
     db.ref('printArchive').on('value', function (snap) {
       printArchive = snap.val() || {};
     });
+    }
+    if (isGuestMode) watchGuestOrders();
   } else {
     $('authScreen').classList.remove('hidden');
     $('authScreen').querySelector('.auth-card').innerHTML = setupWarningHtml();
