@@ -731,6 +731,28 @@
     return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="section" title="Mục">' +
       SECTIONS.map(function (x) { return '<option value="' + x.key + '"' + (sectionOf(p) === x.key ? ' selected' : '') + '>' + esc(x.label) + '</option>'; }).join('') + '</select>';
   }
+  // ---- Mã mẫu ở đầu tên: "H12-..." / "A1 - ..." / "Q3_..." -> {prefix:'H', num:12}. Dùng để xếp thứ tự và tìm theo mã. ----
+  function codeOf(name) {
+    var m = /^\s*([A-Za-z]{1,2})\s*[-_.]?\s*(\d+)/.exec(String(name || ''));
+    return m ? { prefix: m[1].toUpperCase(), num: parseInt(m[2], 10) } : null;
+  }
+  // Tăng dần (A1, A2 ... H1, H2 ...); tên không có mã xếp cuối
+  function compareByCode(a, b) {
+    var ca = codeOf(a.name), cb = codeOf(b.name);
+    if (ca && cb) { if (ca.prefix !== cb.prefix) return ca.prefix < cb.prefix ? -1 : 1; return ca.num - cb.num; }
+    if (ca) return -1;
+    if (cb) return 1;
+    return 0;
+  }
+  // Giảm dần (H31 ... H1); tên không có mã nằm trên cùng để mẫu mới thêm dễ thấy
+  function compareByCodeDesc(a, b) {
+    var ca = codeOf(a.name), cb = codeOf(b.name);
+    if (!ca && !cb) return 0;
+    if (!ca) return -1;
+    if (!cb) return 1;
+    return -compareByCode(a, b);
+  }
+
   // ---- Giá bán (đ/áo). Chưa nhập giá = không hiện giá cho khách. ----
   function priceOf(p) { var v = Number(p && p.price); return v > 0 ? v : 0; }
   function fmtVnd(n) { return (Number(n) || 0).toLocaleString('vi-VN') + 'đ'; }
@@ -748,8 +770,12 @@
   function productMatchesSearch(p, q) {
     q = String(q || '').trim();
     if (!q) return true;
-    var code = /^h?\s*(\d+)$/i.exec(q);                       // gõ "12" hoặc "H12" -> đúng mẫu H12
-    if (code) return hNumberOf(p.name) === parseInt(code[1], 10);
+    var code = /^([A-Za-z]{1,2})?\s*(\d+)$/.exec(q);          // gõ "12" -> mã số 12 (H12, A12...); gõ "H12"/"A1" -> đúng mã đó
+    if (code) {
+      var pc = codeOf(p.name);
+      if (!pc || pc.num !== parseInt(code[2], 10)) return false;
+      return !code[1] || pc.prefix === code[1].toUpperCase();
+    }
     return stripVi(p.name).indexOf(stripVi(q)) !== -1;        // gõ chữ -> tìm theo tên, không phân biệt dấu
   }
   var COLOR_SWATCH = { 'Đen': '#1a1a1a', 'Trắng': '#f5f5f0', 'Vàng': '#f0c14b', 'Xanh': '#3d6fa8', 'Đỏ': '#b0523f', 'Xám': '#8a8579', 'Hồng': '#e3a8b8', 'Nâu': '#6b4a2f' };
@@ -772,6 +798,7 @@
   var openBreakdowns = {};
   var editingProductId = null;
   var manageOnlyUncat = false;
+  var manageSection = 'a55';
   var selectedAggDate = null;
   var lastAggSnapshot = null;
   var currentLeadFilter = 'all';
@@ -991,11 +1018,7 @@
     // Chỉ hiển thị mẫu không bị ẩn và không phải mẫu đang chờ duyệt
     var all = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
     // Sắp xếp theo số H tăng dần: H1, H2, H3 ... H10, H11 ... (mẫu không có số H xếp cuối, theo thứ tự thêm vào)
-    all.sort(function (a, b) {
-      var na = hNumberOf(a.name), nb = hNumberOf(b.name);
-      if (na !== nb) return na < nb ? -1 : 1;
-      return (a.createdAt || 0) - (b.createdAt || 0);
-    });
+    all.sort(function (a, b) { return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0)); });
 
     // Tab theo mục: chỉ hiện khi CẢ HAI mục đều có mẫu. Đang tìm kiếm thì tìm trong tất cả các mục.
     var secCount = { a55: 0, other: 0 };
@@ -2466,13 +2489,15 @@
     if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
     var formSnap = snapshotFormState();
     // Xếp theo số H giảm dần (H31 ... H3, H2, H1 nằm dưới cùng); mẫu không có số H nằm trên cùng, mới thêm nằm trên.
-    var plist = productList().slice().sort(function (a, b) {
-      var na = hNumberOf(a.name), nb = hNumberOf(b.name);
-      if (na !== nb) return na > nb ? -1 : 1;
-      return (b.createdAt || 0) - (a.createdAt || 0);
-    });
-    var uncatCount = plist.filter(function (p) { return !p.category; }).length;
-    var shownList = manageOnlyUncat ? plist.filter(function (p) { return !p.category; }) : plist;
+    var plist = productList().slice().sort(function (a, b) { return compareByCodeDesc(a, b) || ((b.createdAt || 0) - (a.createdAt || 0)); });
+    var secCounts = { a55: 0, other: 0 };
+    plist.forEach(function (p) { secCounts[sectionOf(p)]++; });
+    var sectionList = plist.filter(function (p) { return sectionOf(p) === manageSection; });
+    var uncatCount = sectionList.filter(function (p) { return !p.category; }).length;
+    var shownList = manageOnlyUncat ? sectionList.filter(function (p) { return !p.category; }) : sectionList;
+    var manageTabsHtml = '<div class="gs-tabs" id="manageSectionTabs">' + SECTIONS.map(function (x) {
+      return '<button class="gs-tab' + (manageSection === x.key ? ' active' : '') + '" data-sec="' + x.key + '">' + esc(x.label) + '<span class="gs-count">' + secCounts[x.key] + '</span></button>';
+    }).join('') + '</div>';
     var uncatBarHtml = (uncatCount > 0 || manageOnlyUncat)
       ? '<div class="uncat-bar"><span>⚠️ Còn <b>' + uncatCount + '</b> mẫu chưa chọn "Loại" — khách bấm lọc sẽ không thấy các mẫu này.</span>' +
         '<button class="btn ghost small" id="toggleUncatBtn">' + (manageOnlyUncat ? 'Hiện tất cả mẫu' : 'Chỉ hiện mẫu chưa phân loại') + '</button></div>'
@@ -2503,7 +2528,7 @@
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
       '<div class="field-row"><label>Giá bán (đ/áo) — để trống nếu chưa có giá</label><input type="text" inputmode="numeric" id="priceInput" placeholder="VD: 185000"></div>' +
       '<div class="field-row"><label>Thuộc mục (khách chuyển qua lại bằng tab)</label><select id="attr_section" class="attr-select">' +
-        SECTIONS.map(function (x) { return '<option value="' + x.key + '">' + esc(x.label) + '</option>'; }).join('') + '</select></div>' +
+        SECTIONS.map(function (x) { return '<option value="' + x.key + '"' + (x.key === manageSection ? ' selected' : '') + '>' + esc(x.label) + '</option>'; }).join('') + '</select></div>' +
       '<div class="attr-select-row">' + PRODUCT_ATTRS.map(function (a) {
         return '<div class="field-row"><label>' + esc(a.label) + ' (để khách lọc)</label><select id="attr_' + a.key + '" class="attr-select"><option value="">— Chưa chọn —</option>' +
           a.options.map(function (o) { return '<option value="' + esc(o) + '">' + esc(o) + '</option>'; }).join('') + '</select></div>';
@@ -2512,7 +2537,7 @@
       (!isManager() ? '<p class="img-hint" style="margin-top:10px;color:var(--stitch);">💡 Lưu ý: Mẫu do bạn thêm sẽ cần Quản lý duyệt trước khi hiển thị cho khách và nhân viên khác đặt.</p>' : '') +
       '</div>' +
       pendingPanelHtml +
-      '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2>' + uncatBarHtml + '<div id="productListManage"></div></div>';
+      '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2>' + manageTabsHtml + uncatBarHtml + '<div id="productListManage"></div></div>';
 
     var imgInput = $('imgUrlInput');
     imgInput.addEventListener('input', function () {
@@ -2529,11 +2554,19 @@
 
     $('addProductBtn').addEventListener('click', addProduct);
 
+    el.querySelectorAll('#manageSectionTabs .gs-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        manageSection = tab.dataset.sec;
+        manageOnlyUncat = false;
+        var f = $('attr_section'); if (f) f.value = manageSection;     // form "Thêm mẫu" đi theo tab đang xem
+        renderManage();
+      });
+    });
     var toggleUncatBtn = $('toggleUncatBtn');
     if (toggleUncatBtn) toggleUncatBtn.addEventListener('click', function () { manageOnlyUncat = !manageOnlyUncat; renderManage(); });
 
     var listEl = $('productListManage');
-    listEl.innerHTML = !shownList.length ? '<div class="empty">Tất cả mẫu đã được phân loại 🎉</div>' : shownList.map(function (p) {
+    listEl.innerHTML = !shownList.length ? '<div class="empty">' + (sectionList.length ? 'Tất cả mẫu trong mục này đã được phân loại 🎉' : 'Mục này chưa có mẫu nào.') + '</div>' : shownList.map(function (p) {
       if (p.id === editingProductId) return renderEditProductForm(p);
       var colors = colorsOf(p);
       var hidden = !!p.hidden;
@@ -2594,7 +2627,7 @@
         if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
         var upd = {}; upd[sel.dataset.key] = sel.value || null;     // null = xoá lựa chọn
         db.ref('products/' + pid).update(upd)
-          .then(function () { toast('Đã lưu phân loại.'); })
+          .then(function () { toast(sel.dataset.key === 'section' ? 'Đã chuyển sang mục "' + sectionLabel(sel.value) + '".' : 'Đã lưu phân loại.'); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
       });
     });
@@ -2742,6 +2775,7 @@
     if (priceVal > 100000000) { toast('Giá quá lớn, kiểm tra lại.'); if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; } return; }
     if (priceVal > 0) newProduct.price = priceVal;
     db.ref('products').push(newProduct).then(function () {
+      manageSection = newProduct.section;      // chuyển sang tab của mẫu vừa thêm để anh thấy ngay
       if (isManager()) {
         toast('Đã thêm mẫu áo thành công.');
       } else {
