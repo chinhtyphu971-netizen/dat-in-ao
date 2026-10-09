@@ -467,6 +467,14 @@
   .sale-phone-box .sp-status { margin-top: 6px; font-size: 12px; }
   .acct-phone { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
   .acct-phone-input { width: 190px; max-width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: 12px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .shop-card.is-selected { border-color: #d63a2f; box-shadow: 0 0 0 2px rgba(214,58,47,.22), var(--shadow-card); background: #fffafa; }
+  .shop-card.is-selected .sc-badge-hot { background: #d63a2f; font-size: 12px; padding: 4px 10px; box-shadow: 0 2px 6px rgba(214,58,47,.45); }
+  .sc-picked { color: #d63a2f; font-weight: 700; font-size: 13.5px; margin-top: 2px; }
+  .sc-picked b { font-size: 21px; font-family: var(--font-display); font-weight: 800; }
+  .sc-picked-detail { font-size: 11.5px; font-weight: 600; color: #d63a2f; opacity: .85; }
+  .shop-card .btn.picked { background: #d63a2f; border-color: #d63a2f; color: #fff; }
+  .guest-cart-floating-bar .cart-info b.has-items { color: #ff6b5b; }
+  .guest-cart-floating-bar .is-empty { opacity: .55; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -1370,6 +1378,11 @@
     chipsBox.innerHTML = PRODUCT_ATTRS.map(function (a) {
       var opts = avail[a.key];
       if (!opts.length) return '';
+      var useful = opts.some(function (o) {                    // nhóm lọc chỉ hiện khi bấm vào thật sự làm danh sách ít đi
+        var f = { category: '', season: '', sleeve: '' }; f[a.key] = o;
+        return scope.some(function (p) { return !productMatchesFilters(p, f); });
+      });
+      if (!useful && !guestFilters[a.key]) return '';
       return '<div class="gf-row"><span class="gf-label">' + esc(a.label) + ':</span>' +
         '<button class="gf-chip' + (!guestFilters[a.key] ? ' active' : '') + '" data-key="' + a.key + '" data-val="">Tất cả</button>' +
         opts.map(function (o) {
@@ -1405,9 +1418,10 @@
       Object.keys(cartP).forEach(function (c) { totalP += cartP[c]; });
       var tags = [mixedSearch ? guestSectionLabel(sectionOf(p)) : '', attrTagsText(p)].filter(Boolean).join(' · ');
       var cardTiers = tiersOf(p);
-      return '<div class="shop-card' + (p.soldOut ? ' sold-out' : '') + '" data-pid="' + esc(p.id) + '">' +
+      var pickedDetail = colorsOf(p).filter(function (c) { return cartP[c] > 0; }).map(function (c) { return esc(c) + ' ' + cartP[c]; }).join(' · ');
+      return '<div class="shop-card' + (p.soldOut ? ' sold-out' : '') + (totalP > 0 ? ' is-selected' : '') + '" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
-        (p.soldOut ? '<span class="sc-badge-out">Tạm hết</span>' : (totalP > 0 ? '<span class="sc-badge-hot">Đã chọn: ' + totalP + '</span>' : '')) +
+        (p.soldOut ? '<span class="sc-badge-out">Tạm hết</span>' : (totalP > 0 ? '<span class="sc-badge-hot">✓ ' + totalP + ' áo</span>' : '')) +
         (imagesOf(p).length > 1 ? '<span class="sc-multi">📷 ' + imagesOf(p).length + '</span>' : '') +
         '</div>' +
         '<div class="sc-body">' +
@@ -1415,7 +1429,8 @@
           (priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' + (cardTiers ? '<div class="sc-tier-hint">Sỉ giảm đến ' + fmtVnd(cardTiers[cardTiers.length - 1].price) + '</div>' : '') : '') +
           '<div class="sc-sub"><span>' + colorsOf(p).length + ' màu</span></div>' +
           (tags ? '<div class="sc-attrs">' + esc(tags) + '</div>' : '') +
-          '<button class="btn ghost small" style="margin-top:6px;">' + (p.soldOut ? 'Tạm hết' : (totalP > 0 ? 'Sửa số lượng (' + totalP + ')' : 'Chọn số lượng')) + '</button>' +
+          (totalP > 0 ? '<div class="sc-picked">Đã chọn: <b>' + totalP + '</b> áo<div class="sc-picked-detail">' + pickedDetail + '</div></div>' : '') +
+          '<button class="btn ghost small' + (totalP > 0 ? ' picked' : '') + '" style="margin-top:6px;">' + (p.soldOut ? 'Tạm hết' : (totalP > 0 ? 'Sửa số lượng' : 'Chọn số lượng')) + '</button>' +
         '</div></div>';
     }).join('');
 
@@ -1433,6 +1448,8 @@
     });
     $('guestTotalCount').textContent = grand;
     $('headerTotalCount').textContent = grand;
+    $('guestTotalCount').classList.toggle('has-items', grand > 0);
+    $('guestCheckoutBtn').classList.toggle('is-empty', grand === 0);
   }
 
   function openGuestProductModal(pid) {
