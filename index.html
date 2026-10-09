@@ -412,6 +412,24 @@
   .ms-subtotal { text-align: right; font-size: 14px; margin: 12px 0 10px; min-height: 18px; }
   .li-amount { font-size: 12px; color: var(--stitch); font-weight: 600; white-space: nowrap; }
   .mli-price-input { font-family: var(--font-body); font-size: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 5px 8px; width: 96px; }
+  .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
+  .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
+  .qd-sale-name { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .qd-qty { margin-left: auto; font-size: 16px; }
+  .qd-total { text-align: right; font-size: 13.5px; margin-top: 6px; color: var(--ink-soft); }
+  .qd-total b { color: var(--stitch); font-size: 15px; }
+  .qd-grand { text-align: right; font-weight: 700; font-size: 16px; margin-top: 12px; padding-top: 10px; border-top: 2px solid var(--line); }
+  .lead-note-box { background: #eef2f6; color: var(--denim); border-radius: 8px; padding: 9px 12px; font-size: 13px; margin: 10px 0 4px; line-height: 1.5; }
+  .sc-lead { font-size: 11px; color: var(--denim); font-weight: 600; }
+  .lead-summary-panel { background: #eef2f6; border: 1px solid #cfd9e4; border-radius: 10px; padding: 12px 14px; margin: 4px 0 14px; }
+  .lsp-title { font-weight: 700; font-size: 13.5px; color: var(--denim); margin-bottom: 6px; }
+  .lsp-sub { font-weight: 400; font-size: 12px; color: var(--ink-soft); }
+  .lsp-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13.5px; border-top: 1px dashed #cfd9e4; }
+  .lsp-row:first-of-type { border-top: none; }
+  .lsp-name { flex: 1; font-weight: 600; }
+  .lsp-meta { color: var(--ink-soft); font-size: 12.5px; }
+  .lsp-qty { min-width: 60px; text-align: right; color: var(--stitch); }
+  .lsp-total { border-top: 2px solid #cfd9e4; font-weight: 700; }
   .guest-filters { margin-bottom: 14px; }
   .gs-tabs { display: flex; gap: 4px; margin-bottom: 12px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
   .gs-tab { flex: 1; font-family: var(--font-body); font-weight: 700; font-size: 14px; border: none; background: none; color: var(--ink-soft); padding: 10px 8px; border-radius: 999px; cursor: pointer; }
@@ -589,6 +607,7 @@
 
       <div class="agg-date-bar"><label>Xem theo:</label><select id="orderDateSelect"></select></div>
       <p class="day-note" id="orderDayNote"></p>
+      <div id="leadSummaryPanel"></div>
       <div id="shopGrid" class="shop-grid"></div>
       <div id="myOrdersToday"></div>
       <button class="btn ghost small" id="openMyArchiveBtn" style="margin-top:14px;">📜 Lịch sử đơn may của tôi</button>
@@ -610,7 +629,7 @@
           <button class="lead-filter-btn hidden" data-filter="deleted" id="leadDeletedFilterBtn">🗑️ Đã xoá</button>
         </div>
         <p class="img-hint" style="margin-bottom:14px;">
-          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Sau khi nhắn tin Zalo và cọc tiền, bạn tự vào tab <b>"Đơn may chính thức"</b> để lên số lượng, rồi <b>tích vào ô "Đã ghi vào hoá đơn"</b> hoặc <b>"Đã đặt in"</b> để theo dõi tiến độ.
+          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Số lượng khách đặt <b>tự cộng vào "Đơn may chính thức"</b> của sale ngay khi khách gửi. Nếu khách huỷ hoặc không cọc, bấm <b>Xoá</b> để trừ lại (quản lý khôi phục được). Sau khi cọc, <b>tích "Đã ghi vào hoá đơn"</b> hoặc <b>"Đã đặt in"</b> để theo dõi tiến độ.
         </p>
         <div id="leadsList"></div>
       </div>
@@ -786,7 +805,9 @@
   if (configOk) { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.database(); }
 
   var products = {};
-  var orders = {};
+  var orders = {};        // số liệu đang dùng để hiển thị/tổng hợp = tự nhập + khách đặt qua link
+  var ordersRaw = {};     // số liệu tự nhập kiểu cũ còn lưu trên Firebase (không còn nhập mới)
+  var leadOrders = {};    // chỉ phần khách đặt qua link, tự cộng cho từng sale
   var printStatus = {};
   var printArchive = {};
   var customerLeads = {};
@@ -953,6 +974,78 @@
     return out;
   }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function dateKeyOf(ts) { var d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+  // ---- Đơn khách gửi qua link của sale tự cộng vào "Đơn may chính thức" của sale đó ----
+  // Duyệt từng mẫu trong đơn khách còn hiệu lực: đơn mới (autoCount), chưa bị xoá, mẫu chưa được in & reset.
+  function eachLeadContribution(fn) {
+    Object.keys(customerLeads).forEach(function (lid) {
+      var lead = customerLeads[lid];
+      if (!lead || lead.autoCount !== true || lead.deletedAt || !lead.createdAt || !users[lead.saleId]) return;
+      var d = dateKeyOf(lead.createdAt);
+      var items = lead.items || {};
+      Object.keys(items).forEach(function (k) {
+        var it = items[k];
+        if (!it || it.consumed || !products[it.pid]) return;
+        fn(lid, lead, k, it, d, lead.saleId);
+      });
+    });
+  }
+  function computeLeadOrders() {
+    var out = {};
+    eachLeadContribution(function (lid, lead, k, it, d, uid) {
+      var qs = it.quantities || {};
+      Object.keys(qs).forEach(function (c) {
+        var q = Number(qs[c]) || 0;
+        if (q <= 0) return;
+        var nc = normalizeColorName(c);
+        out[d] = out[d] || {};
+        out[d][it.pid] = out[d][it.pid] || {};
+        var rec = out[d][it.pid][uid] = out[d][it.pid][uid] || { employeeName: users[uid].name, quantities: {} };
+        rec.quantities[nc] = (rec.quantities[nc] || 0) + q;
+      });
+    });
+    return out;
+  }
+  function rebuildOrders() {
+    if (isGuestMode) { orders = ordersRaw; return; }
+    leadOrders = computeLeadOrders();
+    var merged = JSON.parse(JSON.stringify(ordersRaw || {}));
+    Object.keys(leadOrders).forEach(function (d) {
+      merged[d] = merged[d] || {};
+      Object.keys(leadOrders[d]).forEach(function (pid) {
+        merged[d][pid] = merged[d][pid] || {};
+        Object.keys(leadOrders[d][pid]).forEach(function (uid) {
+          var lo = leadOrders[d][pid][uid];
+          var rec = merged[d][pid][uid] = merged[d][pid][uid] || { employeeName: lo.employeeName, quantities: {} };
+          rec.quantities = rec.quantities || {};
+          Object.keys(lo.quantities).forEach(function (c) { rec.quantities[c] = (Number(rec.quantities[c]) || 0) + lo.quantities[c]; });
+        });
+      });
+    });
+    orders = merged;
+  }
+  // Thống kê theo từng sale trong các ngày đang xem: {uid: {leads: số đơn khách, qty: số áo}}
+  function leadStatsByUser(dates) {
+    var stats = {}, seen = {};
+    eachLeadContribution(function (lid, lead, k, it, d, uid) {
+      if (dates.indexOf(d) === -1) return;
+      var p = products[it.pid];
+      var q = sumQuantitiesForColors(it.quantities, colorsOf(p));
+      if (q <= 0) return;
+      stats[uid] = stats[uid] || { leads: 0, qty: 0 };
+      stats[uid].qty += q;
+      if (!seen[lid]) { seen[lid] = true; stats[uid].leads++; }
+    });
+    return stats;
+  }
+  // Khi in & đặt lại về 0: đánh dấu các mẫu của đơn khách đã được chuyển vào đơn in (để không bị cộng lại)
+  function markLeadItemsConsumed(updates, pid, d) {
+    eachLeadContribution(function (lid, lead, k, it, dd) {
+      if (it.pid === pid && dd === d) updates['customerLeads/' + lid + '/items/' + k + '/consumed'] = true;
+    });
+  }
+
   function fmtDate(dstr) {
     if (dstr === 'all') return 'Tất cả các ngày';
     var p = dstr.split('-'); if (p.length !== 3) return dstr;
@@ -1236,6 +1329,7 @@
         totalQty: grand,
         totalAmount: grandAmount,
         createdAt: Date.now(),
+        autoCount: true,      // đơn mới: tự cộng vào Đơn may chính thức của sale
         billed: false,
         printed: false
       };
@@ -1324,7 +1418,8 @@
       } else {
         actionsHtml = '<div class="lead-actions">' +
           '<div style="font-size:12.5px;color:var(--ink-soft);">' +
-            (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và lên đơn tay</i>') +
+            (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>') +
+            (lead.autoCount ? ' · 📥 <b>Đã cộng vào đơn chính thức</b>' : '') +
             (isPrinted ? ' · 🔵 <b>Đã đặt in</b>' : '') +
           '</div>' +
           '<div class="lead-toggles">' +
@@ -1379,7 +1474,8 @@
     container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid;
-        if (!confirm('Xoá yêu cầu này? Quản lý vẫn xem và khôi phục lại được.')) return;
+        var ld = customerLeads[lid] || {};
+        if (!confirm('Xoá yêu cầu này? Quản lý vẫn xem và khôi phục lại được.' + (ld.autoCount ? '\n\nSố lượng của đơn này sẽ bị trừ khỏi đơn may chính thức của sale.' : ''))) return;
         db.ref('customerLeads/' + lid).update({ deletedAt: Date.now(), deletedBy: currentUser.name })
           .then(function () { toast('Đã xoá. Quản lý có thể khôi phục ở tab "Đã xoá".'); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
@@ -1390,7 +1486,7 @@
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid;
         db.ref('customerLeads/' + lid).update({ deletedAt: null, deletedBy: null })
-          .then(function () { toast('Đã khôi phục đơn.'); })
+          .then(function () { toast('Đã khôi phục đơn' + ((customerLeads[lid] || {}).autoCount ? ' và cộng lại vào đơn chính thức.' : '.')); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
       });
     });
@@ -1801,7 +1897,6 @@
   }
 
   var selectedOrderDate = 'all';
-  var modalEntryDate = null;
   var modalProduct = null;
 
   function renderOrderDateControls() {
@@ -1822,10 +1917,12 @@
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     $('orderDayNote').innerHTML = selectedOrderDate === 'all'
-      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Bấm vào mẫu để nhập số lượng cho <b>hôm nay</b>.'
+      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Số lượng tự tính từ đơn khách đặt qua link của từng sale — bấm vào mẫu để xem chi tiết theo màu.'
       : (selectedOrderDate === today
         ? 'Đơn cho ngày <b>' + fmtDate(today) + '</b>.'
         : 'Đang xem đơn ngày <b>' + fmtDate(selectedOrderDate) + '</b>.');
+
+    renderLeadSummaryPanel(activeDates);
 
     if (!plist.length) {
       $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>';
@@ -1853,13 +1950,32 @@
         '<div class="sc-body">' +
           '<div class="sc-name">' + esc(p.name) + '</div>' +
           '<div class="sc-sub"><span>' + colors.length + ' màu</span></div>' +
-          (mineTotal ? '<div class="sc-mine">Bạn đã đặt <b>' + mineTotal + '</b> áo</div>' : '<div class="sc-mine" style="opacity:0.6;">Chưa đặt</div>') +
+          (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : (isManager() ? '' : '<div class="sc-mine" style="opacity:0.6;">Chưa có khách đặt</div>')) +
         '</div></div>';
     }).join('');
     $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
       card.addEventListener('click', function () { openProductModal(card.dataset.pid); });
     });
     renderMyOrdersToday();
+  }
+
+  // Bảng "khách đặt qua link": sale chỉ thấy số của mình, quản lý thấy số của tất cả các sale
+  function renderLeadSummaryPanel(activeDates) {
+    var box = $('leadSummaryPanel');
+    var stats = leadStatsByUser(activeDates);
+    var uids = Object.keys(stats);
+    if (!isManager()) uids = uids.filter(function (u) { return u === currentUser.id; });
+    if (!uids.length) { box.innerHTML = ''; return; }
+    uids.sort(function (a, b) { return stats[b].qty - stats[a].qty; });
+    var total = uids.reduce(function (s, u) { return s + stats[u].qty; }, 0);
+    var rows = uids.map(function (u) {
+      return '<div class="lsp-row"><span class="lsp-name">' + esc(users[u] ? users[u].name : u) + (u === currentUser.id ? ' <span class="you-tag">(bạn)</span>' : '') + '</span>' +
+        '<span class="lsp-meta">' + stats[u].leads + ' đơn khách</span><b class="lsp-qty">' + stats[u].qty + ' áo</b></div>';
+    }).join('');
+    box.innerHTML = '<div class="lead-summary-panel"><div class="lsp-title">📲 ' +
+      (isManager() ? 'Khách đặt qua link của từng sale' : 'Khách đặt qua link của bạn') +
+      ' <span class="lsp-sub">— đã tự cộng vào đơn may chính thức</span></div>' + rows +
+      (isManager() && uids.length > 1 ? '<div class="lsp-row lsp-total"><span class="lsp-name">Tổng</span><span class="lsp-meta"></span><b class="lsp-qty">' + total + ' áo</b></div>' : '') + '</div>';
   }
 
   function renderMyOrdersToday() {
@@ -1878,7 +1994,7 @@
     });
     if (!rows.length) { container.innerHTML = ''; return; }
     var grand = rows.reduce(function (s, r) { return s + r.total; }, 0);
-    var titleLabel = selectedOrderDate === 'all' ? 'Đơn của bạn — tất cả (chưa in)' : 'Đơn của bạn ngày ' + fmtDate(selectedOrderDate);
+    var titleLabel = selectedOrderDate === 'all' ? 'Khách của bạn đã đặt — tất cả (chưa in)' : 'Khách của bạn đặt ngày ' + fmtDate(selectedOrderDate);
     container.innerHTML = '<div class="manage-form" style="margin-top:24px;"><h2>' + esc(titleLabel) + ' (' + grand + ' áo)</h2><div class="cust-list">' +
       rows.map(function (r) {
         var p = products[r.pid];
@@ -1894,61 +2010,57 @@
   function openProductModal(pid) {
     if (!products[pid]) return;
     modalProduct = Object.assign({ id: pid }, products[pid]);
-    modalEntryDate = selectedOrderDate === 'all' ? todayStr() : selectedOrderDate;
     renderProductModal();
     $('productModal').classList.remove('hidden');
   }
-  function closeProductModal() { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; modalProduct = null; modalEntryDate = null; }
+  function closeProductModal() { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; modalProduct = null; }
 
+  // Chi tiết số lượng của 1 mẫu (CHỈ XEM — số lượng tự tính từ đơn khách đặt qua link):
+  // sale chỉ thấy số của mình, quản lý thấy số của từng sale.
   function renderProductModal() {
     var p = modalProduct;
     var colors = colorsOf(p);
-    var d = modalEntryDate;
-    var printed = !!(printStatus[d] && printStatus[d][p.id] && printStatus[d][p.id].printed);
-    var mine = (orders[d] && orders[d][p.id] && orders[d][p.id][currentUser.id] && orders[d][p.id][currentUser.id].quantities) || {};
-    var html = '<div class="modal-sheet">' +
+    var dates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
+    var scopeLabel = selectedOrderDate === 'all' ? 'tất cả các ngày chưa in' : 'ngày ' + fmtDate(selectedOrderDate);
+    var printed = productPrintedAcrossDates(p.id, dates);
+
+    var bySale = {};
+    dates.forEach(function (d) {
+      var node = (orders[d] && orders[d][p.id]) || {};
+      Object.keys(node).forEach(function (uid) {
+        var q = node[uid].quantities || {};
+        var rec = bySale[uid] = bySale[uid] || { name: node[uid].employeeName || (users[uid] && users[uid].name) || uid, byColor: {}, total: 0 };
+        colors.forEach(function (c) { var v = Number(q[c]) || 0; if (v > 0) { rec.byColor[c] = (rec.byColor[c] || 0) + v; rec.total += v; } });
+      });
+    });
+    var uids = Object.keys(bySale).filter(function (u) { return bySale[u].total > 0 && (isManager() || u === currentUser.id); });
+    uids.sort(function (a, b) { return bySale[b].total - bySale[a].total; });
+    var grand = uids.reduce(function (sum, u) { return sum + bySale[u].total; }, 0);
+
+    var body;
+    if (!uids.length) {
+      body = '<div class="empty">' + (isManager() ? 'Chưa có khách nào đặt mẫu này.' : 'Chưa có khách nào đặt mẫu này qua link của bạn.') + '</div>';
+    } else {
+      body = uids.map(function (u) {
+        var r = bySale[u];
+        return '<div class="qd-sale">' +
+          (isManager() ? '<div class="qd-sale-name">' + esc(r.name) + (u === currentUser.id ? ' <span class="you-tag">(bạn)</span>' : '') + '</div>' : '') +
+          '<div class="qty-color-rows">' + colors.filter(function (c) { return r.byColor[c]; }).map(function (c) {
+            return '<div class="qty-color-row"><span class="swatch" style="background:' + swatchColor(c) + '"></span><span class="col-label">' + esc(c) + '</span><b class="qd-qty">' + r.byColor[c] + '</b></div>';
+          }).join('') + '</div>' +
+          '<div class="qd-total">Tổng: <b>' + r.total + '</b> áo</div></div>';
+      }).join('') + (isManager() && uids.length > 1 ? '<div class="qd-grand">Tổng cộng: <b>' + grand + '</b> áo</div>' : '');
+    }
+
+    $('productModal').innerHTML = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
-      '<p class="img-hint" style="margin-top:8px;">Nhập số lượng may cho ngày: <b>' + esc(fmtDate(d)) + '</b></p>' +
-      '<div class="ms-section-label">Số lượng theo màu</div>' +
-      '<div class="qty-color-rows">' + colors.map(function (c) {
-        var v = mine[c] != null ? mine[c] : 0;
-        return '<div class="qty-color-row" data-color="' + esc(c) + '">' +
-          '<span class="swatch" style="background:' + swatchColor(c) + '"></span>' +
-          '<span class="col-label">' + esc(c) + '</span>' +
-          '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
-          '</div>';
-      }).join('') + '</div>' +
-      '<button class="btn primary full" id="msSaveBtn">Lưu số lượng may</button>' +
+      '<p class="img-hint" style="margin-top:8px;">Số lượng khách đặt qua link — <b>' + esc(scopeLabel) + '</b>' + (isManager() ? '' : ' (chỉ hiện số của bạn)') + '</p>' +
+      body +
       '</div>';
-    $('productModal').innerHTML = html;
     bindLightboxes($('productModal'));
     $('msCloseBtn').addEventListener('click', closeProductModal);
-    $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
-      var input = row.querySelector('.qc-input');
-      row.querySelector('[data-action="dec"]').addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); });
-      row.querySelector('[data-action="inc"]').addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; });
-    });
-    $('msSaveBtn').addEventListener('click', saveProductQuantities);
-  }
-
-  function saveProductQuantities() {
-    var p = modalProduct;
-    var d = modalEntryDate;
-    var quantities = {};
-    $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
-      var c = row.dataset.color;
-      var v = Math.max(0, Math.floor(Number(row.querySelector('.qc-input').value) || 0));
-      quantities[c] = v;
-    });
-    var btn = $('msSaveBtn'); btn.disabled = true; btn.textContent = 'Đang lưu…';
-    db.ref('orders/' + d + '/' + p.id + '/' + currentUser.id).set({
-      employeeName: currentUser.name, quantities: quantities, updatedAt: Date.now()
-    }).then(function () {
-      toast('Đã lưu số lượng cho "' + p.name + '".');
-      closeProductModal();
-    }).catch(function (e) { btn.disabled = false; btn.textContent = 'Lưu'; toast('Lỗi: ' + e.message); });
   }
 
   $('productModal').addEventListener('click', function (e) { if (e.target === $('productModal')) closeProductModal(); });
@@ -2143,6 +2255,7 @@
           productDates(p.id).forEach(function (d) {
             updates['orders/' + d + '/' + p.id] = null;
             updates['printStatus/' + d + '/' + p.id] = null;
+            markLeadItemsConsumed(updates, p.id, d);
           });
         });
         db.ref().update(updates)
@@ -2823,6 +2936,7 @@
     db.ref('users').on('value', function (snap) {
       users = snap.val() || {};
       usersLoaded = true;
+      rebuildOrders();
       if (!isGuestMode) {
         if (!currentUser) {
           var savedUid = localStorage.getItem('mm_uid');
@@ -2848,12 +2962,14 @@
 
     db.ref('products').on('value', function (snap) {
       products = normalizeProductsData(snap.val() || {});
+      rebuildOrders();
 
       requestRender();
     });
 
     db.ref('orders').on('value', function (snap) {
-      orders = normalizeOrdersData(snap.val() || {});
+      ordersRaw = normalizeOrdersData(snap.val() || {});
+      rebuildOrders();
       if (!isGuestMode) requestRender();
     });
 
@@ -2884,6 +3000,7 @@
       }
 
       customerLeads = newLeads;
+      rebuildOrders();
       if (!isGuestMode) requestRender();
     });
 
