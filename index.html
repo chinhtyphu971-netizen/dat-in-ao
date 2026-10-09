@@ -1133,7 +1133,7 @@
   }
   function isManager() { return !!(currentUser && currentUser.role === 'manager'); }
   function canManageProducts() { return !!(currentUser && (currentUser.role === 'manager' || currentUser.role === 'product_manager')); }
-  function canEditProduct(p) { return !!(currentUser && (currentUser.role === 'manager' || (currentUser.role === 'product_manager' && p.createdBy === currentUser.id))); }
+  function canEditProduct(p) { return !!(currentUser && (currentUser.role === 'manager' || (currentUser.role === 'product_manager' && p.createdBy === currentUser.id && p.section !== 'other'))); }
   function roleLabel(role) { return role === 'manager' ? 'Quản lý' : (role === 'product_manager' ? 'Người thêm mẫu' : 'Nhân viên'); }
 
   function userList() { return Object.keys(users).map(function (id) { return Object.assign({ id: id }, users[id]); }); }
@@ -2719,16 +2719,18 @@
     if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
     var formSnap = snapshotFormState();
     // Xếp theo số H giảm dần (H31 ... H3, H2, H1 nằm dưới cùng); mẫu không có số H nằm trên cùng, mới thêm nằm trên.
-    var plist = productList().slice().sort(function (a, b) { return compareByCodeDesc(a, b) || ((b.createdAt || 0) - (a.createdAt || 0)); });
+    var plist = productList().filter(function (p) { return isManager() || p.section !== 'other'; })    // Người thêm mẫu chỉ làm việc với mẫu A55
+      .sort(function (a, b) { return compareByCodeDesc(a, b) || ((b.createdAt || 0) - (a.createdAt || 0)); });
+    if (!isManager()) manageSection = 'a55';
     var secCounts = { a55: 0, other: 0 };
     plist.forEach(function (p) { secCounts[sectionOf(p)]++; });
     var sectionList = plist.filter(function (p) { return sectionOf(p) === manageSection; });
     var uncatCount = sectionList.filter(function (p) { return !p.category; }).length;
     var shownList = manageOnlyUncat ? sectionList.filter(function (p) { return !p.category; }) : sectionList;
-    var manageTabsHtml = '<div class="gs-tabs" id="manageSectionTabs">' + SECTIONS.map(function (x) {
+    var manageTabsHtml = !isManager() ? '' : '<div class="gs-tabs" id="manageSectionTabs">' + SECTIONS.map(function (x) {
       return '<button class="gs-tab' + (manageSection === x.key ? ' active' : '') + '" data-sec="' + x.key + '">' + esc(x.label) + '<span class="gs-count">' + secCounts[x.key] + '</span></button>';
     }).join('') + '</div>';
-    var uncatBarHtml = (uncatCount > 0 || manageOnlyUncat)
+    var uncatBarHtml = (isManager() && (uncatCount > 0 || manageOnlyUncat))
       ? '<div class="uncat-bar"><span>⚠️ Còn <b>' + uncatCount + '</b> mẫu chưa chọn "Loại" — khách bấm lọc sẽ không thấy các mẫu này.</span>' +
         '<button class="btn ghost small" id="toggleUncatBtn">' + (manageOnlyUncat ? 'Hiện tất cả mẫu' : 'Chỉ hiện mẫu chưa phân loại') + '</button></div>'
       : '';
@@ -2762,15 +2764,17 @@
         '</div>' +
       '</div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
+      (isManager() ? (
       '<div class="field-row"><label>Giá bán (đ/áo): 1 giá, hoặc 3 giá sỉ bậc 10 / 100 / 1000 áo cách nhau dấu / — để trống nếu chưa có giá</label><input type="text" id="priceInput" placeholder="VD: 185000 hoặc 22000/21000/19000"></div>' +
       '<div class="field-row"><label>Thuộc mục (khách chuyển qua lại bằng tab)</label><select id="attr_section" class="attr-select">' +
         SECTIONS.map(function (x) { return '<option value="' + x.key + '"' + (x.key === manageSection ? ' selected' : '') + '>' + esc(x.label) + '</option>'; }).join('') + '</select></div>' +
       '<div class="attr-select-row">' + PRODUCT_ATTRS.map(function (a) {
         return '<div class="field-row"><label>' + esc(a.label) + ' (để khách lọc)</label><select id="attr_' + a.key + '" class="attr-select"><option value="">— Chưa chọn —</option>' +
           a.options.map(function (o) { return '<option value="' + esc(o) + '">' + esc(o) + '</option>'; }).join('') + '</select></div>';
-      }).join('') + '</div>' +
+      }).join('') + '</div>'
+      ) : '') +
       '<button class="btn primary" id="addProductBtn">Thêm mẫu</button>' +
-      (!isManager() ? '<p class="img-hint" style="margin-top:10px;color:var(--stitch);">💡 Lưu ý: Mẫu do bạn thêm sẽ cần Quản lý duyệt trước khi hiển thị cho khách và nhân viên khác đặt.</p>' : '') +
+      (!isManager() ? '<p class="img-hint" style="margin-top:10px;color:var(--stitch);">💡 Bạn thêm được <b>mẫu in A55</b> (ảnh, tên, màu). Giá và phân loại do Quản lý đặt. Mẫu cần Quản lý duyệt trước khi hiển thị cho khách.</p>' : '') +
       '</div>' +
       pendingPanelHtml +
       '<div class="manage-form"><h2>Mẫu áo hiện có (' + plist.length + ')</h2>' + manageTabsHtml + uncatBarHtml + '<div id="productListManage"></div></div>';
@@ -2836,7 +2840,7 @@
         ? '<div class="mli-owner">' + (p.createdByName ? 'Thêm bởi: ' + esc(p.createdByName) : '') + (p.createdByName && createdText ? ' · ' : '') + (createdText ? 'Lúc ' + esc(createdText) : '') + '</div>'
         : '';
 
-      var attrsHtml = editable
+      var attrsHtml = (editable && isManager())
         ? '<div class="mli-attrs">' + priceInputHtml(p) + sectionSelectHtml(p) + stockSelectHtml(p) + PRODUCT_ATTRS.map(function (a) {
             return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="' + a.key + '" title="' + esc(a.label) + '"><option value="">' + esc(a.label) + ': —</option>' +
               a.options.map(function (o) { return '<option value="' + esc(o) + '"' + (p[a.key] === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
@@ -2851,6 +2855,7 @@
     listEl.querySelectorAll('.mli-price-input').forEach(function (inp) {
       inp.addEventListener('change', function () {
         var pid = inp.dataset.pid;
+        if (!isManager()) { toast('Chỉ Quản lý được đặt giá.'); return; }
         if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
         var pr = parsePriceInput(inp.value);
         if (pr.error) { toast(pr.error); return; }
@@ -2862,6 +2867,7 @@
     listEl.querySelectorAll('.mli-attr-select').forEach(function (sel) {
       sel.addEventListener('change', function () {
         var pid = sel.dataset.pid;
+        if (!isManager()) { toast('Chỉ Quản lý được đổi phân loại, mục và tình trạng.'); return; }
         if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
         var upd = {}; upd[sel.dataset.key] = sel.dataset.key === 'soldOut' ? (sel.value === '1' ? true : null) : (sel.value || null);     // null = xoá lựa chọn
         db.ref('products/' + pid).update(upd)
@@ -3013,6 +3019,7 @@
     return plan;
   }
   function applySheetPlan(plan) {
+    if (!isManager()) return Promise.reject(new Error('Chỉ Quản lý được cập nhật từ bảng giá.'));
     var updates = {}, now = Date.now();
     plan.add.forEach(function (it, i) {
       var key = db.ref('products').push().key;
@@ -3041,6 +3048,7 @@
     $('sheetCloseBtn').addEventListener('click', closeSheetModal);
   }
   function fetchSheetRows() {
+    if (typeof fetch === 'undefined') return Promise.reject(new Error('trình duyệt không hỗ trợ'));
     var urls = [
       'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/gviz/tq?tqx=out:csv&gid=' + PRICE_SHEET.gid,
       'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/export?format=csv&gid=' + PRICE_SHEET.gid
@@ -3082,6 +3090,7 @@
     $('sheetSnapshotBtn').addEventListener('click', function () { showSheetPreview(SHEET_SNAPSHOT_ROWS, 'Bản chụp bảng giá 09/10/2026'); });
   }
   function showSheetPreview(rows, sourceLabel) {
+    if (!isManager()) return;
     var res = sheetToItems(rows);
     if (!res.items.length) { showSheetFallback((res.warnings[0]) || 'Không đọc được mẫu nào từ dữ liệu này.'); return; }
     var plan = buildSheetPlan(res.items);
@@ -3223,15 +3232,19 @@
       createdByName: currentUser.name,
       status: prodStatus
     };
-    PRODUCT_ATTRS.forEach(function (a) {
-      var sel = $('attr_' + a.key);
-      if (sel && sel.value) newProduct[a.key] = sel.value;
-    });
-    var secSel = $('attr_section');
-    newProduct.section = (secSel && secSel.value) || 'a55';
-    var pr = parsePriceInput(($('priceInput') || {}).value);
-    if (pr.error) { toast(pr.error); if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; } return; }
-    if (pr.price > 0) { newProduct.price = pr.price; if (pr.tiers) newProduct.tiers = pr.tiers; }
+    if (isManager()) {
+      PRODUCT_ATTRS.forEach(function (a) {
+        var sel = $('attr_' + a.key);
+        if (sel && sel.value) newProduct[a.key] = sel.value;
+      });
+      var secSel = $('attr_section');
+      newProduct.section = (secSel && secSel.value) || 'a55';
+      var pr = parsePriceInput(($('priceInput') || {}).value);
+      if (pr.error) { toast(pr.error); if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; } return; }
+      if (pr.price > 0) { newProduct.price = pr.price; if (pr.tiers) newProduct.tiers = pr.tiers; }
+    } else {
+      newProduct.section = 'a55';     // Người thêm mẫu chỉ được thêm mẫu A55, không đặt giá/phân loại
+    }
     db.ref('products').push(newProduct).then(function () {
       manageSection = newProduct.section;      // chuyển sang tab của mẫu vừa thêm để anh thấy ngay
       if (isManager()) {
