@@ -411,7 +411,30 @@
   .ms-price b { color: var(--stitch); font-size: 17px; }
   .ms-subtotal { text-align: right; font-size: 14px; margin: 12px 0 10px; min-height: 18px; }
   .li-amount { font-size: 12px; color: var(--stitch); font-weight: 600; white-space: nowrap; }
-  .mli-price-input { font-family: var(--font-body); font-size: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 5px 8px; width: 96px; }
+  .mli-price-input { font-family: var(--font-body); font-size: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 5px 8px; width: 150px; }
+  .sc-tier-hint { font-size: 11px; color: var(--ok); font-weight: 600; }
+  .sc-badge-out { position: absolute; top: 7px; right: 7px; background: #6b6b6b; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .shop-card.sold-out { opacity: .6; }
+  .shop-card.sold-out .sc-imgwrap img { filter: grayscale(1); }
+  .ms-tiers { display: flex; gap: 8px; margin: 10px 0 4px; }
+  .ms-tier { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; text-align: center; background: var(--paper); }
+  .ms-tier .mt-min { font-size: 11.5px; color: var(--ink-soft); }
+  .ms-tier .mt-price { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .ms-tier.active { border-color: var(--stitch); background: #fdf1ee; }
+  .ms-tier.active .mt-price { color: var(--stitch); }
+  .ms-tier-note { font-size: 11.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .ms-tier-up { font-size: 12.5px; color: var(--ok); font-weight: 600; margin-top: 4px; }
+  .ms-size { font-size: 13px; color: var(--ink-soft); margin: 6px 0; }
+  .sync-card { border: 2px solid var(--denim); background: #f4f7fa; }
+  .sheet-link { margin-left: 10px; font-size: 13px; color: var(--denim); font-weight: 600; }
+  .sheet-paste { width: 100%; min-height: 110px; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; font-family: var(--font-body); background: var(--paper); margin-bottom: 10px; }
+  .sp-block { border-top: 1px dashed var(--line); padding: 10px 0; }
+  .sp-title { font-size: 13.5px; margin-bottom: 4px; }
+  .sp-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 3px 0; }
+  .sp-meta { color: var(--ink-soft); text-align: right; }
+  .sp-more { font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
+  .sp-warn .sp-title { color: #855302; }
+  .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
   .qd-sale-name { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
@@ -430,7 +453,6 @@
   .lsp-meta { color: var(--ink-soft); font-size: 12.5px; }
   .lsp-qty { min-width: 60px; text-align: right; color: var(--stitch); }
   .lsp-total { border-top: 2px solid #cfd9e4; font-weight: 700; }
-  .guest-filters { margin-bottom: 14px; }
   .gs-tabs { display: flex; gap: 4px; margin-bottom: 12px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
   .gs-tab { flex: 1; font-family: var(--font-body); font-weight: 700; font-size: 14px; border: none; background: none; color: var(--ink-soft); padding: 10px 8px; border-radius: 999px; cursor: pointer; }
   .gs-tab.active { background: var(--denim); color: #fff; }
@@ -629,7 +651,7 @@
           <button class="lead-filter-btn hidden" data-filter="deleted" id="leadDeletedFilterBtn">🗑️ Đã xoá</button>
         </div>
         <p class="img-hint" style="margin-bottom:14px;">
-          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Số lượng khách đặt <b>tự cộng vào "Đơn may chính thức"</b> của sale ngay khi khách gửi. Nếu khách huỷ hoặc không cọc, bấm <b>Xoá</b> để trừ lại (quản lý khôi phục được). Sau khi cọc, <b>tích "Đã ghi vào hoá đơn"</b> hoặc <b>"Đã đặt in"</b> để theo dõi tiến độ.
+          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Số lượng khách đặt <b>tự cộng vào "Đơn may chính thức"</b> của sale ngay khi khách gửi. Nếu khách huỷ hoặc không cọc, bấm <b>Xoá</b> để trừ lại (quản lý khôi phục được). Sau khi cọc và lên hoá đơn, <b>tích "Đã ghi vào hoá đơn"</b> — số lượng của đơn đó sẽ <b>rút khỏi "Đơn may chính thức"</b> (bỏ tích là cộng lại). Tích <b>"Đã đặt in"</b> để theo dõi tiến độ.
         </p>
         <div id="leadsList"></div>
       </div>
@@ -775,8 +797,42 @@
   // ---- Giá bán (đ/áo). Chưa nhập giá = không hiện giá cho khách. ----
   function priceOf(p) { var v = Number(p && p.price); return v > 0 ? v : 0; }
   function fmtVnd(n) { return (Number(n) || 0).toLocaleString('vi-VN') + 'đ'; }
+  // Giá sỉ theo bậc: p.tiers = {p10, p100, p1000} (giá/áo khi mẫu đó đạt từ 10 / 100 / 1000 áo). p.price = giá bậc 10.
+  function tiersOf(p) {
+    var t = p && p.tiers;
+    if (!t) return null;
+    var a = [{ min: 10, price: Number(t.p10) }, { min: 100, price: Number(t.p100) }, { min: 1000, price: Number(t.p1000) }].filter(function (x) { return x.price > 0; });
+    return a.length >= 2 ? a : null;
+  }
+  function unitPriceFor(p, qty) {
+    var tiers = tiersOf(p);
+    if (!tiers) return priceOf(p);
+    var price = tiers[0].price;                       // dưới 10 áo vẫn tính giá bậc 10
+    tiers.forEach(function (t) { if (qty >= t.min) price = t.price; });
+    return price;
+  }
+  function fmtNum(n) { return (Number(n) || 0).toLocaleString('vi-VN'); }
+  function priceSummary(p) {
+    var t = tiersOf(p);
+    if (t) return fmtVnd(t[0].price) + ' → ' + fmtVnd(t[t.length - 1].price) + ' (sỉ 10/100/1000)';
+    return priceOf(p) ? fmtVnd(priceOf(p)) : '';
+  }
+  // Nhập 1 giá ("185000") hoặc 3 giá sỉ cách nhau dấu / hoặc khoảng trắng ("22000/21000/19000")
+  function parsePriceInput(str) {
+    var tokens = String(str || '').split(/[\/;\s]+/).map(function (t) { return t.replace(/\D/g, ''); }).filter(Boolean).map(Number);
+    if (tokens.some(function (n) { return n > 100000000; })) return { error: 'Giá quá lớn, kiểm tra lại.' };
+    if (!tokens.length) return { price: 0, tiers: null };
+    if (tokens.length === 1) return { price: tokens[0], tiers: null };
+    if (tokens.length === 3) return { price: tokens[0], tiers: { p10: tokens[0], p100: tokens[1], p1000: tokens[2] } };
+    return { error: 'Nhập 1 giá, hoặc đúng 3 giá sỉ cách nhau dấu / (bậc 10 / 100 / 1000 áo).' };
+  }
   function priceInputHtml(p) {
-    return '<input type="text" inputmode="numeric" class="mli-price-input" data-pid="' + esc(p.id) + '" value="' + (priceOf(p) || '') + '" placeholder="Giá (đ)" title="Giá bán, đơn vị đ/áo">';
+    var t = tiersOf(p);
+    var val = t ? t.map(function (x) { return x.price; }).join('/') : (priceOf(p) || '');
+    return '<input type="text" class="mli-price-input" data-pid="' + esc(p.id) + '" value="' + val + '" placeholder="Giá, hoặc 10/100/1000" title="Nhập 1 giá, hoặc 3 giá sỉ theo bậc 10/100/1000 áo cách nhau dấu /">';
+  }
+  function stockSelectHtml(p) {
+    return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="soldOut" title="Tình trạng"><option value="">Còn hàng</option><option value="1"' + (p.soldOut ? ' selected' : '') + '>Tạm hết</option></select>';
   }
   function attrTagsText(p) { return PRODUCT_ATTRS.map(function (a) { return p[a.key]; }).filter(Boolean).join(' · '); }
   function stripVi(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
@@ -797,7 +853,7 @@
     }
     return stripVi(p.name).indexOf(stripVi(q)) !== -1;        // gõ chữ -> tìm theo tên, không phân biệt dấu
   }
-  var COLOR_SWATCH = { 'Đen': '#1a1a1a', 'Trắng': '#f5f5f0', 'Vàng': '#f0c14b', 'Xanh': '#3d6fa8', 'Đỏ': '#b0523f', 'Xám': '#8a8579', 'Hồng': '#e3a8b8', 'Nâu': '#6b4a2f' };
+  var COLOR_SWATCH = { 'Nâu': '#7a5a3c', 'Ghi': '#9a9a96', 'Be': '#e2d3b8', 'Than': '#3b3b3b', 'Xanh dương': '#2f6fb5', 'Hồng nhạt': '#f3cdd6', 'Cam': '#e08a3c', 'Tím': '#8a5fb0', 'Xanh lá': '#4a8a55', 'Đen': '#1a1a1a', 'Trắng': '#f5f5f0', 'Vàng': '#f0c14b', 'Xanh': '#3d6fa8', 'Đỏ': '#b0523f', 'Xám': '#8a8579', 'Hồng': '#e3a8b8', 'Nâu': '#6b4a2f' };
   function swatchColor(name) { return COLOR_SWATCH[name] || '#9a9382'; }
 
   var configOk = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE') === -1;
@@ -981,7 +1037,7 @@
   function eachLeadContribution(fn) {
     Object.keys(customerLeads).forEach(function (lid) {
       var lead = customerLeads[lid];
-      if (!lead || lead.autoCount !== true || lead.deletedAt || !lead.createdAt || !users[lead.saleId]) return;
+      if (!lead || lead.autoCount !== true || lead.deletedAt || lead.billed || !lead.createdAt || !users[lead.saleId]) return;   // đã ghi vào hoá đơn = rút khỏi đơn may chính thức
       var d = dateKeyOf(lead.createdAt);
       var items = lead.items || {};
       Object.keys(items).forEach(function (k) {
@@ -1186,16 +1242,17 @@
       var totalP = 0;
       Object.keys(cartP).forEach(function (c) { totalP += cartP[c]; });
       var tags = [mixedSearch ? sectionLabel(sectionOf(p)) : '', attrTagsText(p)].filter(Boolean).join(' · ');
-      return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
+      var cardTiers = tiersOf(p);
+      return '<div class="shop-card' + (p.soldOut ? ' sold-out' : '') + '" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
-        (totalP > 0 ? '<span class="sc-badge-hot">Đã chọn: ' + totalP + '</span>' : '') +
+        (p.soldOut ? '<span class="sc-badge-out">Tạm hết</span>' : (totalP > 0 ? '<span class="sc-badge-hot">Đã chọn: ' + totalP + '</span>' : '')) +
         '</div>' +
         '<div class="sc-body">' +
           '<div class="sc-name">' + esc(p.name) + '</div>' +
-          (priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' : '') +
+          (priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' + (cardTiers ? '<div class="sc-tier-hint">Sỉ giảm đến ' + fmtVnd(cardTiers[cardTiers.length - 1].price) + '</div>' : '') : '') +
           '<div class="sc-sub"><span>' + colorsOf(p).length + ' màu</span></div>' +
           (tags ? '<div class="sc-attrs">' + esc(tags) + '</div>' : '') +
-          '<button class="btn ghost small" style="margin-top:6px;">' + (totalP > 0 ? 'Sửa số lượng (' + totalP + ')' : 'Chọn số lượng') + '</button>' +
+          '<button class="btn ghost small" style="margin-top:6px;">' + (p.soldOut ? 'Tạm hết' : (totalP > 0 ? 'Sửa số lượng (' + totalP + ')' : 'Chọn số lượng')) + '</button>' +
         '</div></div>';
     }).join('');
 
@@ -1218,12 +1275,17 @@
   function openGuestProductModal(pid) {
     var p = products[pid];
     if (!p) return;
+    if (p.soldOut) { toast('Mẫu này đang tạm hết hàng.'); return; }
     var colors = colorsOf(p);
     var cartP = guestCart[pid] || {};
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
-      (priceOf(p) ? '<div class="ms-price">Giá: <b>' + fmtVnd(priceOf(p)) + '</b> / áo</div>' : '') +
+      (tiersOf(p)
+        ? '<div class="ms-tiers">' + tiersOf(p).map(function (t) { return '<div class="ms-tier" data-min="' + t.min + '"><div class="mt-min">Từ ' + t.min + ' áo</div><div class="mt-price">' + fmtVnd(t.price) + '</div></div>'; }).join('') + '</div>' +
+          '<div class="ms-tier-note">Giá sỉ tính theo tổng số áo của mẫu này (cộng tất cả các màu).</div>'
+        : (priceOf(p) ? '<div class="ms-price">Giá: <b>' + fmtVnd(priceOf(p)) + '</b> / áo</div>' : '')) +
+      (p.sizeNote ? '<div class="ms-size">📏 Size: ' + esc(p.sizeNote) + '</div>' : '') +
       '<div class="ms-section-label">Chọn số lượng áo theo màu</div>' +
       '<div class="qty-color-rows">' + colors.map(function (c) {
         var v = cartP[c] || 0;
@@ -1245,7 +1307,22 @@
       var box = $('msSubtotal'); if (!box) return;
       var qty = 0;
       $('productModal').querySelectorAll('.qty-color-row .qc-input').forEach(function (inp) { qty += Math.max(0, Math.floor(Number(inp.value) || 0)); });
-      box.innerHTML = qty > 0 ? 'Tạm tính: <b>' + qty + '</b> áo × ' + fmtVnd(priceOf(p)) + ' = <b style="color:var(--stitch);">' + fmtVnd(qty * priceOf(p)) + '</b>' : '';
+      var tiers = tiersOf(p);
+      var unit = unitPriceFor(p, qty);
+      if (tiers) {
+        $('productModal').querySelectorAll('.ms-tier').forEach(function (el) { el.classList.remove('active'); });
+        var active = null;
+        tiers.forEach(function (t) { if (qty >= t.min) active = t; });
+        if (active) { var ael = $('productModal').querySelector('.ms-tier[data-min="' + active.min + '"]'); if (ael) ael.classList.add('active'); }
+      }
+      var out = qty > 0 ? 'Tạm tính: <b>' + qty + '</b> áo × ' + fmtVnd(unit) + ' = <b style="color:var(--stitch);">' + fmtVnd(qty * unit) + '</b>' : '';
+      if (tiers && qty > 0) {
+        var next = null;
+        tiers.forEach(function (t) { if (!next && t.min > qty && t.price < unit) next = t; });
+        if (next) out += '<div class="ms-tier-up">Mua thêm ' + (next.min - qty) + ' áo (đủ ' + next.min + ' áo) để giá còn ' + fmtVnd(next.price) + '/áo</div>';
+        else if (qty < tiers[0].min) out += '<div class="ms-tier-up">Giá sỉ áp dụng từ ' + tiers[0].min + ' áo/mẫu</div>';
+      }
+      box.innerHTML = out;
     }
     $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
       var input = row.querySelector('.qc-input');
@@ -1281,7 +1358,7 @@
       Object.keys(q).forEach(function (c) { pTot += q[c]; });
       if (pTot > 0) {
         grand += pTot;
-        var unit = priceOf(p);
+        var unit = unitPriceFor(p, pTot);
         if (unit > 0) grandAmount += unit * pTot; else hasUnpriced = true;
         items.push({ pid: pid, name: p.name, imageUrl: p.imageUrl || '', quantities: q, total: pTot, price: unit, amount: unit * pTot });
       }
@@ -1419,7 +1496,7 @@
         actionsHtml = '<div class="lead-actions">' +
           '<div style="font-size:12.5px;color:var(--ink-soft);">' +
             (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>') +
-            (lead.autoCount ? ' · 📥 <b>Đã cộng vào đơn chính thức</b>' : '') +
+            (lead.autoCount ? (isBilled ? ' · 📤 <b>Đã rút khỏi đơn may chính thức</b>' : ' · 📥 <b>Đang cộng trong đơn may chính thức</b>') : '') +
             (isPrinted ? ' · 🔵 <b>Đã đặt in</b>' : '') +
           '</div>' +
           '<div class="lead-toggles">' +
@@ -1456,7 +1533,8 @@
         var lid = chk.dataset.lid;
         var state = chk.checked;
         db.ref('customerLeads/' + lid + '/billed').set(state).then(function () {
-          toast(state ? 'Đã tích: Đã ghi vào hoá đơn.' : 'Đã bỏ tích ghi vào hoá đơn.');
+          var auto = (customerLeads[lid] || {}).autoCount === true;
+          toast(state ? 'Đã tích: Đã ghi vào hoá đơn.' + (auto ? ' Số lượng đã rút khỏi đơn may chính thức.' : '') : 'Đã bỏ tích ghi vào hoá đơn.' + (auto ? ' Số lượng được cộng lại vào đơn may chính thức.' : ''));
         });
       });
     });
@@ -2629,7 +2707,13 @@
             '</div>';
         }).join('') + '</div>';
     }
+    var syncCardHtml = isManager()
+      ? '<div class="manage-form sync-card"><h2>🔄 Cập nhật mã từ bảng giá sỉ</h2>' +
+        '<p class="img-hint" style="margin:-4px 0 12px;">Lấy giá 3 bậc (10 / 100 / 1000 áo), màu, size, tình trạng từ Google Sheet "Bảng Giá Sỉ". Mã mới được thêm vào mục "Các mẫu khác"; mã đã có chỉ cập nhật giá. Anh xem trước thay đổi rồi mới bấm áp dụng.</p>' +
+        '<button class="btn primary" id="sheetSyncBtn">🔄 Cập nhật mã từ bảng giá</button> <a class="sheet-link" href="' + PRICE_SHEET_URL + '" target="_blank" rel="noopener">Mở bảng giá ↗</a></div>'
+      : '';
     el.innerHTML =
+      syncCardHtml +
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
         '<div class="img-preview-side" id="newImgPreviewBox"><div class="pv-placeholder">🖼️ Xem trước ảnh</div></div>' +
@@ -2639,7 +2723,7 @@
         '</div>' +
       '</div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
-      '<div class="field-row"><label>Giá bán (đ/áo) — để trống nếu chưa có giá</label><input type="text" inputmode="numeric" id="priceInput" placeholder="VD: 185000"></div>' +
+      '<div class="field-row"><label>Giá bán (đ/áo): 1 giá, hoặc 3 giá sỉ bậc 10 / 100 / 1000 áo cách nhau dấu / — để trống nếu chưa có giá</label><input type="text" id="priceInput" placeholder="VD: 185000 hoặc 22000/21000/19000"></div>' +
       '<div class="field-row"><label>Thuộc mục (khách chuyển qua lại bằng tab)</label><select id="attr_section" class="attr-select">' +
         SECTIONS.map(function (x) { return '<option value="' + x.key + '"' + (x.key === manageSection ? ' selected' : '') + '>' + esc(x.label) + '</option>'; }).join('') + '</select></div>' +
       '<div class="attr-select-row">' + PRODUCT_ATTRS.map(function (a) {
@@ -2675,6 +2759,8 @@
         renderManage();
       });
     });
+    var sheetSyncBtn = $('sheetSyncBtn');
+    if (sheetSyncBtn) sheetSyncBtn.addEventListener('click', openSheetSync);
     var toggleUncatBtn = $('toggleUncatBtn');
     if (toggleUncatBtn) toggleUncatBtn.addEventListener('click', function () { manageOnlyUncat = !manageOnlyUncat; renderManage(); });
 
@@ -2712,11 +2798,11 @@
         : '';
 
       var attrsHtml = editable
-        ? '<div class="mli-attrs">' + priceInputHtml(p) + sectionSelectHtml(p) + PRODUCT_ATTRS.map(function (a) {
+        ? '<div class="mli-attrs">' + priceInputHtml(p) + sectionSelectHtml(p) + stockSelectHtml(p) + PRODUCT_ATTRS.map(function (a) {
             return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="' + a.key + '" title="' + esc(a.label) + '"><option value="">' + esc(a.label) + ': —</option>' +
               a.options.map(function (o) { return '<option value="' + esc(o) + '"' + (p[a.key] === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
           }).join('') + '</div>'
-        : '<div class="mli-attrs-text">' + esc([priceOf(p) ? fmtVnd(priceOf(p)) : '', sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div>';
+        : '<div class="mli-attrs-text">' + esc([priceSummary(p), p.soldOut ? 'Tạm hết' : '', sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div>';
       return '<div class="manage-list-item' + (hidden || isPending ? ' is-hidden' : '') + '">' +
         (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;">–</div>') +
         '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + attrsHtml + ownerNote + '</div>' +
@@ -2727,10 +2813,10 @@
       inp.addEventListener('change', function () {
         var pid = inp.dataset.pid;
         if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
-        var v = parseInt(String(inp.value).replace(/\D/g, ''), 10) || 0;
-        if (v > 100000000) { toast('Giá quá lớn, kiểm tra lại.'); return; }
-        db.ref('products/' + pid).update({ price: v > 0 ? v : null })      // null = xoá giá
-          .then(function () { toast(v > 0 ? 'Đã lưu giá ' + fmtVnd(v) + '.' : 'Đã xoá giá.'); })
+        var pr = parsePriceInput(inp.value);
+        if (pr.error) { toast(pr.error); return; }
+        db.ref('products/' + pid).update({ price: pr.price > 0 ? pr.price : null, tiers: pr.tiers || null })      // null = xoá
+          .then(function () { toast(pr.tiers ? 'Đã lưu giá sỉ 3 bậc.' : (pr.price > 0 ? 'Đã lưu giá ' + fmtVnd(pr.price) + '.' : 'Đã xoá giá.')); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
       });
     });
@@ -2738,9 +2824,9 @@
       sel.addEventListener('change', function () {
         var pid = sel.dataset.pid;
         if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
-        var upd = {}; upd[sel.dataset.key] = sel.value || null;     // null = xoá lựa chọn
+        var upd = {}; upd[sel.dataset.key] = sel.dataset.key === 'soldOut' ? (sel.value === '1' ? true : null) : (sel.value || null);     // null = xoá lựa chọn
         db.ref('products/' + pid).update(upd)
-          .then(function () { toast(sel.dataset.key === 'section' ? 'Đã chuyển sang mục "' + sectionLabel(sel.value) + '".' : 'Đã lưu phân loại.'); })
+          .then(function () { toast(sel.dataset.key === 'section' ? 'Đã chuyển sang mục "' + sectionLabel(sel.value) + '".' : (sel.dataset.key === 'soldOut' ? (sel.value === '1' ? 'Đã đánh dấu "Tạm hết".' : 'Đã đánh dấu còn hàng.') : 'Đã lưu phân loại.')); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
       });
     });
@@ -2765,6 +2851,226 @@
     restoreFormState(formSnap);
   }
 
+
+  // =============== CẬP NHẬT MÃ TỪ BẢNG GIÁ SỈ (Google Sheet) ===============
+  var PRICE_SHEET = { id: '1GqaaBznj-WfQiHbtTEXcx_ceezdgQ6zxiLWZKt1WkOs', gid: '0' };
+  var PRICE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/edit?gid=' + PRICE_SHEET.gid;
+  // Bản chụp bảng giá (09/10/2026) dùng khi không lấy trực tiếp được từ Google Sheet
+  var SHEET_SNAPSHOT_ROWS = [["","SẢN PHẨM","TÊN SẢN PHẨM","10SP","100SP","1000SP","","-","Size","Tình trạng","Số lượng tồn"],["1","A1","Áo Tăm Cổ Tròn","22,000","21,000","19000","","ĐEN -TRẮNG - GHI - BE","S 40-45kg   M 45-55kg   L 55-60kg","",""],["2","A2","Áo Cổ Cúp Vuông","23,000","22,000","21000","","ĐEN -TRẮNG - GHI - BE - HỒNG","S 40-45kg   M 45-55kg   L 55-60kg","",""],["3","A3","Áo Trễ Vai","21,000","20,000","19000","","ĐEN - TRẮNG -XANH","S 40-45kg   M 45-55kg   L 55-60kg","",""],["4","A4","Áo 2 Dây","24,000","23,000","22000","","ĐEN - TRẮNG -GHI","S 40-45kg   M 45-55kg   L 55-60kg","",""],["5","A5","Áo U Cúc Ngực","27,000","26,000","25000","","ĐEN -TRẮNG","S 40-45kg   M 45-55kg   L 55-60kg","",""],["6","A6","Áo Baby Doll","38,000","37,000","36000","","XANH - ĐỎ - ĐEN - BE","S 40-45kg   M 45-55kg   L 55-60kg","",""],["7","A7","Áo 2 Nơ Cổ","24,000","22,500","21500","","TRẮNG - ĐEN - GHI - HỒNG","S 40-45kg   M 45-55kg   L 55-60kg","TẠM HẾT",""],["8","A8","Áo Cổ Tim","23,000","22,000","21000","","TRẮNG - ĐEN - GHI - BE","S 40-45kg   M 45-55kg   L 55-60kg","",""],["9","A9","Áo U Vuông","23,000","22,000","21000","","TRẮNG - ĐEN - BE - ghi","S 40-45kg   M 45-55kg   L 55-60kg","",""],["10","A12","dài tay trễ vai","29,000","28,000","27000","","đen- trắng - đỏ - xanh","S 40-45kg   M 45-55kg   L 55-60kg","",""],["11","A13","CADIGAN","33,000","32,000","31000","","đen- trắng - đỏ - xanh","S 40-45kg   M 45-55kg   L 55-60kg","",""],["12","A17","babydoll hoa nhí","50,000","49,000","48000","","HỒNG - BE-XANH","S 40-45kg   M 45-55kg   L 55-60kg","",""],["13","A18","babydoll kẻ sọc","41,000","40,000","38500","","ĐEN - TRẮNG -XANH","S 40-45kg   M 45-55kg   L 55-60kg","",""],["14","A19","áo quây","27,000","26,500","25500","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["15","A20","áo cổ tàu xẻ v","37,000","35,500","34000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["16","A21","áo trễ vai cánh dơi","37,000","35,500","34000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["17","A22","cổ tròn cotton 6 cúc","38,000","37,000","36000","","-","S 40-45kg   M 45-55kg   L 55-60kg","",""],["18","A23","áo trễ vai buộc nơ cổ","37,000","35,500","34000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["19","A24","ÁO TRỄ VAI BÈO","40,000","39,000","38500","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["20","A25","áo cổ đức có cúc","42,000","41,000","40000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["21","A26","ÁO CỔ POLO","40,000","39,000","38500","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["22","A27","cổ tròn cotton","35,000","34,000","33000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU - VÀNG-THAN","S 40-45kg   M 45-55kg   L 55-60kg","",""],["23","A28","áo yếm + băng dôn","36,000","35,500","34000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["24","A29","áo cổ tròn vạt ren","46,000","45,000","43000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["25","A30","áo trễ vai cotton","37,000","36,000","35000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["26","A31","áo trễ vai kèm dây","37,000","36,000","35000","","TRẮNG - ĐEN - ĐỎ - XÁM - NÂU","S 40-45kg   M 45-55kg   L 55-60kg","",""],["27","A32","áo chấm bi phối ren","47,000","45,000","44000","","ĐEN - TRẮNG","","",""],["28","A34","Áo bí tay phồng","44,000","43,000","42000","","VÀNG - DƯƠNG - TRẮNG - ĐEN - HỒNG - ĐỎ - THAN","","",""],["29","A35","Áo 2 dây bí trơn","37,000","36,000","35000","","ĐEN- TRẮNG - DƯƠNG-VÀNG","","",""],["30","A36","Áo 2 dây bí chấm bi","40,000","39,000","38000","","ĐEN- TRẮNG - VÀNG","","",""],["31","A37","Áo Sét 2 Dây Chấm Bi","48,000","47,000","46000","","ĐEN - XANH - BE - TRẮNG","","",""],["32","A38","babydoll trơn","37,000","36,000","35000","","TRẮNG- ĐEN- XANH- HỒNG -VÀNG","","",""],["33","A39","CADIGAN NGẮN","29,000","28,000","27000","","TRẮNG- ĐEN- XANH- GHI -VÀNG","","",""],["34","A40","CADIGAN DÀI","33,000","32,000","31000","","TRẮNG- ĐEN- XANH- GHI -VÀNG","","",""],["35","A41","CADIGAN CÚC","42,000","41,000","40000","","TRẮNG- ĐEN- GHI -NÂU","","",""],["36","A42","CỔ TRÒN COTTON DÀI TAY","35,000","34,000","33000","","ĐEN - TRẮNG- GHI - ĐỎ","","",""],["37","A43","CỔ VUÔNG COTTON DÀI TAY","35,000","34,000","33000","","ĐEN - TRẮNG- GHI - ĐỎ","","",""],["38","A57","CADIGAN THUN TĂM NGẮN","32,000","31,000","30000","","đen- trắng - xanh","","",""],["39","A48","VẠT NƠ COTTON DÀI TAY","49,000","48,000","47000","","Trắng -Đen -ghi - đỏ","","",""],["40","A49","CỔ V DÀI TAY","41,000","40,000","39000","","Trắng -Đen -ghi - đỏ","","",""],["41","A50","POLO DÀI TAY","51,000","50,000","49000","","Trắng -Đen -ghi - đỏ","","",""],["42","A51","CÚC DÀI TAY","42,000","41,000","40000","","Trắng -Đen -ghi - đỏ","","",""],["43","A52","ÁO KHOÁC KAKI","95,000","94,000","93000","","Đen -nâu - be","","",""],["44","D1","ÁO PHAO LOGO","125,000","120,000","115000","","ĐEN - TRẮNG","","",""],["45","D2","ÁO PHAO UNISEX TRƠN","135,000","130,000","125000","","ĐEN - TRẮNG - BE","","",""],["46","D3","ÁO PHAO UNISEX MŨ","155,000","150,000","145000","","ĐEN - TRẮNG - GHI","","",""],["47","D5","NHUNG CÓ MŨ","135,000","130,000","125000","","ĐEN - TRẮNG - NÂU","","",""],["48","D6","NHUNG MŨ LÔNG","155,000","150,000","145000","","ĐEN - TRẮNG - GHI","","",""],["49","D10","PHAO NHUNG","115,000","110,000","105000","","ĐEN - TRẮNG - NÂU","","",""],["50","D16","PHAO GILE TÚI NẮP","95,000","93,000","90000","","ĐEN - TRẮNG - VÀNG","","",""],["51","D18","áo gió","64,000","63,000","62000","","HỒNG NHẠT-BE- ĐEN- TRẮNG-ĐỎ - TRẮNG-GHI","","",""],["52","D20","PHAO LÓT LÔNG CỪU","130,000","125,000","120000","","ĐEN - TRẮNG - NÂU","","",""],["53","D22","PHAO CỔ LÔNG","155,000","150,000","145000","","ĐEN - TRẮNG - NÂU","","",""],["54","D23","PHAO KẺ 3 VẠCH","155,000","150,000","145000","","ĐEN - TRẮNG - NÂU - ĐỎ","","",""],["55","D24","PHAO DÀI TAY 3M","130,000","125,000","120000","","ĐEN - TRẮNG - NÂU - ĐỎ","","",""],["56","D25","PHAO MŨ CHỮ X","155,000","150,000","145000","","ĐEN - TRẮNG - NÂU","","",""],["57","D26","PHAO GILI 3M","85,000","82,000","80000","","ĐEN - TRẮNG - NÂU - ĐỎ","","",""],["58","D28","PHAO LÓT KẺ","135,000","130,000","125000","","ĐEN - TRẮNG - NÂU","","",""],["59","D30","PHAO GILI CỔ LÔNG","100,000","98,000","95000","","ĐEN - TRẮNG - NÂU","","",""],["60","Q1","Quần Dài Đũi","43,000","42,000","40000","","ĐEN - GHI - BE- HỔNG","","",""],["61","Q3","Quần Dài Kẻ Caro","44,000","43,000","42000","","ĐỎ - NÂU - XANH - ĐEN","","",""],["62","Q7","Quần Short Đũi","30,000","28,500","27500","","ĐEN - BE - HỒNG","","",""],["63","Q8","Quần Short Caro Cạp Trắng","36,000","35,000","34000","","ĐEN - NÂU - XANH - ĐỎ","","",""],["64","Q9","Quần Short Kate Sọc","30,000","28,500","27000","","HỒNG - XANH - ĐEN","","",""],["65","Q10","Quần Cạp Chữ V","37,000","36,000","35000","","TRẮNG - ĐEN","M 45-55kg   L 55-65kg","",""],["66","Q11","QUẦN 2 DA","55,000","54,000","53000","","ĐEN","M 45-55kg   L 55-65kg","",""],["67","Q13","Quần bí ngô","39,000","38,000","37000","","ĐEN - BE- TRẮNG","","",""],["68","Q14","Quần hoa","50,000","49,000","48000","","ĐEN-TRẮNG-NÂU","M 45-55kg   L 55-65kg","",""],["69","Q15","Đùi hoa","34,000","33,000","32000","","ĐEN-BE-NÂU","","",""],["70","Q16","QUẦN BÍ CHẤM BI","36,000","35,000","34000","","Trắng- đen -nâu -vàng","","",""]];
+
+  function parseDelimited(text) {
+    text = String(text || '').replace(/^\uFEFF/, '');
+    var delim = text.indexOf('\t') !== -1 ? '\t' : ',';
+    var rows = [], row = [], cell = '', inQ = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      if (inQ) {
+        if (ch === '"') { if (text.charAt(i + 1) === '"') { cell += '"'; i++; } else inQ = false; }
+        else cell += ch;
+      } else if (ch === '"' && cell === '') inQ = true;
+      else if (ch === delim) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text.charAt(i + 1) === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  function titleVi(s) {
+    return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase()
+      .replace(/(^|\s)(\S)/g, function (m, a, b) { return a + b.toUpperCase(); })
+      .replace(/\b(\d+)m\b/g, '$1M');
+  }
+  function parseSheetColors(txt) {
+    var t = String(txt || '').trim();
+    if (!t || t === '-') return [];
+    var ix = t.search(/[;:]/);
+    if (ix >= 0) t = t.slice(ix + 1);
+    var fix = { 'DƯƠNG': 'Xanh dương', 'HỔNG': 'Hồng' };      // chuẩn hoá tên màu / sửa lỗi gõ trong bảng
+    var out = [];
+    t.split('-').forEach(function (part) {
+      var u = part.trim().toUpperCase();
+      if (!u) return;
+      var c = fix[u] || normalizeColorName(u);
+      if (out.indexOf(c) === -1) out.push(c);
+    });
+    return out;
+  }
+  function buildSheetItem(code, rawName, pr, colorTxt, sizeTxt, statusTxt, warnings) {
+    var words = titleVi(rawName).split(' ');
+    var dropWords = { 'áo': 1, 'quần': 1, 'cổ': 1 };          // tên quá 25 ký tự thì bỏ bớt chữ đầu cho vừa
+    while ((code + '-' + words.join(' ')).length > 25 && words.length > 1 && dropWords[words[0].toLowerCase()]) words.shift();
+    while ((code + '-' + words.join(' ')).length > 25 && words.length > 1) words.pop();
+    var colors = parseSheetColors(colorTxt);
+    if (!colors.length) { colors = ['Đen', 'Trắng']; warnings.push(code + ': bảng không ghi màu — tạm dùng Đen, Trắng, anh sửa lại sau.'); }
+    var low = String(rawName).normalize('NFC').toLowerCase();
+    var item = {
+      code: code, name: code + '-' + words.join(' '), colors: colors,
+      tiers: { p10: pr[0], p100: pr[1], p1000: pr[2] },
+      category: (code.charAt(0) === 'Q' || /đùi|short/.test(low)) ? 'Quần' : 'Áo',
+      soldOut: /tam het|het hang/.test(stripVi(statusTxt || ''))
+    };
+    if (code.charAt(0) === 'D') item.season = 'Mùa đông'; else if (/đùi|short/.test(low)) item.season = 'Mùa hè';
+    if (/dài tay/.test(low)) item.sleeve = 'Dài tay';
+    var sz = String(sizeTxt || '').trim().replace(/\s{2,}/g, ' · ');
+    if (sz) item.sizeNote = sz;
+    return item;
+  }
+  // rows (mảng các dòng, mỗi dòng là mảng ô) -> các mẫu
+  function sheetToItems(rows) {
+    var norm = function (x) { return stripVi(String(x || '')).replace(/\s+/g, ''); };
+    var hi = -1;
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].map(norm);
+      if (cells.indexOf('10sp') !== -1 && cells.indexOf('100sp') !== -1) { hi = r; break; }
+    }
+    if (hi < 0) return { items: [], warnings: ['Không thấy dòng tiêu đề có cột "10SP", "100SP", "1000SP" — kiểm tra lại dữ liệu.'] };
+    var head = rows[hi].map(norm);
+    var i10 = head.indexOf('10sp'), i100 = head.indexOf('100sp'), i1000 = head.indexOf('1000sp');
+    if (i1000 < 0) i1000 = i100 + 1;
+    var iCode = head.indexOf('sanpham'); if (iCode < 0) iCode = i10 - 2;
+    var iName = head.indexOf('tensanpham'); if (iName < 0) iName = i10 - 1;
+    var iColor = i1000 + 2, iSize = i1000 + 3, iStatus = i1000 + 4;
+    var items = [], warnings = [], seen = {};
+    for (var k = hi + 1; k < rows.length; k++) {
+      var c = rows[k];
+      var code = String(c[iCode] || '').trim().toUpperCase().replace(/\s+/g, '');
+      if (!/^[A-Z]{1,2}\d+$/.test(code)) continue;
+      var name = String(c[iName] || '').trim();
+      var pr = [c[i10], c[i100], c[i1000]].map(function (v) { return parseInt(String(v || '').replace(/\D/g, ''), 10) || 0; });
+      if (!name || pr[0] <= 0) { warnings.push(code + ': thiếu tên hoặc giá — bỏ qua.'); continue; }
+      if (seen[code]) { warnings.push(code + ': bị lặp trong bảng — chỉ lấy dòng đầu.'); continue; }
+      seen[code] = true;
+      if (pr[1] <= 0) pr[1] = pr[0];
+      if (pr[2] <= 0) pr[2] = pr[1];
+      if (pr[1] > pr[0] || pr[2] > pr[1]) warnings.push(code + ': giá các bậc không giảm dần (' + pr.map(fmtNum).join(' / ') + ') — kiểm tra lại bảng.');
+      items.push(buildSheetItem(code, name, pr, c[iColor], c[iSize], c[iStatus], warnings));
+    }
+    return { items: items, warnings: warnings };
+  }
+
+  function buildSheetPlan(items) {
+    var byCode = {};
+    Object.keys(products).forEach(function (pid) {
+      var p = products[pid];
+      if (sectionOf(p) !== 'other') return;
+      var cd = codeOf(p.name);
+      if (cd) byCode[cd.prefix + cd.num] = pid;
+    });
+    var plan = { add: [], change: [], same: [], missing: [] }, inSheet = {};
+    items.forEach(function (it) {
+      inSheet[it.code] = true;
+      var pid = byCode[it.code];
+      if (!pid) { plan.add.push(it); return; }
+      var p = products[pid], diffs = [];
+      var old = tiersOf(p);
+      var oldArr = old ? old.map(function (t) { return t.price; }) : (priceOf(p) ? [priceOf(p)] : []);
+      var newArr = [it.tiers.p10, it.tiers.p100, it.tiers.p1000];
+      if (oldArr.join('/') !== newArr.join('/')) diffs.push('giá ' + (oldArr.length ? oldArr.map(fmtNum).join(' / ') : 'chưa có') + ' → ' + newArr.map(fmtNum).join(' / '));
+      if (!!p.soldOut !== !!it.soldOut) diffs.push(it.soldOut ? 'chuyển sang "Tạm hết"' : 'có hàng trở lại');
+      if (it.sizeNote && p.sizeNote !== it.sizeNote) diffs.push('size: ' + it.sizeNote);
+      if (diffs.length) plan.change.push({ pid: pid, item: it, name: p.name, diffs: diffs }); else plan.same.push(it);
+    });
+    Object.keys(byCode).forEach(function (cd) { if (!inSheet[cd]) plan.missing.push(products[byCode[cd]].name); });
+    return plan;
+  }
+  function applySheetPlan(plan) {
+    var updates = {}, now = Date.now();
+    plan.add.forEach(function (it, i) {
+      var key = db.ref('products').push().key;
+      var rec = { name: it.name, imageUrl: '', colors: it.colors, createdAt: now + i, createdBy: currentUser.id, createdByName: currentUser.name,
+        status: 'approved', section: 'other', category: it.category, price: it.tiers.p10, tiers: it.tiers };
+      if (it.season) rec.season = it.season;
+      if (it.sleeve) rec.sleeve = it.sleeve;
+      if (it.sizeNote) rec.sizeNote = it.sizeNote;
+      if (it.soldOut) rec.soldOut = true;
+      updates['products/' + key] = rec;
+    });
+    plan.change.forEach(function (ch) {
+      var base = 'products/' + ch.pid + '/';
+      updates[base + 'price'] = ch.item.tiers.p10;
+      updates[base + 'tiers'] = ch.item.tiers;
+      updates[base + 'soldOut'] = ch.item.soldOut ? true : null;
+      if (ch.item.sizeNote) updates[base + 'sizeNote'] = ch.item.sizeNote;
+    });
+    return db.ref().update(updates);
+  }
+
+  function closeSheetModal() { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; }
+  function sheetModalShell(inner) {
+    $('productModal').innerHTML = '<div class="modal-sheet"><div class="modal-head"><h2>Cập nhật mã từ bảng giá sỉ</h2><button class="ms-close" id="sheetCloseBtn">✕</button></div>' + inner + '</div>';
+    $('productModal').classList.remove('hidden');
+    $('sheetCloseBtn').addEventListener('click', closeSheetModal);
+  }
+  function fetchSheetRows() {
+    var urls = [
+      'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/gviz/tq?tqx=out:csv&gid=' + PRICE_SHEET.gid,
+      'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/export?format=csv&gid=' + PRICE_SHEET.gid
+    ];
+    function tryUrl(i) {
+      if (i >= urls.length) return Promise.reject(new Error('không lấy được'));
+      var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 12000) : null;
+      return fetch(urls[i], ctrl ? { signal: ctrl.signal } : {}).then(function (res) {
+        if (timer) clearTimeout(timer);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      }).then(function (text) {
+        var rows = parseDelimited(text);
+        if (!sheetToItems(rows).items.length) throw new Error('không đọc được mẫu nào');
+        return rows;
+      }).catch(function () { if (timer) clearTimeout(timer); return tryUrl(i + 1); });
+    }
+    return tryUrl(0);
+  }
+  function openSheetSync() {
+    if (!isManager()) return;
+    sheetModalShell('<p class="img-hint">⏳ Đang lấy dữ liệu từ Google Sheet…</p>');
+    fetchSheetRows().then(function (rows) { showSheetPreview(rows, 'Google Sheet (trực tiếp)'); })
+      .catch(function () { showSheetFallback(); });
+  }
+  function showSheetFallback(msg) {
+    sheetModalShell(
+      '<p class="img-hint" style="color:var(--stitch);">' + esc(msg || 'Không lấy trực tiếp được từ Google Sheet (trình duyệt chặn, hoặc bảng chưa chia sẻ công khai).') + '</p>' +
+      '<p class="img-hint"><b>Cách 1 (nên dùng):</b> mở <a href="' + PRICE_SHEET_URL + '" target="_blank" rel="noopener">bảng giá sỉ</a> → bấm vào 1 ô → Ctrl+A → Ctrl+C → dán vào ô dưới → bấm "Đọc dữ liệu".</p>' +
+      '<textarea id="sheetPasteBox" class="sheet-paste" placeholder="Dán dữ liệu bảng giá sỉ vào đây (Ctrl+V)"></textarea>' +
+      '<button class="btn primary full" id="sheetPasteBtn">Đọc dữ liệu đã dán</button>' +
+      '<p class="img-hint" style="margin-top:16px;"><b>Cách 2:</b> dùng bản chụp bảng giá ngày 09/10/2026 (' + (SHEET_SNAPSHOT_ROWS.length - 1) + ' mẫu, giá 10/100/1000):</p>' +
+      '<button class="btn ghost full" id="sheetSnapshotBtn">Dùng bản chụp bảng giá</button>');
+    $('sheetPasteBtn').addEventListener('click', function () {
+      var rows = parseDelimited($('sheetPasteBox').value);
+      showSheetPreview(rows, 'Dữ liệu anh vừa dán');
+    });
+    $('sheetSnapshotBtn').addEventListener('click', function () { showSheetPreview(SHEET_SNAPSHOT_ROWS, 'Bản chụp bảng giá 09/10/2026'); });
+  }
+  function showSheetPreview(rows, sourceLabel) {
+    var res = sheetToItems(rows);
+    if (!res.items.length) { showSheetFallback((res.warnings[0]) || 'Không đọc được mẫu nào từ dữ liệu này.'); return; }
+    var plan = buildSheetPlan(res.items);
+    var total = plan.add.length + plan.change.length;
+    function list(arr, max, fn) { return arr.slice(0, max).map(fn).join('') + (arr.length > max ? '<div class="sp-more">…và ' + (arr.length - max) + ' mẫu nữa</div>' : ''); }
+    var html = '<p class="img-hint">Nguồn: <b>' + esc(sourceLabel) + '</b> — đọc được <b>' + res.items.length + '</b> mã.</p>' +
+      '<div class="sp-block"><div class="sp-title">➕ Thêm mới vào "Các mẫu khác": <b>' + plan.add.length + '</b></div>' +
+        list(plan.add, 12, function (it) { return '<div class="sp-row"><span>' + esc(it.name) + '</span><span class="sp-meta">' + [it.tiers.p10, it.tiers.p100, it.tiers.p1000].map(fmtNum).join(' / ') + '</span></div>'; }) + '</div>' +
+      '<div class="sp-block"><div class="sp-title">✏️ Đã có trên app — cập nhật giá/tình trạng: <b>' + plan.change.length + '</b></div>' +
+        list(plan.change, 30, function (ch) { return '<div class="sp-row"><span>' + esc(ch.name) + '</span><span class="sp-meta">' + esc(ch.diffs.join(' · ')) + '</span></div>'; }) + '</div>' +
+      '<div class="sp-block"><div class="sp-title">✔ Không đổi: <b>' + plan.same.length + '</b></div></div>' +
+      (plan.missing.length ? '<div class="sp-block"><div class="sp-title">ℹ️ Có trên app nhưng không còn trong bảng (không bị xoá): <b>' + plan.missing.length + '</b></div><div class="sp-more">' + esc(plan.missing.slice(0, 8).join(', ')) + (plan.missing.length > 8 ? '…' : '') + '</div></div>' : '') +
+      (res.warnings.length ? '<div class="sp-block sp-warn"><div class="sp-title">⚠️ Cần xem lại trong bảng:</div>' + res.warnings.slice(0, 8).map(function (w) { return '<div class="sp-more">' + esc(w) + '</div>'; }).join('') + (res.warnings.length > 8 ? '<div class="sp-more">…và ' + (res.warnings.length - 8) + ' cảnh báo nữa</div>' : '') + '</div>' : '') +
+      '<p class="img-hint">Mẫu mới chưa có ảnh — anh thêm ảnh sau bằng nút "Sửa". Mẫu đã có chỉ đổi giá/tình trạng/size, không ghi đè ảnh hay phân loại.</p>' +
+      '<button class="btn primary full" id="sheetApplyBtn"' + (total ? '' : ' disabled') + '>' + (total ? 'Áp dụng (thêm ' + plan.add.length + ', cập nhật ' + plan.change.length + ')' : 'Không có gì cần cập nhật') + '</button>' +
+      '<button class="btn ghost full" id="sheetBackBtn" style="margin-top:8px;">Chọn nguồn dữ liệu khác</button>';
+    sheetModalShell(html);
+    $('sheetBackBtn').addEventListener('click', function () { showSheetFallback('Chọn nguồn dữ liệu:'); });
+    $('sheetApplyBtn').addEventListener('click', function () {
+      var btn = $('sheetApplyBtn'); btn.disabled = true; btn.textContent = 'Đang cập nhật…';
+      applySheetPlan(plan).then(function () {
+        manageSection = 'other'; manageOnlyUncat = false;
+        toast('Đã thêm ' + plan.add.length + ' mẫu, cập nhật ' + plan.change.length + ' mẫu.');
+        closeSheetModal();
+      }).catch(function (e) { btn.disabled = false; btn.textContent = 'Áp dụng'; toast('Lỗi: ' + e.message); });
+    });
+  }
+
   function openProductReviewModal(pid) {
     var p = products[pid];
     if (!p) return;
@@ -2775,7 +3081,7 @@
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       '<div class="field-row"><label>Tên mẫu</label><div style="font-weight:700;font-size:15px;">' + esc(p.name) + '</div></div>' +
       '<div class="field-row"><label>Các màu</label><div>' + esc(colors.join(', ')) + '</div></div>' +
-      '<div class="field-row"><label>Giá bán</label><div>' + (priceOf(p) ? fmtVnd(priceOf(p)) + ' / áo' : '<i>Chưa có giá</i>') + '</div></div>' +
+      '<div class="field-row"><label>Giá bán</label><div>' + (priceSummary(p) || '<i>Chưa có giá</i>') + '</div></div>' +
       '<div class="field-row"><label>Phân loại</label><div>' + esc([sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div></div>' +
       '<div class="field-row"><label>Người thêm</label><div>' + esc(p.createdByName || '') + ' · Lúc ' + esc(createdText) + '</div></div>' +
       '<div style="display:flex; gap:8px; margin-top:16px;">' +
@@ -2884,9 +3190,9 @@
     });
     var secSel = $('attr_section');
     newProduct.section = (secSel && secSel.value) || 'a55';
-    var priceVal = parseInt(String(($('priceInput') || {}).value || '').replace(/\D/g, ''), 10) || 0;
-    if (priceVal > 100000000) { toast('Giá quá lớn, kiểm tra lại.'); if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; } return; }
-    if (priceVal > 0) newProduct.price = priceVal;
+    var pr = parsePriceInput(($('priceInput') || {}).value);
+    if (pr.error) { toast(pr.error); if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; } return; }
+    if (pr.price > 0) { newProduct.price = pr.price; if (pr.tiers) newProduct.tiers = pr.tiers; }
     db.ref('products').push(newProduct).then(function () {
       manageSection = newProduct.section;      // chuyển sang tab của mẫu vừa thêm để anh thấy ngay
       if (isManager()) {
