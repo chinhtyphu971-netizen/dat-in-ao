@@ -406,6 +406,12 @@
   .lightbox .lb-close { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; background: rgba(255,255,255,0.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
 
   /* ---- Giao diện Khách Đặt & THANH GIỎ HÀNG NỔI BẬT ---- */
+  .shop-card .sc-price { font-size: 14px; font-weight: 700; color: var(--stitch); margin-top: 2px; }
+  .ms-price { font-size: 15px; margin: 10px 0 2px; color: var(--ink); }
+  .ms-price b { color: var(--stitch); font-size: 17px; }
+  .ms-subtotal { text-align: right; font-size: 14px; margin: 12px 0 10px; min-height: 18px; }
+  .li-amount { font-size: 12px; color: var(--stitch); font-weight: 600; white-space: nowrap; }
+  .mli-price-input { font-family: var(--font-body); font-size: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 5px 8px; width: 96px; }
   .guest-filters { margin-bottom: 14px; }
   .gs-tabs { display: flex; gap: 4px; margin-bottom: 12px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
   .gs-tab { flex: 1; font-family: var(--font-body); font-weight: 700; font-size: 14px; border: none; background: none; color: var(--ink-soft); padding: 10px 8px; border-radius: 999px; cursor: pointer; }
@@ -724,6 +730,12 @@
   function sectionSelectHtml(p) {
     return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="section" title="Mục">' +
       SECTIONS.map(function (x) { return '<option value="' + x.key + '"' + (sectionOf(p) === x.key ? ' selected' : '') + '>' + esc(x.label) + '</option>'; }).join('') + '</select>';
+  }
+  // ---- Giá bán (đ/áo). Chưa nhập giá = không hiện giá cho khách. ----
+  function priceOf(p) { var v = Number(p && p.price); return v > 0 ? v : 0; }
+  function fmtVnd(n) { return (Number(n) || 0).toLocaleString('vi-VN') + 'đ'; }
+  function priceInputHtml(p) {
+    return '<input type="text" inputmode="numeric" class="mli-price-input" data-pid="' + esc(p.id) + '" value="' + (priceOf(p) || '') + '" placeholder="Giá (đ)" title="Giá bán, đơn vị đ/áo">';
   }
   function attrTagsText(p) { return PRODUCT_ATTRS.map(function (a) { return p[a.key]; }).filter(Boolean).join(' · '); }
   function stripVi(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
@@ -1064,6 +1076,7 @@
         '</div>' +
         '<div class="sc-body">' +
           '<div class="sc-name">' + esc(p.name) + '</div>' +
+          (priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' : '') +
           '<div class="sc-sub"><span>' + colorsOf(p).length + ' màu</span></div>' +
           (tags ? '<div class="sc-attrs">' + esc(tags) + '</div>' : '') +
           '<button class="btn ghost small" style="margin-top:6px;">' + (totalP > 0 ? 'Sửa số lượng (' + totalP + ')' : 'Chọn số lượng') + '</button>' +
@@ -1094,6 +1107,7 @@
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
+      (priceOf(p) ? '<div class="ms-price">Giá: <b>' + fmtVnd(priceOf(p)) + '</b> / áo</div>' : '') +
       '<div class="ms-section-label">Chọn số lượng áo theo màu</div>' +
       '<div class="qty-color-rows">' + colors.map(function (c) {
         var v = cartP[c] || 0;
@@ -1103,6 +1117,7 @@
           '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
           '</div>';
       }).join('') + '</div>' +
+      (priceOf(p) ? '<div class="ms-subtotal" id="msSubtotal"></div>' : '') +
       '<button class="btn primary full" id="msGuestSaveBtn">Lưu vào giỏ</button>' +
       '</div>';
     $('productModal').innerHTML = html;
@@ -1110,11 +1125,19 @@
     bindLightboxes($('productModal'));
 
     $('msGuestCloseBtn').addEventListener('click', function () { $('productModal').classList.add('hidden'); });
+    function updateGuestSubtotal() {
+      var box = $('msSubtotal'); if (!box) return;
+      var qty = 0;
+      $('productModal').querySelectorAll('.qty-color-row .qc-input').forEach(function (inp) { qty += Math.max(0, Math.floor(Number(inp.value) || 0)); });
+      box.innerHTML = qty > 0 ? 'Tạm tính: <b>' + qty + '</b> áo × ' + fmtVnd(priceOf(p)) + ' = <b style="color:var(--stitch);">' + fmtVnd(qty * priceOf(p)) + '</b>' : '';
+    }
     $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
       var input = row.querySelector('.qc-input');
-      row.querySelector('[data-action="dec"]').addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); });
-      row.querySelector('[data-action="inc"]').addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; });
+      row.querySelector('[data-action="dec"]').addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); updateGuestSubtotal(); });
+      row.querySelector('[data-action="inc"]').addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; updateGuestSubtotal(); });
+      input.addEventListener('input', updateGuestSubtotal);
     });
+    updateGuestSubtotal();
     $('msGuestSaveBtn').addEventListener('click', function () {
       var q = {};
       var hasAny = false;
@@ -1131,6 +1154,8 @@
 
   function openGuestCheckoutModal() {
     var grand = 0;
+    var grandAmount = 0;
+    var hasUnpriced = false;
     var items = [];
     Object.keys(guestCart).forEach(function (pid) {
       var p = products[pid];
@@ -1140,7 +1165,9 @@
       Object.keys(q).forEach(function (c) { pTot += q[c]; });
       if (pTot > 0) {
         grand += pTot;
-        items.push({ pid: pid, name: p.name, imageUrl: p.imageUrl || '', quantities: q, total: pTot });
+        var unit = priceOf(p);
+        if (unit > 0) grandAmount += unit * pTot; else hasUnpriced = true;
+        items.push({ pid: pid, name: p.name, imageUrl: p.imageUrl || '', quantities: q, total: pTot, price: unit, amount: unit * pTot });
       }
     });
 
@@ -1153,9 +1180,11 @@
         return '<div class="lead-item-row">' +
           (it.imageUrl ? '<img src="' + esc(it.imageUrl) + '">' : '') +
           '<div style="flex:1;"><b>' + esc(it.name) + '</b><br><span style="font-size:12px;color:var(--ink-soft);">' + b + '</span></div>' +
-          '<b>' + it.total + ' áo</b></div>';
+          '<div style="text-align:right;"><b>' + it.total + ' áo</b>' + (it.amount > 0 ? '<div class="li-amount">' + fmtVnd(it.amount) + '</div>' : '') + '</div></div>';
       }).join('') + '</div>' +
       '<div style="font-weight:700;text-align:right;margin-bottom:14px;font-size:16px;">Tổng cộng: <span style="color:var(--stitch);font-size:20px;">' + grand + '</span> áo</div>' +
+      (grandAmount > 0 ? '<div style="text-align:right;margin:-8px 0 14px;"><div style="font-weight:700;font-size:16px;">Tạm tính: <span style="color:var(--stitch);font-size:20px;">' + fmtVnd(grandAmount) + '</span></div>' +
+        '<div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">Giá tham khảo' + (hasUnpriced ? ' (chưa gồm mẫu chưa có giá)' : '') + ' — tư vấn viên sẽ xác nhận lại khi chốt đơn.</div></div>' : '') +
       '<div class="field-row"><label>Tên của bạn *</label><input type="text" id="leadCustName" placeholder="VD: Anh Nam"></div>' +
       '<div class="field-row"><label>Số điện thoại / Zalo để chốt đơn *</label><input type="text" id="leadCustPhone" placeholder="VD: 0987654321"></div>' +
       '<div class="field-row"><label>Ghi chú (nếu có)</label><textarea id="leadCustNote" rows="2" placeholder="VD: Cần gấp trong tuần này..."></textarea></div>' +
@@ -1182,6 +1211,7 @@
         note: note,
         items: items,
         totalQty: grand,
+        totalAmount: grandAmount,
         createdAt: Date.now(),
         billed: false,
         printed: false
@@ -1256,7 +1286,7 @@
         return '<div class="lead-item-row">' +
           (img ? '<img class="wt-thumb" data-lightbox="' + esc(img) + '" src="' + esc(img) + '">' : '') +
           '<div style="flex:1;"><b>' + esc(it.name) + '</b>: ' + b + '</div>' +
-          '<b>' + it.total + ' áo</b></div>';
+          '<div style="text-align:right;"><b>' + it.total + ' áo</b>' + (it.amount > 0 ? '<div class="li-amount">' + fmtVnd(it.amount) + '</div>' : '') + '</div></div>';
       }).join('');
 
       var cardClass = 'lead-card' + (isBilled ? ' is-billed' : '') + (isPrinted ? ' is-printed' : '') + (isTrashView ? ' is-deleted' : '');
@@ -1292,7 +1322,8 @@
         '<div class="lead-head">' +
           '<div><div class="lead-cust">' + esc(lead.customerName) + ' <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
           '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div></div>' +
-          '<div style="font-size:16px;font-weight:700;color:var(--stitch);">' + lead.totalQty + ' áo</div>' +
+          '<div style="text-align:right;"><div style="font-size:16px;font-weight:700;color:var(--stitch);">' + lead.totalQty + ' áo</div>' +
+            (lead.totalAmount > 0 ? '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + fmtVnd(lead.totalAmount) + '</div>' : '') + '</div>' +
         '</div>' +
         (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
         '<div class="lead-items">' + itemsHtml + '</div>' +
@@ -1578,7 +1609,7 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
-  var PRESERVE_FIELD_IDS = ['attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
+  var PRESERVE_FIELD_IDS = ['priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
   function snapshotFormState() {
     var snap = {};
     PRESERVE_FIELD_IDS.forEach(function (id) {
@@ -2470,6 +2501,7 @@
         '</div>' +
       '</div>' +
       '<div class="field-row"><label>Các màu (cách nhau bằng dấu phẩy)</label><input type="text" id="colorsInput" value="' + DEFAULT_COLORS.join(', ') + '"></div>' +
+      '<div class="field-row"><label>Giá bán (đ/áo) — để trống nếu chưa có giá</label><input type="text" inputmode="numeric" id="priceInput" placeholder="VD: 185000"></div>' +
       '<div class="field-row"><label>Thuộc mục (khách chuyển qua lại bằng tab)</label><select id="attr_section" class="attr-select">' +
         SECTIONS.map(function (x) { return '<option value="' + x.key + '">' + esc(x.label) + '</option>'; }).join('') + '</select></div>' +
       '<div class="attr-select-row">' + PRODUCT_ATTRS.map(function (a) {
@@ -2534,17 +2566,28 @@
         : '';
 
       var attrsHtml = editable
-        ? '<div class="mli-attrs">' + sectionSelectHtml(p) + PRODUCT_ATTRS.map(function (a) {
+        ? '<div class="mli-attrs">' + priceInputHtml(p) + sectionSelectHtml(p) + PRODUCT_ATTRS.map(function (a) {
             return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="' + a.key + '" title="' + esc(a.label) + '"><option value="">' + esc(a.label) + ': —</option>' +
               a.options.map(function (o) { return '<option value="' + esc(o) + '"' + (p[a.key] === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
           }).join('') + '</div>'
-        : '<div class="mli-attrs-text">' + esc([sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div>';
+        : '<div class="mli-attrs-text">' + esc([priceOf(p) ? fmtVnd(priceOf(p)) : '', sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div>';
       return '<div class="manage-list-item' + (hidden || isPending ? ' is-hidden' : '') + '">' +
         (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;">–</div>') +
         '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + attrsHtml + ownerNote + '</div>' +
         '<div class="mli-actions">' + actions + '</div></div>';
     }).join('');
 
+    listEl.querySelectorAll('.mli-price-input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var pid = inp.dataset.pid;
+        if (!products[pid] || !canEditProduct(products[pid])) { toast('Bạn không có quyền sửa mẫu này.'); return; }
+        var v = parseInt(String(inp.value).replace(/\D/g, ''), 10) || 0;
+        if (v > 100000000) { toast('Giá quá lớn, kiểm tra lại.'); return; }
+        db.ref('products/' + pid).update({ price: v > 0 ? v : null })      // null = xoá giá
+          .then(function () { toast(v > 0 ? 'Đã lưu giá ' + fmtVnd(v) + '.' : 'Đã xoá giá.'); })
+          .catch(function (e) { toast('Lỗi: ' + e.message); });
+      });
+    });
     listEl.querySelectorAll('.mli-attr-select').forEach(function (sel) {
       sel.addEventListener('change', function () {
         var pid = sel.dataset.pid;
@@ -2586,6 +2629,7 @@
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       '<div class="field-row"><label>Tên mẫu</label><div style="font-weight:700;font-size:15px;">' + esc(p.name) + '</div></div>' +
       '<div class="field-row"><label>Các màu</label><div>' + esc(colors.join(', ')) + '</div></div>' +
+      '<div class="field-row"><label>Giá bán</label><div>' + (priceOf(p) ? fmtVnd(priceOf(p)) + ' / áo' : '<i>Chưa có giá</i>') + '</div></div>' +
       '<div class="field-row"><label>Phân loại</label><div>' + esc([sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div></div>' +
       '<div class="field-row"><label>Người thêm</label><div>' + esc(p.createdByName || '') + ' · Lúc ' + esc(createdText) + '</div></div>' +
       '<div style="display:flex; gap:8px; margin-top:16px;">' +
@@ -2694,6 +2738,9 @@
     });
     var secSel = $('attr_section');
     newProduct.section = (secSel && secSel.value) || 'a55';
+    var priceVal = parseInt(String(($('priceInput') || {}).value || '').replace(/\D/g, ''), 10) || 0;
+    if (priceVal > 100000000) { toast('Giá quá lớn, kiểm tra lại.'); if (btn) { btn.disabled = false; btn.textContent = 'Thêm mẫu'; } return; }
+    if (priceVal > 0) newProduct.price = priceVal;
     db.ref('products').push(newProduct).then(function () {
       if (isManager()) {
         toast('Đã thêm mẫu áo thành công.');
