@@ -380,6 +380,7 @@
   .shop-card .sc-name { font-size: 13px; font-weight: 600; line-height: 1.35; }
   .shop-card .sc-sub { font-size: 11.5px; color: var(--ink-soft); display: flex; justify-content: space-between; align-items: center; }
   .shop-card .sc-mine { font-size: 13.5px; color: var(--ink-soft); margin-top: auto; font-weight: 600; }
+  .shop-card .sc-mine.sc-mine-none { font-weight: 500; font-size: 12.5px; opacity: .55; }
   .shop-card .sc-mine b { color: var(--stitch); font-family: var(--font-display); font-size: 17px; font-weight: 800; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(20,18,14,0.55); z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
@@ -2168,7 +2169,6 @@
   }
 
   var selectedOrderDate = 'all';
-  var orderShowEmpty = false;   // false = chỉ hiện mẫu đã có đơn
   var orderSection = 'a55';     // tab mục đang xem ở tab Đơn may
   var orderSectionActive = null; // null = không lọc theo mục
   var aggSection = 'a55';       // tab mục đang xem ở tab Tổng hợp
@@ -2202,12 +2202,12 @@
 
     var totals = {};
     plist.forEach(function (p) { totals[p.id] = productTotalAcrossDates(p.id, activeDates); });
-    // Tab mục: mặc định "Mẫu A55 in", 1 tab "Các mẫu khác" (số trên tab = số mẫu đã có đơn)
+    // Tab mục: mặc định "Mẫu A55 in", 1 tab "Các mẫu khác" (số trên tab = số mã của mục)
     var secState = sectionTabsState(plist, orderSection);
     orderSection = secState.selected;
     orderSectionActive = secState.both ? orderSection : null;
     var orderSecCounts = { a55: 0, other: 0 };
-    plist.forEach(function (p) { if (totals[p.id] > 0) orderSecCounts[sectionOf(p)]++; });
+    plist.forEach(function (p) { orderSecCounts[sectionOf(p)]++; });
     renderSectionTabs('orderSectionTabs', secState, orderSecCounts, function (sec) { orderSection = sec; renderOrderList(); });
     if (secState.both) plist = plist.filter(function (p) { return sectionOf(p) === orderSection; });
     renderLeadSummaryPanel(activeDates, orderSectionActive);
@@ -2216,8 +2216,7 @@
       return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0));
     });
     var withOrders = plist.filter(function (p) { return totals[p.id] > 0; });
-    var emptyCount = plist.length - withOrders.length;
-    var shownList = orderShowEmpty ? plist : withOrders;
+    var shownList = plist;      // luôn hiện đủ các mã, mẫu có đơn nằm trên
 
     // Dòng tóm tắt: quản lý thấy tổng cả đội, sale chỉ thấy số của mình
     var chips;
@@ -2246,15 +2245,12 @@
         '<div class="sc-body">' +
           '<div class="sc-name">' + nameHtml(p) + '</div>' +
           '<div class="sc-sub"><span>' + colors.length + ' màu</span></div>' +
-          (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : '') +
+          (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : (totalAll === 0 ? '<div class="sc-mine sc-mine-none">Chưa có đơn</div>' : '')) +
         '</div></div>';
-    }).join('') : '<div class="empty" style="grid-column:1/-1;">Chưa có đơn nào trong phạm vi đang xem.</div>') +
-      (emptyCount > 0 || orderShowEmpty ? '<div style="grid-column:1/-1;text-align:center;"><button class="os-toggle" id="orderToggleEmptyBtn">' + (orderShowEmpty ? 'Ẩn các mẫu chưa có đơn' : 'Hiện thêm ' + emptyCount + ' mẫu chưa có đơn') + '</button></div>' : '');
+    }).join('') : '<div class="empty" style="grid-column:1/-1;">Chưa có mẫu nào.</div>');
     $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
       card.addEventListener('click', function () { openProductModal(card.dataset.pid); });
     });
-    var toggleEmptyBtn = $('orderToggleEmptyBtn');
-    if (toggleEmptyBtn) toggleEmptyBtn.addEventListener('click', function () { orderShowEmpty = !orderShowEmpty; renderOrderList(); });
     renderMyOrdersToday();
   }
 
