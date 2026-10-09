@@ -434,6 +434,14 @@
   .sp-meta { color: var(--ink-soft); text-align: right; }
   .sp-more { font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
   .sp-warn .sp-title { color: #855302; }
+  .sc-code { display: inline-block; background: var(--denim); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; letter-spacing: .02em; }
+  .modal-head h2 .sc-code { font-size: 12px; vertical-align: 3px; }
+  .os-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .os-scope { font-weight: 700; color: var(--ink); margin-right: 4px; }
+  .os-chip { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--ink-soft); }
+  .os-chip b { color: var(--stitch); font-size: 14px; }
+  .os-help { font-size: 12.5px; color: var(--ink-soft); }
+  .os-toggle { font-family: var(--font-body); font-size: 13px; font-weight: 600; background: none; border: 1px dashed var(--line); border-radius: 999px; padding: 9px 20px; color: var(--denim); cursor: pointer; margin: 6px 0 10px; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -601,10 +609,10 @@
   <aside class="sidebar">
     <div class="sidebar-brand"><h1><span class="tag-dot"></span><span>Đặt số lượng may</span></h1></div>
     <nav class="tabs-vertical">
-      <button data-tab="order" class="active">Đơn may chính thức</button>
-      <button data-tab="leads" id="tabLeadsBtn">Khách gửi yêu cầu <span class="nav-badge hidden" id="leadBadge">0</span></button>
+      <button data-tab="order" class="active">Đơn may</button>
+      <button data-tab="leads" id="tabLeadsBtn">Đơn khách <span class="nav-badge hidden" id="leadBadge">0</span></button>
       <button data-tab="agg" id="tabAggBtn">Tổng hợp</button>
-      <button data-tab="stats" id="tabStatsBtn">Dữ liệu thống kê</button>
+      <button data-tab="stats" id="tabStatsBtn">Thống kê</button>
       <button data-tab="manage" id="tabManageBtn">Quản lý mẫu</button>
       <button data-tab="accounts" id="tabAccountsBtn">Tài khoản</button>
     </nav>
@@ -651,7 +659,7 @@
           <button class="lead-filter-btn hidden" data-filter="deleted" id="leadDeletedFilterBtn">🗑️ Đã xoá</button>
         </div>
         <p class="img-hint" style="margin-bottom:14px;">
-          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Số lượng khách đặt <b>tự cộng vào "Đơn may chính thức"</b> của sale ngay khi khách gửi. Nếu khách huỷ hoặc không cọc, bấm <b>Xoá</b> để trừ lại (quản lý khôi phục được). Sau khi cọc và lên hoá đơn, <b>tích "Đã ghi vào hoá đơn"</b> — số lượng của đơn đó sẽ <b>rút khỏi "Đơn may chính thức"</b> (bỏ tích là cộng lại). Tích <b>"Đã đặt in"</b> để theo dõi tiến độ.
+          Khách đặt qua link của bạn sẽ lưu tại đây không bị xoá. Số lượng khách đặt <b>tự cộng vào "Đơn may"</b> của sale ngay khi khách gửi. Nếu khách huỷ hoặc không cọc, bấm <b>Xoá</b> để trừ lại (quản lý khôi phục được). Sau khi cọc và lên hoá đơn, <b>tích "Đã ghi vào hoá đơn"</b> — số lượng của đơn đó sẽ <b>rút khỏi "Đơn may"</b> (bỏ tích là cộng lại). Tích <b>"Đã đặt in"</b> để theo dõi tiến độ.
         </p>
         <div id="leadsList"></div>
       </div>
@@ -684,7 +692,7 @@
     <!-- TAB MỚI: DỮ LIỆU THỐNG KÊ (DÀNH CHO QUẢN LÝ) -->
     <section class="view" id="view-stats">
       <div class="manage-form">
-        <h2>📊 Dữ liệu thống kê khách vào Link &amp; Đã gửi đơn</h2>
+        <h2>📊 Thống kê khách vào link &amp; đơn đã gửi</h2>
         <p class="img-hint" style="margin-top:-6px;margin-bottom:14px;">Thống kê chi tiết số lượt khách đã bấm xem link và số lượng khách thực tế đã chốt gửi đơn in.</p>
         <div class="scroll-x">
           <table class="workshop-table" id="trafficStatsTable">
@@ -776,6 +784,22 @@
   function codeOf(name) {
     var m = /^\s*([A-Za-z]{1,2})\s*[-_.]?\s*(\d+)/.exec(String(name || ''));
     return m ? { prefix: m[1].toUpperCase(), num: parseInt(m[2], 10) } : null;
+  }
+  // Hiển thị tên mẫu gọn: tách mã ("H22", "A1") thành nhãn riêng + phần tên sạch (bỏ dấu - . _ thừa, tên IN HOA TOÀN BỘ thì đổi sang chữ thường có hoa đầu từ).
+  // Chỉ đổi cách HIỂN THỊ, tên lưu trong dữ liệu giữ nguyên.
+  function displayName(p) {
+    var raw = String((p && p.name) || '').trim();
+    var m = /^\s*([A-Za-z]{1,2})\s*[-_.]?\s*(\d+)\s*[-_.:)]*\s*(.*)$/.exec(raw);
+    if (!m) return { code: '', title: raw };
+    var title = String(m[3] || '').trim();
+    var letters = title.replace(/[^A-Za-zÀ-ỹ]/g, '');
+    if (letters.length > 3 && title === title.toUpperCase()) title = titleVi(title);
+    if (title) title = title.charAt(0).toUpperCase() + title.slice(1);
+    return { code: m[1].toUpperCase() + m[2], title: title || raw };
+  }
+  function nameHtml(p) {
+    var dn = displayName(p);
+    return (dn.code ? '<span class="sc-code">' + esc(dn.code) + '</span>' : '') + esc(dn.title);
   }
   // Tăng dần (A1, A2 ... H1, H2 ...); tên không có mã xếp cuối
   function compareByCode(a, b) {
@@ -1032,12 +1056,12 @@
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function dateKeyOf(ts) { var d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
-  // ---- Đơn khách gửi qua link của sale tự cộng vào "Đơn may chính thức" của sale đó ----
+  // ---- Đơn khách gửi qua link của sale tự cộng vào "Đơn may" của sale đó ----
   // Duyệt từng mẫu trong đơn khách còn hiệu lực: đơn mới (autoCount), chưa bị xoá, mẫu chưa được in & reset.
   function eachLeadContribution(fn) {
     Object.keys(customerLeads).forEach(function (lid) {
       var lead = customerLeads[lid];
-      if (!lead || lead.autoCount !== true || lead.deletedAt || lead.billed || !lead.createdAt || !users[lead.saleId]) return;   // đã ghi vào hoá đơn = rút khỏi đơn may chính thức
+      if (!lead || lead.autoCount !== true || lead.deletedAt || lead.billed || !lead.createdAt || !users[lead.saleId]) return;   // đã ghi vào hoá đơn = rút khỏi đơn may
       var d = dateKeyOf(lead.createdAt);
       var items = lead.items || {};
       Object.keys(items).forEach(function (k) {
@@ -1248,7 +1272,7 @@
         (p.soldOut ? '<span class="sc-badge-out">Tạm hết</span>' : (totalP > 0 ? '<span class="sc-badge-hot">Đã chọn: ' + totalP + '</span>' : '')) +
         '</div>' +
         '<div class="sc-body">' +
-          '<div class="sc-name">' + esc(p.name) + '</div>' +
+          '<div class="sc-name">' + nameHtml(p) + '</div>' +
           (priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' + (cardTiers ? '<div class="sc-tier-hint">Sỉ giảm đến ' + fmtVnd(cardTiers[cardTiers.length - 1].price) + '</div>' : '') : '') +
           '<div class="sc-sub"><span>' + colorsOf(p).length + ' màu</span></div>' +
           (tags ? '<div class="sc-attrs">' + esc(tags) + '</div>' : '') +
@@ -1279,7 +1303,7 @@
     var colors = colorsOf(p);
     var cartP = guestCart[pid] || {};
     var html = '<div class="modal-sheet">' +
-      '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
+      '<div class="modal-head"><h2>' + nameHtml(p) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       (tiersOf(p)
         ? '<div class="ms-tiers">' + tiersOf(p).map(function (t) { return '<div class="ms-tier" data-min="' + t.min + '"><div class="mt-min">Từ ' + t.min + ' áo</div><div class="mt-price">' + fmtVnd(t.price) + '</div></div>'; }).join('') + '</div>' +
@@ -1406,7 +1430,7 @@
         totalQty: grand,
         totalAmount: grandAmount,
         createdAt: Date.now(),
-        autoCount: true,      // đơn mới: tự cộng vào Đơn may chính thức của sale
+        autoCount: true,      // đơn mới: tự cộng vào Đơn may của sale
         billed: false,
         printed: false
       };
@@ -1496,7 +1520,7 @@
         actionsHtml = '<div class="lead-actions">' +
           '<div style="font-size:12.5px;color:var(--ink-soft);">' +
             (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>') +
-            (lead.autoCount ? (isBilled ? ' · 📤 <b>Đã rút khỏi đơn may chính thức</b>' : ' · 📥 <b>Đang cộng trong đơn may chính thức</b>') : '') +
+            (lead.autoCount ? (isBilled ? ' · 📤 <b>Đã rút khỏi đơn may</b>' : ' · 📥 <b>Đang cộng trong đơn may</b>') : '') +
             (isPrinted ? ' · 🔵 <b>Đã đặt in</b>' : '') +
           '</div>' +
           '<div class="lead-toggles">' +
@@ -1534,7 +1558,7 @@
         var state = chk.checked;
         db.ref('customerLeads/' + lid + '/billed').set(state).then(function () {
           var auto = (customerLeads[lid] || {}).autoCount === true;
-          toast(state ? 'Đã tích: Đã ghi vào hoá đơn.' + (auto ? ' Số lượng đã rút khỏi đơn may chính thức.' : '') : 'Đã bỏ tích ghi vào hoá đơn.' + (auto ? ' Số lượng được cộng lại vào đơn may chính thức.' : ''));
+          toast(state ? 'Đã tích: Đã ghi vào hoá đơn.' + (auto ? ' Số lượng đã rút khỏi đơn may.' : '') : 'Đã bỏ tích ghi vào hoá đơn.' + (auto ? ' Số lượng được cộng lại vào đơn may.' : ''));
         });
       });
     });
@@ -1553,7 +1577,7 @@
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid;
         var ld = customerLeads[lid] || {};
-        if (!confirm('Xoá yêu cầu này? Quản lý vẫn xem và khôi phục lại được.' + (ld.autoCount ? '\n\nSố lượng của đơn này sẽ bị trừ khỏi đơn may chính thức của sale.' : ''))) return;
+        if (!confirm('Xoá yêu cầu này? Quản lý vẫn xem và khôi phục lại được.' + (ld.autoCount ? '\n\nSố lượng của đơn này sẽ bị trừ khỏi đơn may của sale.' : ''))) return;
         db.ref('customerLeads/' + lid).update({ deletedAt: Date.now(), deletedBy: currentUser.name })
           .then(function () { toast('Đã xoá. Quản lý có thể khôi phục ở tab "Đã xoá".'); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
@@ -1564,7 +1588,7 @@
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid;
         db.ref('customerLeads/' + lid).update({ deletedAt: null, deletedBy: null })
-          .then(function () { toast('Đã khôi phục đơn' + ((customerLeads[lid] || {}).autoCount ? ' và cộng lại vào đơn chính thức.' : '.')); })
+          .then(function () { toast('Đã khôi phục đơn' + ((customerLeads[lid] || {}).autoCount ? ' và cộng lại vào đơn may.' : '.')); })
           .catch(function (e) { toast('Lỗi: ' + e.message); });
       });
     });
@@ -1975,13 +1999,14 @@
   }
 
   var selectedOrderDate = 'all';
+  var orderShowEmpty = false;   // false = chỉ hiện mẫu đã có đơn
   var modalProduct = null;
 
   function renderOrderDateControls() {
     var dates = availableDates();
     if (dates.indexOf(selectedOrderDate) === -1 && selectedOrderDate !== 'all') selectedOrderDate = 'all';
     var sel = $('orderDateSelect');
-    var opts = '<option value="all"' + (selectedOrderDate === 'all' ? ' selected' : '') + '>Tất cả (chưa in, gộp)</option>';
+    var opts = '<option value="all"' + (selectedOrderDate === 'all' ? ' selected' : '') + '>Tất cả các ngày chưa in</option>';
     opts += dates.map(function (d) { return '<option value="' + d + '"' + (d === selectedOrderDate ? ' selected' : '') + '>' + fmtDate(d) + '</option>'; }).join('');
     if (sel.dataset.sig !== opts) { sel.innerHTML = opts; sel.dataset.sig = opts; }  // không dựng lại khi danh sách không đổi (tránh menu chọn ngày tự đóng khi có dữ liệu mới)
     sel.onchange = function () { selectedOrderDate = sel.value; renderOrderList(); };
@@ -1994,12 +2019,7 @@
     var plist = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
-    $('orderDayNote').innerHTML = selectedOrderDate === 'all'
-      ? 'Tổng số áo <b>chưa in</b> trên tất cả các ngày đang chờ. Số lượng tự tính từ đơn khách đặt qua link của từng sale — bấm vào mẫu để xem chi tiết theo màu.'
-      : (selectedOrderDate === today
-        ? 'Đơn cho ngày <b>' + fmtDate(today) + '</b>.'
-        : 'Đang xem đơn ngày <b>' + fmtDate(selectedOrderDate) + '</b>.');
-
+    var scopeNote = selectedOrderDate === 'all' ? 'Tất cả các ngày chưa in' : (selectedOrderDate === today ? 'Hôm nay ' + fmtDate(today) : 'Ngày ' + fmtDate(selectedOrderDate));
     renderLeadSummaryPanel(activeDates);
 
     if (!plist.length) {
@@ -2008,32 +2028,51 @@
       return;
     }
 
+    var totals = {};
+    plist.forEach(function (p) { totals[p.id] = productTotalAcrossDates(p.id, activeDates); });
     plist.sort(function (a, b) {
-      var tA = productTotalAcrossDates(a.id, activeDates);
-      var tB = productTotalAcrossDates(b.id, activeDates);
-      if (tB !== tA) return tB - tA;
-      return (a.createdAt || 0) - (b.createdAt || 0);
+      if (totals[b.id] !== totals[a.id]) return totals[b.id] - totals[a.id];
+      return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0));
     });
+    var withOrders = plist.filter(function (p) { return totals[p.id] > 0; });
+    var emptyCount = plist.length - withOrders.length;
+    var shownList = orderShowEmpty ? plist : withOrders;
 
-    $('shopGrid').innerHTML = plist.map(function (p) {
+    // Dòng tóm tắt: quản lý thấy tổng cả đội, sale chỉ thấy số của mình
+    var chips;
+    if (isManager()) {
+      var sumAll = withOrders.reduce(function (sum, p) { return sum + totals[p.id]; }, 0);
+      chips = '<span class="os-chip"><b>' + sumAll + '</b> áo</span><span class="os-chip"><b>' + withOrders.length + '</b> mẫu có đơn</span>';
+    } else {
+      var mineSum = 0, mineModels = 0;
+      plist.forEach(function (p) { var t = myTotalAcrossDates(p.id, activeDates); if (t > 0) { mineSum += t; mineModels++; } });
+      chips = '<span class="os-chip">Khách của bạn: <b>' + mineSum + '</b> áo</span><span class="os-chip"><b>' + mineModels + '</b> mẫu</span>';
+    }
+    $('orderDayNote').innerHTML = '<div class="os-line"><span class="os-scope">' + esc(scopeNote) + '</span>' + chips + '</div>' +
+      '<div class="os-help">Số lượng tự tính từ đơn khách đặt qua link của từng sale. Bấm vào mẫu để xem chi tiết theo màu.</div>';
+
+    $('shopGrid').innerHTML = (shownList.length ? shownList.map(function (p) {
       var colors = colorsOf(p);
       var mineTotal = myTotalAcrossDates(p.id, activeDates);
-      var totalAll = productTotalAcrossDates(p.id, activeDates);
+      var totalAll = totals[p.id];
       var printed = productPrintedAcrossDates(p.id, activeDates);
       return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
-        '<span class="sc-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
-        (totalAll > 0 ? '<span class="sc-badge-hot">🔥 Đã đặt: ' + totalAll + '</span>' : '') +
+        (printed ? '<span class="sc-badge done">✅ Đã in</span>' : '') +
+        (totalAll > 0 ? '<span class="sc-badge-hot">🔥 ' + totalAll + ' áo</span>' : '') +
         '</div>' +
         '<div class="sc-body">' +
-          '<div class="sc-name">' + esc(p.name) + '</div>' +
+          '<div class="sc-name">' + nameHtml(p) + '</div>' +
           '<div class="sc-sub"><span>' + colors.length + ' màu</span></div>' +
-          (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : (isManager() ? '' : '<div class="sc-mine" style="opacity:0.6;">Chưa có khách đặt</div>')) +
+          (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : '') +
         '</div></div>';
-    }).join('');
+    }).join('') : '<div class="empty" style="grid-column:1/-1;">Chưa có đơn nào trong phạm vi đang xem.</div>') +
+      (emptyCount > 0 || orderShowEmpty ? '<div style="grid-column:1/-1;text-align:center;"><button class="os-toggle" id="orderToggleEmptyBtn">' + (orderShowEmpty ? 'Ẩn các mẫu chưa có đơn' : 'Hiện thêm ' + emptyCount + ' mẫu chưa có đơn') + '</button></div>' : '');
     $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
       card.addEventListener('click', function () { openProductModal(card.dataset.pid); });
     });
+    var toggleEmptyBtn = $('orderToggleEmptyBtn');
+    if (toggleEmptyBtn) toggleEmptyBtn.addEventListener('click', function () { orderShowEmpty = !orderShowEmpty; renderOrderList(); });
     renderMyOrdersToday();
   }
 
@@ -2052,7 +2091,7 @@
     }).join('');
     box.innerHTML = '<div class="lead-summary-panel"><div class="lsp-title">📲 ' +
       (isManager() ? 'Khách đặt qua link của từng sale' : 'Khách đặt qua link của bạn') +
-      ' <span class="lsp-sub">— đã tự cộng vào đơn may chính thức</span></div>' + rows +
+      ' <span class="lsp-sub">— đã tự cộng vào đơn may</span></div>' + rows +
       (isManager() && uids.length > 1 ? '<div class="lsp-row lsp-total"><span class="lsp-name">Tổng</span><span class="lsp-meta"></span><b class="lsp-qty">' + total + ' áo</b></div>' : '') + '</div>';
   }
 
@@ -2131,7 +2170,7 @@
     }
 
     $('productModal').innerHTML = '<div class="modal-sheet">' +
-      '<div class="modal-head"><h2>' + esc(p.name) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
+      '<div class="modal-head"><h2>' + nameHtml(p) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
       (p.imageUrl ? '<img class="ms-image" data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '" alt="">' : '') +
       '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
       '<p class="img-hint" style="margin-top:8px;">Số lượng khách đặt qua link — <b>' + esc(scopeLabel) + '</b>' + (isManager() ? '' : ' (chỉ hiện số của bạn)') + '</p>' +
