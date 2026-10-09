@@ -883,9 +883,20 @@
     renderGuestProducts();
   }
 
+  // Lấy số thứ tự mẫu từ đầu tên: "H2- Hinh Celine" -> 2, "H10-Mặt Chu Môi" -> 10. Tên không có dạng Hxx -> xếp cuối.
+  function hNumberOf(name) {
+    var m = /^\s*H\s*(\d+)/i.exec(String(name || ''));
+    return m ? parseInt(m[1], 10) : Infinity;
+  }
   function renderGuestProducts() {
     // Chỉ hiển thị mẫu không bị ẩn và không phải mẫu đang chờ duyệt
     var plist = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
+    // Sắp xếp theo số H tăng dần: H1, H2, H3 ... H10, H11 ... (mẫu không có số H xếp cuối, theo thứ tự thêm vào)
+    plist.sort(function (a, b) {
+      var na = hNumberOf(a.name), nb = hNumberOf(b.name);
+      if (na !== nb) return na < nb ? -1 : 1;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
     var grid = $('guestGrid');
     if (!plist.length) { grid.innerHTML = '<div class="empty">Chưa có mẫu nào trên hệ thống.</div>'; return; }
 
