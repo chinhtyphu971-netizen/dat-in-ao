@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chọn mẫu và số lượng in</title>
+<title>Chọn mẫu và số lượng</title>
 
 <!-- THẺ HIỂN THỊ HÌNH ẢNH & XEM TRƯỚC KHI GỬI LINK QUA ZALO / FACEBOOK -->
 <meta property="og:type" content="website">
@@ -454,6 +454,18 @@
   .os-chip b { color: var(--stitch); font-size: 14px; }
   .os-help { font-size: 12.5px; color: var(--ink-soft); }
   .os-toggle { font-family: var(--font-body); font-size: 13px; font-weight: 600; background: none; border: 1px dashed var(--line); border-radius: 999px; padding: 9px 20px; color: var(--denim); cursor: pointer; margin: 6px 0 10px; }
+  .gh-contact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .ct-btn { display: inline-block; font-family: var(--font-body); font-size: 12.5px; font-weight: 700; text-decoration: none; border-radius: 999px; padding: 6px 12px; border: 1px solid transparent; }
+  .ct-call { background: var(--denim); color: #fff; }
+  .ct-zalo { background: #0068ff; color: #fff; }
+  .ct-box { margin-top: 14px; padding: 12px; border: 1px dashed var(--line); border-radius: 10px; font-size: 13px; text-align: center; color: var(--ink-soft); }
+  .ct-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+  .sale-phone-box { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; font-size: 13px; color: var(--ink-soft); }
+  .sale-phone-box .sp-inline { display: flex; gap: 8px; margin-top: 8px; }
+  .sale-phone-box input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .sale-phone-box .sp-status { margin-top: 6px; font-size: 12px; }
+  .acct-phone { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
+  .acct-phone-input { width: 190px; max-width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: 12px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -577,8 +589,9 @@
   <header class="guest-header">
     <div class="gh-inner">
       <div>
-        <h1 style="font-size:18px;margin:0;"><span class="tag-dot"></span>Chọn mẫu và số lượng in</h1>
+        <h1 style="font-size:18px;margin:0;"><span class="tag-dot"></span>Chọn mẫu và số lượng</h1>
         <div style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;">Tư vấn viên phụ trách: <b id="guestSaleName" style="color:var(--denim);">...</b></div>
+        <div class="gh-contact hidden" id="guestContact"></div>
       </div>
       <button class="header-cart-btn" id="guestHeaderCartBtn">
         🛒 Giỏ hàng (<span id="headerTotalCount">0</span>)
@@ -646,7 +659,13 @@
         </div>
         <button class="btn ghost small" id="copySaleLinkBtn">📋 Sao chép</button>
       </div>
+      <div class="sale-phone-box">
+        <label for="salePhoneInput">📞 Số điện thoại / Zalo của bạn — <b>hiện cho khách</b> để gọi hoặc nhắn khi cần hỏi:</label>
+        <div class="sp-inline"><input type="text" id="salePhoneInput" inputmode="tel" placeholder="VD: 0912345678"><button class="btn primary small" id="salePhoneSaveBtn">Lưu</button></div>
+        <div class="sp-status" id="salePhoneStatus"></div>
+      </div>
 
+      <div class="gs-tabs hidden" id="orderSectionTabs"></div>
       <div class="agg-date-bar"><label>Xem theo:</label><select id="orderDateSelect"></select></div>
       <p class="day-note" id="orderDayNote"></p>
       <div id="leadSummaryPanel"></div>
@@ -679,6 +698,7 @@
 
     <!-- TAB: TỔNG HỢP (QUẢN LÝ) -->
     <section class="view" id="view-agg">
+      <div class="gs-tabs hidden" id="aggSectionTabs"></div>
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
         <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
@@ -783,10 +803,11 @@
   ];
   // ---- Mục (bộ sưu tập) của mẫu: khách chuyển qua lại bằng 2 tab trên trang đặt hàng. Mẫu cũ chưa chọn = "Mẫu A55 in". ----
   var SECTIONS = [
-    { key: 'a55', label: 'Mẫu A55 in' },
-    { key: 'other', label: 'Các mẫu khác' }
+    { key: 'a55', label: 'Mẫu A55 in', guestLabel: 'Mẫu in hình' },        // label = tên nội bộ (nhân viên thấy); guestLabel = tên khách thấy
+    { key: 'other', label: 'Các mẫu khác', guestLabel: 'Áo quần khác' }
   ];
   function sectionOf(p) { return p.section === 'other' ? 'other' : 'a55'; }
+  function guestSectionLabel(key) { var x = SECTIONS.filter(function (y) { return y.key === key; })[0] || SECTIONS[0]; return x.guestLabel || x.label; }
   function sectionLabel(key) { return (SECTIONS.filter(function (x) { return x.key === key; })[0] || SECTIONS[0]).label; }
   function sectionSelectHtml(p) {
     return '<select class="mli-attr-select" data-pid="' + esc(p.id) + '" data-key="section" title="Mục">' +
@@ -852,6 +873,26 @@
     }, { passive: true });
   }
 
+  // ---- Tab theo mục (Mẫu A55 in / Các mẫu khác) dùng chung cho tab Đơn may và Tổng hợp; chỉ hiện khi cả 2 mục đều có mẫu ----
+  function sectionTabsState(plist, current) {
+    var cnt = { a55: 0, other: 0 };
+    plist.forEach(function (p) { cnt[sectionOf(p)]++; });
+    var both = cnt.a55 > 0 && cnt.other > 0;
+    var sel = current;
+    if (!both) sel = (cnt.other > 0 && cnt.a55 === 0) ? 'other' : 'a55';
+    else if (!cnt[sel]) sel = 'a55';
+    return { both: both, selected: sel };
+  }
+  function renderSectionTabs(boxId, state, counts, onPick) {
+    var box = $(boxId);
+    if (!state.both) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    box.classList.remove('hidden');
+    box.innerHTML = SECTIONS.map(function (x) {
+      return '<button class="gs-tab' + (state.selected === x.key ? ' active' : '') + '" data-sec="' + x.key + '">' + esc(x.label) + '<span class="gs-count">' + (counts[x.key] || 0) + '</span></button>';
+    }).join('');
+    box.querySelectorAll('.gs-tab').forEach(function (t) { t.addEventListener('click', function () { onPick(t.dataset.sec); }); });
+  }
+
   // Hiển thị tên mẫu gọn: tách mã ("H22", "A1") thành nhãn riêng + phần tên sạch (bỏ dấu - . _ thừa, tên IN HOA TOÀN BỘ thì đổi sang chữ thường có hoa đầu từ).
   // Chỉ đổi cách HIỂN THỊ, tên lưu trong dữ liệu giữ nguyên.
   function displayName(p) {
@@ -883,6 +924,31 @@
     if (!ca) return -1;
     if (!cb) return 1;
     return -compareByCode(a, b);
+  }
+
+  // ---- SĐT / Zalo của tư vấn viên: hiện cho khách để gọi hoặc nhắn khi cần hỏi ----
+  function normalizePhone(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (d.indexOf('84') === 0 && d.length === 11) d = '0' + d.slice(2);      // +84912345678 -> 0912345678
+    return d;
+  }
+  function validPhone(d) { return /^0\d{9,10}$/.test(d); }
+  function fmtPhone(d) {
+    d = String(d || '');
+    if (d.length === 10) return d.replace(/^(\d{4})(\d{3})(\d{3})$/, '$1 $2 $3');
+    if (d.length === 11) return d.replace(/^(\d{4})(\d{4})(\d{3})$/, '$1 $2 $3');
+    return d;
+  }
+  function contactHtml(u) {
+    var ph = u && u.phone ? String(u.phone) : '';
+    if (!ph) return '';
+    return '<a class="ct-btn ct-call" href="tel:' + esc(ph) + '">📞 Gọi ' + esc(fmtPhone(ph)) + '</a>' +
+      '<a class="ct-btn ct-zalo" href="https://zalo.me/' + esc(ph) + '" target="_blank" rel="noopener">💬 Nhắn Zalo</a>';
+  }
+  function guestContactBox() {
+    var u = users[saleRefId];
+    var h = contactHtml(u);
+    return h ? '<div class="ct-box">Cần hỏi thêm? Liên hệ tư vấn viên <b>' + esc(u.name) + '</b>:<div class="ct-row">' + h + '</div></div>' : '';
   }
 
   // ---- Giá bán (đ/áo). Chưa nhập giá = không hiện giá cho khách. ----
@@ -1173,11 +1239,12 @@
     orders = merged;
   }
   // Thống kê theo từng sale trong các ngày đang xem: {uid: {leads: số đơn khách, qty: số áo}}
-  function leadStatsByUser(dates) {
+  function leadStatsByUser(dates, secKey) {
     var stats = {}, seen = {};
     eachLeadContribution(function (lid, lead, k, it, d, uid) {
       if (dates.indexOf(d) === -1) return;
       var p = products[it.pid];
+      if (secKey && sectionOf(p) !== secKey) return;
       var q = sumQuantitiesForColors(it.quantities, colorsOf(p));
       if (q <= 0) return;
       stats[uid] = stats[uid] || { leads: 0, qty: 0 };
@@ -1220,6 +1287,9 @@
     } else {
       $('guestSaleName').textContent = 'Chung (Hệ thống)';
     }
+    var contactHtmlStr = contactHtml(saleUser);
+    $('guestContact').innerHTML = contactHtmlStr;
+    $('guestContact').classList.toggle('hidden', !contactHtmlStr);
     renderGuestProducts();
   }
 
@@ -1275,7 +1345,7 @@
       tabsBox.classList.remove('hidden');
       tabsBox.classList.toggle('searching', searching);
       tabsBox.innerHTML = SECTIONS.map(function (x) {
-        return '<button class="gs-tab' + (guestSection === x.key && !searching ? ' active' : '') + '" data-sec="' + x.key + '">' + esc(x.label) + '<span class="gs-count">' + secCount[x.key] + '</span></button>';
+        return '<button class="gs-tab' + (guestSection === x.key && !searching ? ' active' : '') + '" data-sec="' + x.key + '">' + esc(guestSectionLabel(x.key)) + '<span class="gs-count">' + secCount[x.key] + '</span></button>';
       }).join('');
       tabsBox.querySelectorAll('.gs-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
@@ -1332,7 +1402,7 @@
       var cartP = guestCart[p.id] || {};
       var totalP = 0;
       Object.keys(cartP).forEach(function (c) { totalP += cartP[c]; });
-      var tags = [mixedSearch ? sectionLabel(sectionOf(p)) : '', attrTagsText(p)].filter(Boolean).join(' · ');
+      var tags = [mixedSearch ? guestSectionLabel(sectionOf(p)) : '', attrTagsText(p)].filter(Boolean).join(' · ');
       var cardTiers = tiersOf(p);
       return '<div class="shop-card' + (p.soldOut ? ' sold-out' : '') + '" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
@@ -1475,6 +1545,7 @@
       '<div class="field-row"><label>Ghi chú (nếu có)</label><textarea id="leadCustNote" rows="2" placeholder="VD: Cần gấp trong tuần này..."></textarea></div>' +
       '<button class="btn primary full" id="submitLeadBtn" style="font-size:15px;padding:12px;">Gửi yêu cầu đặt hàng</button>' +
       '<p class="img-hint" style="text-align:center;margin-top:10px;">Tư vấn viên sẽ kết bạn Zalo để xác nhận và nhận cọc.</p>' +
+      guestContactBox() +
       '</div>';
     $('guestCartModal').innerHTML = html;
     $('guestCartModal').classList.remove('hidden');
@@ -1508,7 +1579,8 @@
         guestCart = {};
         updateGuestCartBar();
         renderGuestProducts();
-        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận.');
+        var salePh = users[saleRefId] && users[saleRefId].phone;
+        alert('Cảm ơn bạn! Đơn yêu cầu đã được gửi đến tư vấn viên. Chúng tôi sẽ liên hệ Zalo bạn ngay để xác nhận.' + (salePh ? '\nCần gấp thì gọi / nhắn Zalo tư vấn viên: ' + fmtPhone(salePh) + '.' : ''));
       }).catch(function (e) {
         btn.disabled = false; btn.textContent = 'Gửi yêu cầu đặt hàng';
         toast('Lỗi: ' + e.message);
@@ -1868,6 +1940,18 @@
 
     var baseLink = window.location.origin + window.location.pathname + '?sale=' + currentUser.id;
     $('saleLinkUrl').textContent = baseLink;
+    var myPhone = (users[currentUser.id] || {}).phone || '';
+    var phoneInput = $('salePhoneInput');
+    if (document.activeElement !== phoneInput) phoneInput.value = myPhone ? fmtPhone(myPhone) : '';
+    $('salePhoneStatus').innerHTML = myPhone ? '✅ Khách đang thấy nút gọi và nhắn Zalo tới số này trên link của bạn.' : '⚠️ Chưa có số — khách chưa liên hệ trực tiếp bạn được. Nhập số rồi bấm Lưu.';
+    $('salePhoneSaveBtn').onclick = function () {
+      var raw = phoneInput.value.trim();
+      var ph = normalizePhone(raw);
+      if (raw && !validPhone(ph)) { toast('Số điện thoại chưa đúng (cần 10–11 số, bắt đầu bằng 0).'); return; }
+      db.ref('users/' + currentUser.id).update({ phone: ph || null })
+        .then(function () { toast(ph ? 'Đã lưu số ' + fmtPhone(ph) + ' — khách sẽ thấy trên link của bạn.' : 'Đã xoá số liên hệ.'); })
+        .catch(function (e) { toast('Lỗi: ' + e.message); });
+    };
     $('copySaleLinkBtn').onclick = function () {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(baseLink).then(function () { toast('Đã sao chép link gửi khách!'); });
@@ -1898,7 +1982,7 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
-  var PRESERVE_FIELD_IDS = ['extraImagesInput', 'editExtraImagesInput', 'priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
+  var PRESERVE_FIELD_IDS = ['newAcctPhone', 'extraImagesInput', 'editExtraImagesInput', 'priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
   function snapshotFormState() {
     var snap = {};
     PRESERVE_FIELD_IDS.forEach(function (id) {
@@ -1940,6 +2024,7 @@
       '<div class="manage-form"><h2>Tạo tài khoản mới</h2>' +
       '<div class="field-row"><label>Tên nhân viên</label><input type="text" id="newAcctName" placeholder="VD: Lan (Sale 1)"></div>' +
       '<div class="field-row"><label>Mã PIN (từ 4 ký tự)</label><input type="text" id="newAcctPin" placeholder="VD: 1234" maxlength="8"></div>' +
+      '<div class="field-row"><label>SĐT / Zalo (hiện cho khách để liên hệ — không bắt buộc)</label><input type="text" id="newAcctPhone" inputmode="tel" placeholder="VD: 0912345678"></div>' +
       '<div class="field-row"><label>Vai trò</label><select id="newAcctRole" class="role-select">' +
       ['staff', 'product_manager', 'manager'].map(function (r) { return '<option value="' + r + '">' + roleLabel(r) + '</option>'; }).join('') +
       '</select></div>' +
@@ -1959,7 +2044,8 @@
       var createdText = u.createdAt ? new Date(u.createdAt).toLocaleString('vi-VN') : '';
       return '<div class="acct-row" data-uid="' + esc(u.id) + '">' +
         '<div class="acct-name">' + esc(u.name) + (isYou ? ' <span class="you-tag">(bạn)</span>' : '') +
-        '<div class="acct-meta">PIN: <b class="pin-hidden" tabindex="0" title="Bấm hoặc rê chuột để xem">' + esc(u.pin || '') + '</b> · Tạo lúc ' + esc(createdText) + '</div></div>' +
+        '<div class="acct-meta">PIN: <b class="pin-hidden" tabindex="0" title="Bấm hoặc rê chuột để xem">' + esc(u.pin || '') + '</b> · Tạo lúc ' + esc(createdText) + '</div>' +
+        '<div class="acct-phone">📞 <input type="text" class="acct-phone-input" data-uid="' + esc(u.id) + '" inputmode="tel" placeholder="SĐT / Zalo hiện cho khách" value="' + esc(u.phone ? fmtPhone(u.phone) : '') + '"></div></div>' +
         '<span class="role-chip' + (u.role === 'manager' ? ' manager' : '') + '">' + roleLabel(u.role) + '</span>' +
         '<span class="acct-actions">' +
         '<select class="role-select" data-action="set-role"' + (isLastManager ? ' disabled title="Cần giữ lại ít nhất 1 quản lý"' : '') + '>' + roleOptions + '</select>' +
@@ -1969,6 +2055,16 @@
         '</span></div>';
     }).join('');
 
+    listEl.querySelectorAll('.acct-phone-input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var uid = inp.dataset.uid;
+        var raw = inp.value.trim(), ph = normalizePhone(raw);
+        if (raw && !validPhone(ph)) { toast('Số điện thoại chưa đúng (cần 10–11 số, bắt đầu bằng 0).'); return; }
+        db.ref('users/' + uid).update({ phone: ph || null })
+          .then(function () { toast(ph ? 'Đã lưu số ' + fmtPhone(ph) + '.' : 'Đã xoá số liên hệ.'); })
+          .catch(function (e) { toast('Lỗi: ' + e.message); });
+      });
+    });
     listEl.querySelectorAll('.pin-hidden').forEach(function (el2) {
       el2.addEventListener('click', function () { el2.classList.toggle('revealed'); });
     });
@@ -2025,7 +2121,12 @@
     if (!name || !pin || pin.length < 4) { toast('Điền tên và PIN ít nhất 4 ký tự.'); return; }
     var nameKey = slugKey(name);
     if (findByNameKey(nameKey)) { toast('Đã có tên này rồi.'); return; }
-    db.ref('users').push({ name: name, nameKey: nameKey, pin: pin, role: role, createdAt: Date.now() })
+    var newPhoneRaw = ($('newAcctPhone') || {}).value || '';
+    var newPhone = normalizePhone(newPhoneRaw);
+    if (newPhoneRaw.trim() && !validPhone(newPhone)) { toast('Số điện thoại chưa đúng (cần 10–11 số, bắt đầu bằng 0).'); return; }
+    var newUser = { name: name, nameKey: nameKey, pin: pin, role: role, createdAt: Date.now() };
+    if (newPhone) newUser.phone = newPhone;
+    db.ref('users').push(newUser)
       .then(function () { toast('Đã tạo tài khoản!'); renderAccounts(); });
   }
 
@@ -2068,6 +2169,10 @@
 
   var selectedOrderDate = 'all';
   var orderShowEmpty = false;   // false = chỉ hiện mẫu đã có đơn
+  var orderSection = 'a55';     // tab mục đang xem ở tab Đơn may
+  var orderSectionActive = null; // null = không lọc theo mục
+  var aggSection = 'a55';       // tab mục đang xem ở tab Tổng hợp
+  var aggSectionFilter = null;
   var modalProduct = null;
 
   function renderOrderDateControls() {
@@ -2088,9 +2193,8 @@
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     var scopeNote = selectedOrderDate === 'all' ? 'Tất cả các ngày chưa in' : (selectedOrderDate === today ? 'Hôm nay ' + fmtDate(today) : 'Ngày ' + fmtDate(selectedOrderDate));
-    renderLeadSummaryPanel(activeDates);
-
     if (!plist.length) {
+      $('orderSectionTabs').classList.add('hidden'); $('leadSummaryPanel').innerHTML = '';
       $('shopGrid').innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>';
       $('myOrdersToday').innerHTML = '';
       return;
@@ -2098,6 +2202,15 @@
 
     var totals = {};
     plist.forEach(function (p) { totals[p.id] = productTotalAcrossDates(p.id, activeDates); });
+    // Tab mục: mặc định "Mẫu A55 in", 1 tab "Các mẫu khác" (số trên tab = số mẫu đã có đơn)
+    var secState = sectionTabsState(plist, orderSection);
+    orderSection = secState.selected;
+    orderSectionActive = secState.both ? orderSection : null;
+    var orderSecCounts = { a55: 0, other: 0 };
+    plist.forEach(function (p) { if (totals[p.id] > 0) orderSecCounts[sectionOf(p)]++; });
+    renderSectionTabs('orderSectionTabs', secState, orderSecCounts, function (sec) { orderSection = sec; renderOrderList(); });
+    if (secState.both) plist = plist.filter(function (p) { return sectionOf(p) === orderSection; });
+    renderLeadSummaryPanel(activeDates, orderSectionActive);
     plist.sort(function (a, b) {
       if (totals[b.id] !== totals[a.id]) return totals[b.id] - totals[a.id];
       return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0));
@@ -2146,9 +2259,9 @@
   }
 
   // Bảng "khách đặt qua link": sale chỉ thấy số của mình, quản lý thấy số của tất cả các sale
-  function renderLeadSummaryPanel(activeDates) {
+  function renderLeadSummaryPanel(activeDates, secKey) {
     var box = $('leadSummaryPanel');
-    var stats = leadStatsByUser(activeDates);
+    var stats = leadStatsByUser(activeDates, secKey);
     var uids = Object.keys(stats);
     if (!isManager()) uids = uids.filter(function (u) { return u === currentUser.id; });
     if (!uids.length) { box.innerHTML = ''; return; }
@@ -2168,7 +2281,7 @@
     var container = $('myOrdersToday');
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     var rows = [];
-    productList().forEach(function (p) {
+    productList().filter(function (p) { return !orderSectionActive || sectionOf(p) === orderSectionActive; }).forEach(function (p) {
       var q = {}, total = 0;
       var colors = colorsOf(p);
       activeDates.forEach(function (d) {
@@ -2279,6 +2392,7 @@
     var t = 0;
     var dayNode = orders[d] || {};
     productList().forEach(function (p) {
+      if (aggSectionFilter && sectionOf(p) !== aggSectionFilter) return;
       var node = dayNode[p.id];
       if (!node) return;
       var colors = colorsOf(p);
@@ -2291,7 +2405,9 @@
     // vẫn hiện đúng tổng đã đặt hôm đó, không bị mất số.
     Object.keys(printArchive || {}).forEach(function (aid) {
       var en = printArchive[aid];
-      if (en && en.date === d) t += (en.grandTotal || 0);
+      if (!en || en.date !== d) return;
+      if (!aggSectionFilter || !en.items) { t += (en.grandTotal || 0); return; }
+      (en.items || []).forEach(function (it) { if (sectionOf(products[it.productId] || {}) === aggSectionFilter) t += (it.totalQty || 0); });
     });
     return t;
   }
@@ -2322,8 +2438,11 @@
     var summaryEl = $('aggSummary'), prodEl = $('aggProducts');
     if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
     var plist = productList();
+    var secState0 = sectionTabsState(plist, aggSection);
+    aggSection = secState0.selected;
+    aggSectionFilter = secState0.both ? aggSection : null;
     renderAggDateControls();
-    if (!plist.length) { summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
+    if (!plist.length) { $('aggSectionTabs').classList.add('hidden'); summaryEl.innerHTML = ''; prodEl.innerHTML = '<div class="empty">Chưa có mẫu áo nào.</div>'; $('workshopTableWrap').style.display = 'none'; return; }
 
     var dates = selectedAggDate === 'all' ? availableDates() : [selectedAggDate];
     var singleDate = dates.length === 1 ? dates[0] : null;
@@ -2338,23 +2457,38 @@
         var o = merged[empKey];
         var pTotal = 0;
         colors.forEach(function (c) { var v = Number(o.quantities[c]) || 0; if (v > 0) { byColor[c] = (byColor[c] || 0) + v; pTotal += v; } });
-        if (pTotal > 0) { byPerson[empKey] = { employeeName: o.employeeName, total: pTotal, quantities: o.quantities }; peopleSet[empKey] = true; grandTotal += pTotal; pTotalQty += pTotal; }
+        if (pTotal > 0) { byPerson[empKey] = { employeeName: o.employeeName, total: pTotal, quantities: o.quantities }; pTotalQty += pTotal; }
       });
       if (pTotalQty > 0) byProduct[p.id] = { byColor: byColor, byPerson: byPerson, totalQty: pTotalQty };
     });
 
+    // Tab mục: số trên tab = số mẫu có đơn; tổng / số mẫu / số sale bên dưới tính theo mục đang xem
+    var aggSecCounts = { a55: 0, other: 0 };
+    plist.forEach(function (p) { if (byProduct[p.id]) aggSecCounts[sectionOf(p)]++; });
+    renderSectionTabs('aggSectionTabs', secState0, aggSecCounts, function (sec) { aggSection = sec; renderAgg(); });
+    var scopedList = secState0.both ? plist.filter(function (p) { return sectionOf(p) === aggSection; }) : plist;
+    var scopedBy = {};
+    grandTotal = 0; peopleSet = {};
+    scopedList.forEach(function (p) {
+      var bp = byProduct[p.id];
+      if (!bp) return;
+      scopedBy[p.id] = bp;
+      grandTotal += bp.totalQty;
+      Object.keys(bp.byPerson).forEach(function (k) { peopleSet[k] = true; });
+    });
+
     summaryEl.innerHTML = '<div class="agg-stat"><div class="num">' + grandTotal + '</div><div class="lbl">Tổng áo chốt may · ' + esc(fmtDate(selectedAggDate)) + '</div></div>' +
-      '<div class="agg-stat"><div class="num">' + Object.keys(byProduct).length + '</div><div class="lbl">Mẫu có đơn</div></div>' +
+      '<div class="agg-stat"><div class="num">' + Object.keys(scopedBy).length + '</div><div class="lbl">Mẫu có đơn</div></div>' +
       '<div class="agg-stat"><div class="num">' + Object.keys(peopleSet).length + '</div><div class="lbl">Sale đã chốt</div></div>';
 
-    var filteredList = plist.filter(function (p) { return byProduct[p.id]; });
+    var filteredList = scopedList.filter(function (p) { return byProduct[p.id]; });
     filteredList.sort(function (a, b) {
       return (byProduct[b.id].totalQty || 0) - (byProduct[a.id].totalQty || 0);
     });
-    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate), datesUsed: dates };
+    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate) + (secState0.both ? ' · ' + sectionLabel(aggSection) : ''), datesUsed: dates };
     renderWorkshopTable();
 
-    if (!Object.keys(byProduct).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn may nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
+    if (!Object.keys(scopedBy).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn may nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
 
     var html = '';
     filteredList.forEach(function (p) {
