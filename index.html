@@ -456,9 +456,16 @@
   .os-help { font-size: 12.5px; color: var(--ink-soft); }
   .os-toggle { font-family: var(--font-body); font-size: 13px; font-weight: 600; background: none; border: 1px dashed var(--line); border-radius: 999px; padding: 9px 20px; color: var(--denim); cursor: pointer; margin: 6px 0 10px; }
   .gh-contact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .ct-btn { display: inline-block; font-family: var(--font-body); font-size: 12.5px; font-weight: 700; text-decoration: none; border-radius: 999px; padding: 6px 12px; border: 1px solid transparent; }
+  .ct-btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 13px; font-weight: 700; text-decoration: none; border-radius: 999px; padding: 5px 14px 5px 6px; border: 1.5px solid transparent; }
+  .ct-ico { flex: 0 0 auto; display: block; }
   .ct-call { background: var(--denim); color: #fff; }
-  .ct-zalo { background: #0068ff; color: #fff; }
+  .ct-zalo { background: #fff; color: #0068ff; border-color: #0068ff; animation: ctPulse 1.8s ease-out infinite; }   /* nhấp nháy nhẹ để khách chú ý nút nhắn Zalo */
+  @keyframes ctPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(0,104,255,.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(0,104,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,104,255,0); }
+  }
+  @media (prefers-reduced-motion: reduce) { .ct-zalo { animation: none; } }
   .ct-box { margin-top: 14px; padding: 12px; border: 1px dashed var(--line); border-radius: 10px; font-size: 13px; text-align: center; color: var(--ink-soft); }
   .ct-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
   .sale-phone-box { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; font-size: 13px; color: var(--ink-soft); }
@@ -492,6 +499,8 @@
   .gho-colors { font-size: 12px; color: var(--ink-soft); }
   .gho-note { font-size: 12.5px; color: var(--ink-soft); font-style: italic; margin-top: 6px; }
   .gho-reorder { margin-top: 10px; }
+  .sc-tier-line { font-size: 11px; color: var(--ink-soft); line-height: 1.3; }
+  .shop-card .sc-price.sc-price-none { color: var(--ink-soft); font-weight: 500; font-size: 12px; opacity: .7; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -969,11 +978,14 @@
     if (d.length === 11) return d.replace(/^(\d{4})(\d{4})(\d{3})$/, '$1 $2 $3');
     return d;
   }
+  // Biểu tượng Zalo (ô vuông xanh, khung chat trắng, chữ Zalo) và biểu tượng gọi điện — vẽ bằng SVG nên không phụ thuộc emoji của từng máy
+  var ZALO_ICON_SVG = '<svg class="ct-ico" viewBox="0 0 48 48" width="28" height="28" aria-hidden="true"><rect width="48" height="48" rx="11" fill="#0068ff"/><path d="M24 9C14.6 9 8 15 8 22.6c0 4.1 1.9 7.7 5 10.2-.2 2-.9 3.9-2.2 5.6 3.1-.3 5.8-1.5 7.7-3.1 1.7.5 3.6.8 5.5.8 9.4 0 16-6 16-13.5S33.4 9 24 9z" fill="#fff"/><text x="24" y="26.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="13" fill="#0068ff">Zalo</text></svg>';
+  var PHONE_ICON_SVG = '<svg class="ct-ico" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/></svg>';
   function contactHtml(u) {
     var ph = u && u.phone ? String(u.phone) : '';
     if (!ph) return '';
-    return '<a class="ct-btn ct-call" href="tel:' + esc(ph) + '">📞 Gọi ' + esc(fmtPhone(ph)) + '</a>' +
-      '<a class="ct-btn ct-zalo" href="https://zalo.me/' + esc(ph) + '" target="_blank" rel="noopener">💬 Nhắn Zalo</a>';
+    return '<a class="ct-btn ct-call" href="tel:' + esc(ph) + '">' + PHONE_ICON_SVG + 'Gọi ' + esc(fmtPhone(ph)) + '</a>' +
+      '<a class="ct-btn ct-zalo" href="https://zalo.me/' + esc(ph) + '" target="_blank" rel="noopener">' + ZALO_ICON_SVG + 'Nhắn Zalo</a>';
   }
   function guestContactBox() {
     var u = users[saleRefId];
@@ -2416,6 +2428,7 @@
         '</div>' +
         '<div class="sc-body">' +
           '<div class="sc-name">' + nameHtml(p) + '</div>' +
+          orderCardPriceHtml(p) +
           '<div class="sc-sub"><span>' + colors.length + ' màu</span></div>' +
           (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : (totalAll === 0 ? '<div class="sc-mine sc-mine-none">Chưa có đơn</div>' : '')) +
         '</div></div>';
@@ -2427,6 +2440,27 @@
   }
 
   // Bảng "khách đặt qua link": sale chỉ thấy số của mình, quản lý thấy số của tất cả các sale
+  // Giá hiển thị cho nhân viên tư vấn: 1 giá, hoặc giá sỉ theo bậc 10 / 100 / 1000 áo
+  function orderCardPriceHtml(p) {
+    var t = tiersOf(p);
+    if (t) {
+      return '<div class="sc-price">' + fmtVnd(t[0].price) + '</div>' +
+        '<div class="sc-tier-line">Sỉ ' + t.map(function (x) { return x.min; }).join('/') + ' áo: ' + t.map(function (x) { return fmtNum(x.price); }).join(' / ') + '</div>';
+    }
+    return priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' : '<div class="sc-price sc-price-none">Chưa có giá</div>';
+  }
+  function priceInfoHtml(p) {
+    var t = tiersOf(p), block;
+    if (t) {
+      block = '<div class="ms-tiers">' + t.map(function (x) { return '<div class="ms-tier"><div class="mt-min">Từ ' + x.min + ' áo</div><div class="mt-price">' + fmtVnd(x.price) + '</div></div>'; }).join('') + '</div>' +
+        '<div class="ms-tier-note">Giá sỉ tính theo tổng số áo của mẫu này trong 1 đơn (cộng các màu).</div>';
+    } else if (priceOf(p)) {
+      block = '<div class="ms-price">Giá: <b>' + fmtVnd(priceOf(p)) + '</b> / áo</div>';
+    } else {
+      block = '<div class="ms-price"><i>Chưa có giá</i></div>';
+    }
+    return block + (p.sizeNote ? '<div class="ms-size">📏 Size: ' + esc(p.sizeNote) + '</div>' : '');
+  }
   function renderLeadSummaryPanel(activeDates, secKey) {
     var box = $('leadSummaryPanel');
     var stats = leadStatsByUser(activeDates, secKey);
@@ -2523,6 +2557,7 @@
       '<div class="modal-head"><h2>' + nameHtml(p) + '</h2><button class="ms-close" id="msCloseBtn">✕</button></div>' +
       galleryHtml(p) +
       '<span class="print-badge ' + (printed ? 'done' : 'pending') + '">' + (printed ? '✅ Đã in' : '⏳ Chưa in') + '</span>' +
+      priceInfoHtml(p) +
       '<p class="img-hint" style="margin-top:8px;">Số lượng khách đặt qua link — <b>' + esc(scopeLabel) + '</b>' + (isManager() ? '' : ' (chỉ hiện số của bạn)') + '</p>' +
       body +
       '</div>';
