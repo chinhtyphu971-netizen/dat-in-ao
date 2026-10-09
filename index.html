@@ -2278,7 +2278,12 @@
     var el = $('manageContent');
     if (!configOk) { el.innerHTML = setupWarningHtml(); return; }
     var formSnap = snapshotFormState();
-    var plist = productList().slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    // Xếp theo số H tăng dần (H1, H2, H3 ... H31); mẫu không có số H xếp cuối, mới thêm nằm trên.
+    var plist = productList().slice().sort(function (a, b) {
+      var na = hNumberOf(a.name), nb = hNumberOf(b.name);
+      if (na !== nb) return na < nb ? -1 : 1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
     var pendingList = isManager() ? plist.filter(function (p) { return p.status === 'pending_approval'; }) : [];
     var pendingPanelHtml = '';
     if (pendingList.length) {
