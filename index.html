@@ -508,6 +508,13 @@
   .bulk-row { align-items: center; }
   .sp-thumb { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); flex: 0 0 auto; background: var(--paper); }
   .bulk-row > span:nth-child(2) { flex: 1; }
+  .sc-dots { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; background: rgba(33,31,26,.42); padding: 4px 8px; border-radius: 999px; pointer-events: none; }
+  .sc-dots i { display: block; width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.55); }
+  .sc-dots i.on { width: 8px; height: 8px; background: #fff; }
+  .sc-arr { position: absolute; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; border: none; border-radius: 50%; background: rgba(33,31,26,.55); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s; }
+  .sc-arr-prev { left: 6px; } .sc-arr-next { right: 6px; }
+  .shop-card:hover .sc-arr, .sc-arr:focus-visible { opacity: 1; }
+  @media (hover: none) { .sc-arr { opacity: .8; width: 26px; height: 26px; } }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -909,6 +916,53 @@
       if (/^https?:\/\/\S+$/i.test(t)) { if (links.indexOf(t) === -1) links.push(t); } else bad++;
     });
     return { links: links.slice(0, 10), bad: bad };
+  }
+  var CHEV_L_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHEV_R_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var IMAGES_ICON_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="vertical-align:-2px"><rect x="3" y="7" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7V5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  // Chấm tròn báo "mẫu này có nhiều ảnh" (tối đa 5 chấm)
+  function dotsHtml(n, idx) {
+    if (n < 2) return '';
+    var shown = Math.min(n, 5), on = Math.min(idx, shown - 1), h = '';
+    for (var k = 0; k < shown; k++) h += '<i' + (k === on ? ' class="on"' : '') + '></i>';
+    return '<div class="sc-dots" aria-hidden="true">' + h + '</div>';
+  }
+  // Trang khách: lướt ảnh ngay trên thẻ (nút ‹ › + chấm tròn; điện thoại vuốt ngang)
+  function cardCarouselHtml(n, idx) {
+    if (n < 2) return '';
+    return '<button type="button" class="sc-arr sc-arr-prev" aria-label="Ảnh trước">' + CHEV_L_SVG + '</button>' +
+      '<button type="button" class="sc-arr sc-arr-next" aria-label="Ảnh sau">' + CHEV_R_SVG + '</button>' + dotsHtml(n, idx);
+  }
+  var cardImgIdx = {};      // ảnh đang xem trên từng thẻ (giữ nguyên khi trang vẽ lại)
+  function bindCardCarousels(root) {
+    root.querySelectorAll('.shop-card').forEach(function (card) {
+      var pid = card.dataset.pid, pr = products[pid];
+      if (!pr) return;
+      var imgs = imagesOf(pr);
+      if (imgs.length < 2) return;
+      var wrap = card.querySelector('.sc-imgwrap'), img = wrap && wrap.querySelector('img');
+      if (!img) return;
+      function show(i) {
+        i = (i + imgs.length) % imgs.length;
+        cardImgIdx[pid] = i;
+        img.src = imgs[i];
+        var on = Math.min(i, Math.min(imgs.length, 5) - 1);
+        wrap.querySelectorAll('.sc-dots i').forEach(function (d, k) { d.classList.toggle('on', k === on); });
+      }
+      wrap.querySelector('.sc-arr-prev').addEventListener('click', function (e) { e.stopPropagation(); show((cardImgIdx[pid] || 0) - 1); });
+      wrap.querySelector('.sc-arr-next').addEventListener('click', function (e) { e.stopPropagation(); show((cardImgIdx[pid] || 0) + 1); });
+      var x0 = null, y0 = null;
+      wrap.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+      wrap.addEventListener('touchend', function (e) {
+        if (x0 === null) return;
+        var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          show((cardImgIdx[pid] || 0) + (dx < 0 ? 1 : -1));
+          wrap.dataset.swiped = '1';                                  // vuốt xong thì không mở popup chi tiết
+          setTimeout(function () { delete wrap.dataset.swiped; }, 400);
+        }
+      }, { passive: true });
+    });
   }
   function galleryHtml(p) {
     var imgs = imagesOf(p);
@@ -1519,11 +1573,12 @@
       Object.keys(cartP).forEach(function (c) { totalP += cartP[c]; });
       var tags = [mixedSearch ? guestSectionLabel(sectionOf(p)) : '', attrTagsText(p)].filter(Boolean).join(' · ');
       var cardTiers = tiersOf(p);
+      var gImgs = imagesOf(p), gIdx = Math.min(cardImgIdx[p.id] || 0, Math.max(gImgs.length - 1, 0));
       var pickedDetail = colorsOf(p).filter(function (c) { return cartP[c] > 0; }).map(function (c) { return esc(c) + ' ' + cartP[c]; }).join(' · ');
       return '<div class="shop-card' + (p.soldOut ? ' sold-out' : '') + (totalP > 0 ? ' is-selected' : '') + '" data-pid="' + esc(p.id) + '">' +
-        '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
+        '<div class="sc-imgwrap">' + (gImgs.length ? '<img src="' + esc(gImgs[gIdx]) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
         (p.soldOut ? '<span class="sc-badge-out">Tạm hết</span>' : (totalP > 0 ? '<span class="sc-badge-hot">✓ ' + totalP + ' áo</span>' : '')) +
-        (imagesOf(p).length > 1 ? '<span class="sc-multi">📷 ' + imagesOf(p).length + '</span>' : '') +
+        cardCarouselHtml(gImgs.length, gIdx) +
         '</div>' +
         '<div class="sc-body">' +
           '<div class="sc-name">' + nameHtml(p) + '</div>' +
@@ -1536,8 +1591,13 @@
     }).join('');
 
     grid.querySelectorAll('.shop-card').forEach(function (card) {
-      card.addEventListener('click', function () { openGuestProductModal(card.dataset.pid); });
+      card.addEventListener('click', function () {
+        var wrapEl = card.querySelector('.sc-imgwrap');
+        if (wrapEl && wrapEl.dataset.swiped) return;
+        openGuestProductModal(card.dataset.pid);
+      });
     });
+    bindCardCarousels(grid);
     updateGuestCartBar();
   }
   $('guestSearchInput').addEventListener('input', function (e) { guestSearch = e.target.value; renderGuestProducts(); });
@@ -2495,7 +2555,7 @@
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
         (printed ? '<span class="sc-badge done">✅ Đã in</span>' : '') +
         (totalAll > 0 ? '<span class="sc-badge-hot">🔥 ' + totalAll + ' áo</span>' : '') +
-        (imagesOf(p).length > 1 ? '<span class="sc-multi">📷 ' + imagesOf(p).length + '</span>' : '') +
+        dotsHtml(imagesOf(p).length, 0) +
         '</div>' +
         '<div class="sc-body">' +
           '<div class="sc-name">' + nameHtml(p) + '</div>' +
@@ -3332,7 +3392,7 @@
         : '<div class="mli-attrs-text">' + esc([priceSummary(p), p.soldOut ? 'Tạm hết' : '', sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div>';
       return '<div class="manage-list-item' + (hidden || isPending ? ' is-hidden' : '') + '">' +
         (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;">–</div>') +
-        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + (imagesOf(p).length > 1 ? ' <span class="mli-multi">📷 ' + imagesOf(p).length + ' ảnh</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + attrsHtml + ownerNote + '</div>' +
+        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + (imagesOf(p).length > 1 ? ' <span class="mli-multi">' + IMAGES_ICON_SVG + ' ' + imagesOf(p).length + ' ảnh</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + attrsHtml + ownerNote + '</div>' +
         '<div class="mli-actions">' + actions + '</div></div>';
     }).join('');
 
