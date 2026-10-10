@@ -589,10 +589,35 @@
   .lead-filter-btn { border: 1px solid var(--line); background: var(--paper); border-radius: var(--radius-pill); padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
   .lead-filter-btn.active { background: var(--denim); color: #fff; border-color: var(--denim); }
 
-  .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); transition: border-color .2s; }
+  .lead-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-tag); padding: 0; margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow-card); transition: border-color .2s; }
   .lead-card.is-billed { border-color: var(--ok); background: #f7faf7; }
   .lead-card.is-printed { border-color: var(--denim); }
   .lead-card.is-deleted { border-color: var(--stitch); background: #fdf5f4; opacity: 0.85; }
+  .lead-list-tools { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--ink-soft); margin: 0 2px 8px; }
+  .link-btn { background: none; border: none; padding: 0; font: inherit; font-weight: 600; color: var(--denim); cursor: pointer; text-decoration: underline; }
+  .lead-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; min-height: 46px; user-select: none; }
+  .lead-row:hover { background: rgba(0,0,0,.025); }
+  .lr-chev { flex: 0 0 auto; color: var(--ink-soft); font-size: 12px; transition: transform .15s; }
+  .lead-card.is-open .lr-chev { transform: rotate(90deg); }
+  .lr-name { flex: 1 1 110px; min-width: 0; font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lr-phone { color: var(--denim); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .lr-time { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+  .lr-sale { background: #eef2f6; color: var(--denim); font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+  .lr-note { font-size: 13px; }
+  .lr-qty { min-width: 46px; text-align: right; font-weight: 700; color: var(--stitch); white-space: nowrap; }
+  .lr-amt { font-weight: 700; font-size: 13px; white-space: nowrap; }
+  .lr-status { display: flex; gap: 4px; flex: 0 0 auto; }
+  .lr-chip { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .lr-chip.st-wait { background: #fff3d6; color: #855302; }
+  .lr-chip.st-ok { background: #e3f1e4; color: var(--ok); }
+  .lr-chip.st-print { background: #e6eef7; color: var(--denim); }
+  .lr-chip.st-del { background: #f1e1de; color: var(--stitch); }
+  .lead-detail { display: none; padding: 12px 14px 14px; border-top: 1px dashed var(--line); }
+  .lead-card.is-open .lead-detail { display: block; }
+  .lead-cust-line { font-size: 15px; margin-bottom: 2px; }
+  .lead-contact { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; }
+  .lead-contact .ct-zalo { animation: none; }
+  @media (max-width: 640px) { .lr-phone, .lr-time, .lr-sale { display: none; } .lead-row { padding: 10px 12px; gap: 8px; } }
   .lead-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
   .lead-cust { font-size: 15px; font-weight: 700; color: var(--ink); }
   .lead-phone { font-size: 13.5px; color: var(--denim); font-weight: 600; }
@@ -1085,6 +1110,7 @@
   var selectedAggDate = null;
   var lastAggSnapshot = null;
   var currentLeadFilter = 'all';
+  var expandedLeads = {};   // đơn khách đang mở chi tiết (giữ nguyên khi dữ liệu cập nhật)
 
   var urlParams = new URLSearchParams(window.location.search);
   var saleRefId = urlParams.get('sale') || urlParams.get('ref');
@@ -1824,7 +1850,7 @@
       return;
     }
 
-    container.innerHTML = list.map(function (lead) {
+    container.innerHTML = '<div class="lead-list-tools"><span><b>' + list.length + '</b> đơn</span><span><button class="link-btn" id="leadsExpandAll">Mở hết</button> · <button class="link-btn" id="leadsCollapseAll">Thu gọn hết</button></span></div>' + list.map(function (lead) {
       var timeStr = lead.createdAt ? new Date(lead.createdAt).toLocaleString('vi-VN') : '';
       var isBilled = !!lead.billed;
       var isPrinted = !!lead.printed;
@@ -1869,20 +1895,58 @@
           '</div>';
       }
 
-      return '<div class="' + cardClass + '" data-lid="' + esc(lead.id) + '">' +
-        '<div class="lead-head">' +
-          '<div><div class="lead-cust">' + esc(lead.customerName) + ' <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
-          '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div></div>' +
-          '<div style="text-align:right;"><div style="font-size:16px;font-weight:700;color:var(--stitch);">' + lead.totalQty + ' áo</div>' +
-            (lead.totalAmount > 0 ? '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + fmtVnd(lead.totalAmount) + '</div>' : '') + '</div>' +
+      var d0 = lead.createdAt ? new Date(lead.createdAt) : null;
+      var pad2 = function (n) { return String(n).padStart(2, '0'); };
+      var shortTime = d0 ? pad2(d0.getDate()) + '/' + pad2(d0.getMonth() + 1) + ' ' + pad2(d0.getHours()) + ':' + pad2(d0.getMinutes()) : '';
+      var chips = isTrashView
+        ? '<span class="lr-chip st-del">🗑️ Đã xoá</span>'
+        : (isBilled ? '<span class="lr-chip st-ok">🟢 Hoá đơn</span>' : '<span class="lr-chip st-wait">⏳ Chờ</span>') + (isPrinted ? '<span class="lr-chip st-print">🔵 Đã in</span>' : '');
+      var isOpen = !!expandedLeads[lead.id];
+      var phoneDigits = normalizePhone(lead.phone);
+      var contactBtns = validPhone(phoneDigits)
+        ? '<div class="lead-contact"><a class="ct-btn ct-call" href="tel:' + esc(phoneDigits) + '">' + PHONE_ICON_SVG + 'Gọi khách</a><a class="ct-btn ct-zalo" href="https://zalo.me/' + esc(phoneDigits) + '" target="_blank" rel="noopener">' + ZALO_ICON_SVG + 'Zalo khách</a></div>'
+        : '';
+      return '<div class="' + cardClass + (isOpen ? ' is-open' : '') + '" data-lid="' + esc(lead.id) + '">' +
+        // ---- 1 dòng gọn: những thông số cần thiết ----
+        '<div class="lead-row" role="button" tabindex="0" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+          '<span class="lr-chev">▸</span>' +
+          '<span class="lr-name">' + esc(lead.customerName) + '</span>' +
+          '<span class="lr-phone">📞 ' + esc(lead.phone) + '</span>' +
+          '<span class="lr-time">' + esc(shortTime) + '</span>' +
+          (isManager() ? '<span class="lr-sale">' + esc(lead.saleName) + '</span>' : '') +
+          (lead.note ? '<span class="lr-note" title="Khách có ghi chú">📝</span>' : '') +
+          '<span class="lr-qty">' + lead.totalQty + ' áo</span>' +
+          (lead.totalAmount > 0 ? '<span class="lr-amt">' + fmtVnd(lead.totalAmount) + '</span>' : '') +
+          '<span class="lr-status">' + chips + '</span>' +
         '</div>' +
-        (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
-        '<div class="lead-items">' + itemsHtml + '</div>' +
-        actionsHtml +
+        // ---- chi tiết: chỉ hiện khi bấm vào dòng ----
+        '<div class="lead-detail">' +
+          '<div class="lead-cust-line"><b>' + esc(lead.customerName) + '</b> <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
+          '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div>' +
+          contactBtns +
+          (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
+          '<div class="lead-items">' + itemsHtml + '</div>' +
+          actionsHtml +
+        '</div>' +
         '</div>';
     }).join('');
 
     bindLightboxes(container);
+
+    // Bấm vào dòng để mở / đóng chi tiết (nhớ trạng thái mở khi dữ liệu cập nhật)
+    container.querySelectorAll('.lead-row').forEach(function (row) {
+      function toggleRow() {
+        var card = row.parentNode, lid = card.dataset.lid;
+        var open = !card.classList.contains('is-open');
+        card.classList.toggle('is-open', open);
+        row.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) expandedLeads[lid] = true; else delete expandedLeads[lid];
+      }
+      row.addEventListener('click', toggleRow);
+      row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRow(); } });
+    });
+    $('leadsExpandAll').addEventListener('click', function () { list.forEach(function (l) { expandedLeads[l.id] = true; }); renderLeads(); });
+    $('leadsCollapseAll').addEventListener('click', function () { expandedLeads = {}; renderLeads(); });
 
     container.querySelectorAll('.lead-billed-chk').forEach(function (chk) {
       chk.addEventListener('change', function () {
@@ -3552,9 +3616,17 @@
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
     else fallback();
   }
+  function codeFromUrl(u) {
+    try {
+      var path = String(u).split('#')[0].split('?')[0];
+      var file = decodeURIComponent(path.substring(path.lastIndexOf('/') + 1)).replace(/\.[A-Za-z0-9]{2,5}$/, '').trim();
+      var m = /^([A-Za-z]{1,2})(\d+)(?:[-_ ](\d+))?$/.exec(file);          // A12 | a12 | A12-2 | A12_2
+      return m ? { code: m[1].toUpperCase() + parseInt(m[2], 10), order: m[3] ? parseInt(m[3], 10) : 0 } : null;
+    } catch (e) { return null; }
+  }
   // Đọc văn bản dán vào. Hiểu 3 kiểu: "A1 link link", "A1: link", hoặc mã 1 dòng rồi các link ở các dòng dưới. Dán thẳng từ Excel / Google Sheet (cột mã + cột link) cũng được.
   function parseBulkImageText(text) {
-    var res = { entries: [], bad: [] }, byCode = {}, cur = null;
+    var res = { entries: [], bad: [] }, byCode = {}, cur = null, ord = {};
     String(text || '').split(/\r?\n/).forEach(function (line, idx) {
       var t = line.trim();
       if (!t) return;
@@ -3568,11 +3640,20 @@
         cur = cd.prefix + cd.num;
         if (!byCode[cur]) { byCode[cur] = []; res.entries.push({ code: cur, urls: byCode[cur] }); }
       } else if (!cur) {
-        if (urls.length) res.bad.push('Dòng ' + (idx + 1) + ': có link nhưng phía trên chưa có mã.');
+        // Dòng chỉ có link, chưa có mã ở trên: thử đọc mã từ tên file trong link (…/A12.jpg → A12, …/A12-2.jpg → ảnh thứ 2 của A12)
+        var unmatched = 0;
+        urls.forEach(function (u) {
+          var cu = codeFromUrl(u);
+          if (!cu) { unmatched++; return; }
+          if (!byCode[cu.code]) { byCode[cu.code] = []; res.entries.push({ code: cu.code, urls: byCode[cu.code] }); }
+          if (byCode[cu.code].indexOf(u) === -1) { byCode[cu.code].push(u); ord[u] = cu.order; }
+        });
+        if (unmatched) res.bad.push('Dòng ' + (idx + 1) + ': có link nhưng chưa có mã (và tên file trong link không phải là mã).');
         return;
       }
       urls.forEach(function (u) { if (byCode[cur].indexOf(u) === -1) byCode[cur].push(u); });
     });
+    res.entries.forEach(function (en) { en.urls.sort(function (a, b) { return (ord[a] || 0) - (ord[b] || 0); }); });   // ảnh A12.jpg lên trước A12-2.jpg
     return res;
   }
   function buildBulkImagePlan(entries, keepOld) {
@@ -3616,7 +3697,7 @@
     bulkModalShell(
       '<p class="img-hint">Mỗi dòng 1 mã kèm link ảnh. Mẫu có nhiều ảnh thì để nhiều link cùng dòng (link đầu là ảnh chính). Ví dụ:</p>' +
       '<pre class="bulk-example">A1 https://i.postimg.cc/abc/a1.jpg\nA2 https://i.postimg.cc/def/a2.jpg https://i.postimg.cc/def/a2-2.jpg\nH12: https://i.imgur.com/xyz.jpg</pre>' +
-      '<p class="img-hint">Dán thẳng từ Excel / Google Sheet (cột mã + cột link) cũng được.</p>' +
+      '<p class="img-hint">Dán thẳng từ Excel / Google Sheet (cột mã + cột link) cũng được. Link nào có <b>tên file là mã</b> (ví dụ …/A12.jpg, ảnh thứ 2: …/A12-2.jpg) thì không cần ghi mã, app tự nhận.</p>' +
       (noImgCodes.length ? '<div class="bulk-missing"><div><b>' + noImgCodes.length + '</b> mã đang chưa có ảnh: <span class="bm-list">' + esc(noImgCodes.slice(0, 40).join(', ')) + (noImgCodes.length > 40 ? '…' : '') + '</span></div>' +
         '<button class="btn ghost small" id="bulkCopyCodesBtn">📋 Sao chép danh sách mã chưa có ảnh</button></div>' : '') +
       '<textarea id="bulkImgText" class="sheet-paste" rows="9" placeholder="Dán danh sách vào đây (Ctrl+V)">' + esc(bulkImgDraft.text) + '</textarea>' +
