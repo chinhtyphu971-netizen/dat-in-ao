@@ -3810,10 +3810,18 @@
     if (!p) return;
     var colors = colorsOf(p);
     var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
+    // Mẫu do Người thêm mẫu gửi thường chưa có mã: gợi ý mã H tiếp theo của mục A55
+    var reviewCodeHint = '';
+    if (sectionOf(p) === 'a55' && !codeOf(p.name)) {
+      var maxH = 0;
+      productList().forEach(function (q) { var c = codeOf(q.name); if (sectionOf(q) === 'a55' && c && c.prefix === 'H' && c.num > maxH) maxH = c.num; });
+      reviewCodeHint = 'Tên chưa có mã. Mã H đang dùng đến <b>H' + maxH + '</b> — gợi ý mã tiếp theo: <b>H' + (maxH + 1) + '</b> <button type="button" class="link-btn" id="reviewAddCodeBtn" data-code="H' + (maxH + 1) + '">Thêm vào đầu tên</button>';
+    }
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>Duyệt mẫu áo</h2><button class="ms-close" id="msReviewCloseBtn">✕</button></div>' +
       galleryHtml(p) +
-      '<div class="field-row"><label>Tên mẫu</label><div style="font-weight:700;font-size:15px;">' + esc(p.name) + '</div></div>' +
+      '<div class="field-row"><label>Tên mẫu — sửa được trước khi duyệt</label><input type="text" id="reviewNameInput" maxlength="25" value="' + esc(p.name) + '"><div class="char-count" id="reviewNameCount">' + p.name.length + '/25</div>' +
+        (reviewCodeHint ? '<div class="img-hint" style="margin-top:4px;">' + reviewCodeHint + '</div>' : '') + '</div>' +
       '<div class="field-row"><label>Các màu</label><div>' + esc(colors.join(', ')) + '</div></div>' +
       '<div class="field-row"><label>Giá bán</label><div>' + (priceSummary(p) || '<i>Chưa có giá</i>') + '</div></div>' +
       '<div class="field-row"><label>Phân loại</label><div>' + esc([sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div></div>' +
@@ -3827,8 +3835,29 @@
     $('productModal').classList.remove('hidden');
     bindLightboxes($('productModal')); bindGallery($('productModal'), p);
     $('msReviewCloseBtn').addEventListener('click', function () { $('productModal').classList.add('hidden'); $('productModal').innerHTML = ''; });
+    var nameInput = $('reviewNameInput');
+    nameInput.addEventListener('input', function () {
+      var n = nameInput.value.length;
+      $('reviewNameCount').textContent = n + '/25';
+      $('reviewNameCount').style.color = n > 25 ? 'var(--stitch)' : '';
+    });
+    var addCodeBtn = $('reviewAddCodeBtn');
+    if (addCodeBtn) addCodeBtn.addEventListener('click', function () {
+      nameInput.value = addCodeBtn.dataset.code + '-' + nameInput.value.trim();
+      nameInput.dispatchEvent(new Event('input'));
+      if (nameInput.value.length > 25) toast('Tên dài quá 25 ký tự sau khi thêm mã — rút gọn bớt rồi bấm Duyệt.');
+      nameInput.focus();
+    });
     $('msApproveBtn').addEventListener('click', function () {
-      approveProduct(pid);
+      var nm = nameInput.value.trim().replace(/\s+/g, ' ');
+      if (!nm) { toast('Tên mẫu không được để trống.'); return; }
+      if (nm.length > 25) { toast('Tên mẫu tối đa 25 ký tự (đang ' + nm.length + ').'); return; }
+      var cd = codeOf(nm);
+      if (cd) {
+        var same = productList().filter(function (q) { var qc = codeOf(q.name); return q.id !== pid && sectionOf(q) === sectionOf(p) && qc && qc.prefix === cd.prefix && qc.num === cd.num; })[0];
+        if (same && !confirm('Mã ' + cd.prefix + cd.num + ' đang dùng cho mẫu "' + same.name + '". Vẫn duyệt với mã trùng?')) return;
+      }
+      approveProduct(pid, nm !== p.name ? nm : null);
       $('productModal').classList.add('hidden'); $('productModal').innerHTML = '';
     });
     $('msRejectBtn').addEventListener('click', function () {
@@ -3837,14 +3866,12 @@
     });
   }
 
-  function approveProduct(pid) {
+  function approveProduct(pid, newName) {
     if (!isManager()) return;
-    db.ref('products/' + pid).update({
-      status: 'approved',
-      approvedAt: Date.now(),
-      approvedBy: currentUser.name
-    }).then(function() {
-      toast('✅ Đã duyệt mẫu áo hiển thị!');
+    var upd = { status: 'approved', approvedAt: Date.now(), approvedBy: currentUser.name };
+    if (newName) upd.name = newName;
+    db.ref('products/' + pid).update(upd).then(function() {
+      toast(newName ? '✅ Đã duyệt và đổi tên thành "' + newName + '".' : '✅ Đã duyệt mẫu áo hiển thị!');
       renderManage();
     }).catch(function(err) {
       toast('Lỗi duyệt mẫu: ' + err.message);
