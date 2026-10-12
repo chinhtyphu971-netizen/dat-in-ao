@@ -2516,7 +2516,8 @@
     }
 
     var totals = {};
-    plist.forEach(function (p) { totals[p.id] = productTotalAcrossDates(p.id, activeDates); });
+    // Quản lý thấy tổng của cả đội; Sale chỉ thấy số khách CỦA MÌNH đặt (không lộ số của sale khác)
+    plist.forEach(function (p) { totals[p.id] = isManager() ? productTotalAcrossDates(p.id, activeDates) : myTotalAcrossDates(p.id, activeDates); });
     // Tab mục: mặc định "Mẫu A55 in", 1 tab "Các mẫu khác" (số trên tab = số mã của mục)
     var secState = sectionTabsState(plist, orderSection);
     orderSection = secState.selected;
@@ -2549,19 +2550,19 @@
     $('shopGrid').innerHTML = (shownList.length ? shownList.map(function (p) {
       var colors = colorsOf(p);
       var mineTotal = myTotalAcrossDates(p.id, activeDates);
-      var totalAll = totals[p.id];
+      var totalAll = totals[p.id];     // quản lý: tổng cả đội · sale: chỉ khách của mình
       var printed = productPrintedAcrossDates(p.id, activeDates);
       return '<div class="shop-card" data-pid="' + esc(p.id) + '">' +
         '<div class="sc-imgwrap">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">Không ảnh</div>') +
         (printed ? '<span class="sc-badge done">✅ Đã in</span>' : '') +
-        (totalAll > 0 ? '<span class="sc-badge-hot">🔥 ' + totalAll + ' áo</span>' : '') +
+        (totalAll > 0 ? '<span class="sc-badge-hot" title="' + (isManager() ? 'Tổng cả đội' : 'Khách của bạn đặt') + '">🔥 ' + totalAll + ' áo</span>' : '') +
         dotsHtml(imagesOf(p).length, 0) +
         '</div>' +
         '<div class="sc-body">' +
           '<div class="sc-name">' + nameHtml(p) + '</div>' +
           orderCardPriceHtml(p) +
           '<div class="sc-sub"><span>' + colors.length + ' màu</span></div>' +
-          (mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : (totalAll === 0 ? '<div class="sc-mine sc-mine-none">Chưa có đơn</div>' : '')) +
+          (isManager() && mineTotal ? '<div class="sc-mine">Khách của bạn đặt: <b>' + mineTotal + '</b> áo</div>' : (totalAll === 0 ? '<div class="sc-mine sc-mine-none">Chưa có đơn</div>' : '')) +
         '</div></div>';
     }).join('') : '<div class="empty" style="grid-column:1/-1;">Chưa có mẫu nào.</div>');
     $('shopGrid').querySelectorAll('.shop-card').forEach(function (card) {
