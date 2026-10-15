@@ -532,6 +532,16 @@
   .br-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 12px; margin-bottom: 8px; }
   .br-fields label { font-size: 12px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 3px; }
   .br-fields input { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .tool-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .tool-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; user-select: none; }
+  .tool-bar:hover { background: #fff; }
+  .tool-label { font-weight: 600; font-size: 13.5px; color: var(--ink); white-space: nowrap; }
+  .tool-sum { flex: 1; min-width: 0; text-align: right; font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-chev { flex: 0 0 auto; font-size: 12px; color: var(--ink-soft); transition: transform .15s; }
+  .tool-wrap.is-open .tool-chev { transform: rotate(90deg); }
+  .tool-content { display: none; }
+  .tool-wrap.is-open .tool-content { display: block; margin-top: 8px; }
+  .tool-content .manage-form { margin-bottom: 0; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -3401,10 +3411,14 @@
     var bulkImgCardHtml = '<div class="manage-form bulk-img-card"><h2>🖼️ Dán link ảnh hàng loạt</h2>' +
       '<p class="img-hint" style="margin:-4px 0 12px;">Mỗi dòng 1 mã kèm link ảnh (VD: <b>A1 https://…</b>). App tự gắn đúng mẫu — nhanh hơn sửa từng mẫu.' + (isManager() ? '' : ' Bạn chỉ gắn được ảnh cho mẫu A55 do chính bạn thêm.') + '</p>' +
       '<button class="btn primary" id="bulkImgBtn">🖼️ Dán link ảnh hàng loạt</button></div>';
+    // 3 công cụ ít dùng được thu gọn thành 1 dòng mỏng, bấm vào mới mở ra
+    var baseSummary = baseListAll().length ? 'A55 + ' + baseListAll().map(function (b) { return esc(b.code); }).join(' + ') : 'Chỉ có A55';
     el.innerHTML =
-      syncCardHtml +
-      bulkImgCardHtml +
-      (isManager() ? baseCardHtml() : '') +
+      '<div class="tool-list">' +
+        (isManager() ? toolWrap('sync', 'Cập nhật mã từ bảng giá', 'Lấy giá 3 bậc từ Google Sheet', syncCardHtml) : '') +
+        toolWrap('bulk', 'Dán link ảnh hàng loạt', 'Gắn nhiều ảnh cùng lúc', bulkImgCardHtml) +
+        (isManager() ? toolWrap('base', 'Loại áo nền để in', baseSummary, baseCardHtml()) : '') +
+      '</div>' +
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
         '<div class="img-preview-side" id="newImgPreviewBox"><div class="pv-placeholder">🖼️ Xem trước ảnh</div></div>' +
@@ -3454,6 +3468,17 @@
       });
     });
     if (isManager()) bindBaseCard(el);
+    el.querySelectorAll('.tool-bar').forEach(function (bar) {
+      function toggleTool() {
+        var wrap = bar.parentNode, key = wrap.dataset.tool;
+        var open = !wrap.classList.contains('is-open');
+        wrap.classList.toggle('is-open', open);
+        bar.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) manageToolOpen[key] = true; else delete manageToolOpen[key];
+      }
+      bar.addEventListener('click', toggleTool);
+      bar.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTool(); } });
+    });
     var bulkImgBtn = $('bulkImgBtn');
     if (bulkImgBtn) bulkImgBtn.addEventListener('click', openBulkImageModal);
     var sheetSyncBtn = $('sheetSyncBtn');
@@ -3937,6 +3962,13 @@
     var seen = {}, out = [];
     String(text || '').split(/[,;\n]+/).forEach(function (c) { var nc = normalizeColorName(c.trim()); if (nc && !seen[nc]) { seen[nc] = 1; out.push(nc); } });
     return out;
+  }
+  var manageToolOpen = {};   // công cụ nào đang mở (giữ nguyên khi dữ liệu cập nhật)
+  function toolWrap(key, label, summary, cardHtml) {
+    var open = !!manageToolOpen[key];
+    return '<div class="tool-wrap' + (open ? ' is-open' : '') + '" data-tool="' + key + '">' +
+      '<div class="tool-bar" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '"><span class="tool-label">' + esc(label) + '</span><span class="tool-sum">' + summary + '</span><span class="tool-chev">▸</span></div>' +
+      '<div class="tool-content">' + cardHtml + '</div></div>';
   }
   function baseCardHtml() {
     var rows = baseListAll().map(function (b) {
