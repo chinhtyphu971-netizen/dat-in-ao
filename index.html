@@ -553,6 +553,22 @@
   .cat-tile.active { border-color: #d63a2f; box-shadow: 0 0 0 2px rgba(214,58,47,.25); }
   .cat-on { position: absolute; top: 8px; left: 8px; background: #d63a2f; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
   .cat-picked { position: absolute; top: 8px; right: 8px; background: #d63a2f; color: #fff; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; box-shadow: 0 2px 6px rgba(214,58,47,.45); }
+  .cat-go.on { background: #d63a2f; padding: 0 9px; border-radius: 999px; font-weight: 700; text-shadow: none; }
+  #guestCatTiles .cat-tile img { transform-origin: center; animation: catZoom 9s ease-in-out infinite alternate; }
+  @keyframes catZoom { from { transform: scale(1); } to { transform: scale(1.07); } }
+  #guestCatTiles .cat-tile:not(.active)::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -45%; width: 32%; pointer-events: none;
+    background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.42) 50%, rgba(255,255,255,0) 100%);
+    transform: skewX(-18deg); animation: catShine 4.8s ease-in-out infinite;
+  }
+  #guestCatTiles .cat-tile:nth-child(2)::after { animation-delay: .9s; }
+  #guestCatTiles .cat-tile:nth-child(3)::after { animation-delay: 1.8s; }
+  @keyframes catShine { 0%, 60% { left: -45%; } 100% { left: 125%; } }
+  #guestCatTiles .cat-tile:not(.active) .cat-go { display: inline-block; animation: catNudge 1.5s ease-in-out infinite; }
+  @keyframes catNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+  @media (prefers-reduced-motion: reduce) {
+    #guestCatTiles .cat-tile img, #guestCatTiles .cat-tile::after, #guestCatTiles .cat-go { animation: none !important; }
+  }
   .cat-tiles.searching .cat-tile { opacity: .55; }
   .staff-tiles { margin-bottom: 12px; }
   .staff-tiles .cat-tile { height: 92px; }
@@ -1160,9 +1176,8 @@
       var cv = coverForView(x.key), on = state.selected === x.key;
       return '<button type="button" class="cat-tile' + (on ? ' active' : '') + '" data-sec="' + esc(x.key) + '">' +
         (cv ? '<img src="' + esc(cv) + '" alt="">' : '<span class="cat-noimg">Chưa có ảnh bìa</span>') +
-        (on ? '<span class="cat-on">Đang xem</span>' : '') +
         '<span class="cat-cap"><span class="cat-name">' + esc(viewLabel(x.key)) + '</span>' +
-        '<span class="cat-sub"><span>' + (counts[x.key] || 0) + ' ' + (unit || 'mẫu') + '</span><span>Xem ›</span></span></span></button>';
+        '<span class="cat-sub"><span>' + (counts[x.key] || 0) + ' ' + (unit || 'mẫu') + '</span><span class="cat-go' + (on ? ' on' : '') + '">' + (on ? 'Đang xem ✓' : 'Xem ›') + '</span></span></span></button>';
     }).join('');
     box.querySelectorAll('.cat-tile').forEach(function (t) { t.addEventListener('click', function () { onPick(t.dataset.sec); }); });
   }
@@ -1666,11 +1681,10 @@
         var cv = coverOf(cs), on = activeCat === cs.key && !searching;
         return '<button type="button" class="cat-tile' + (on ? ' active' : '') + '" data-cat="' + esc(cs.key) + '">' +
           (cv ? '<img src="' + esc(cv) + '" alt="">' : '<span class="cat-noimg">Chưa có ảnh bìa</span>') +
-          (on ? '<span class="cat-on">Đang xem</span>' : '') +
           (pickedByCat[cs.key] ? '<span class="cat-picked">Đã chọn ' + pickedByCat[cs.key] + ' áo</span>' : '') +
           '<span class="cat-cap">' + (cs.kicker ? '<span class="cat-kick">' + esc(cs.kicker) + '</span>' : '') +
           '<span class="cat-name">' + esc(cs.title) + '</span>' +
-          '<span class="cat-sub"><span>' + cs.list.length + ' mẫu</span><span>Xem mẫu ›</span></span></span></button>';
+          '<span class="cat-sub"><span>' + cs.list.length + ' mẫu</span><span class="cat-go' + (on ? ' on' : '') + '">' + (on ? 'Đang xem ✓' : 'Xem mẫu ›') + '</span></span></span></button>';
       }).join('');
       tilesBox.querySelectorAll('.cat-tile').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -1679,8 +1693,7 @@
           if (cs.section === 'other') guestSection = 'other'; else { guestSection = 'a55'; guestBase = cs.base; }
           guestFilters = { category: '', season: '', sleeve: '' };
           guestSearch = ''; $('guestSearchInput').value = '';
-          renderGuestProducts();
-          var gridTop = $('guestGrid'); if (gridTop && gridTop.scrollIntoView) { try { gridTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
+          renderGuestProducts();          // không tự cuộn trang: banner vẫn nằm yên trong tầm nhìn sau khi bấm
         });
       });
     } else { tilesBox.classList.add('hidden'); tilesBox.innerHTML = ''; }
