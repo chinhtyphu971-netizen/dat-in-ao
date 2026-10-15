@@ -515,6 +515,23 @@
   .sc-arr-prev { left: 6px; } .sc-arr-next { right: 6px; }
   .shop-card:hover .sc-arr, .sc-arr:focus-visible { opacity: 1; }
   @media (hover: none) { .sc-arr { opacity: .8; width: 26px; height: 26px; } }
+  .gs-bases { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: -2px 0 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+  .gb-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .gb-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gb-opt { font-family: var(--font-body); font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 999px; border: 1.5px solid var(--denim); background: #fff; color: var(--denim); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  .gb-opt.active { background: var(--denim); color: #fff; }
+  .gb-n { background: #d63a2f; color: #fff; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; }
+  .base-card { border: 2px solid var(--denim); background: #f4f7fa; }
+  .base-row { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .base-default { background: #fafaf7; }
+  .base-add { background: #fff; border: 1px dashed var(--denim); border-radius: 10px; padding: 12px; margin-top: 12px; }
+  .br-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .br-head b { font-size: 15px; color: var(--denim); }
+  .br-sub { font-size: 12.5px; color: var(--ink-soft); flex: 1; }
+  .br-hide { font-size: 12.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 5px; }
+  .br-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 12px; margin-bottom: 8px; }
+  .br-fields label { font-size: 12px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 3px; }
+  .br-fields input { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -679,6 +696,7 @@
     <p class="subtitle" style="margin-bottom:16px;">Chọn mẫu và nhập số lượng dự kiến. Tư vấn viên sẽ liên hệ lại qua Zalo để xác nhận và gửi cọc.</p>
     <div class="guest-filters">
       <div class="gs-tabs hidden" id="guestSectionTabs"></div>
+      <div class="gs-bases hidden" id="guestBaseBar"></div>
       <input type="search" id="guestSearchInput" class="guest-search" placeholder="🔍 Tìm theo mã hoặc tên (VD: 12, H12, chuột)" autocomplete="off">
       <div id="guestFilterChips"></div>
       <div class="guest-filter-count" id="guestFilterCount"></div>
@@ -999,21 +1017,80 @@
   }
 
   // ---- Tab theo mục (Mẫu A55 in / Các mẫu khác) dùng chung cho tab Đơn may và Tổng hợp; chỉ hiện khi cả 2 mục đều có mẫu ----
+  // ---------- LOẠI ÁO NỀN: các hình in H dùng chung, mỗi loại áo (A55 mặc định, A57…) có giá & màu riêng ----------
+  // Mỗi (hình × loại áo) là một "mẫu ảo" có id "<idHình>~<idLoạiÁo>" nên giỏ hàng, đơn, tổng hợp, in xưởng đều tự tách theo loại áo.
+  var bases = {};            // /bases/{id}: {code, name, price, tiers, colors[], sizeNote, hidden, createdAt}
+  var productsReal = {};     // mẫu thật lấy từ Firebase (products = mẫu thật + mẫu ảo theo loại áo)
+  function baseListAll() {
+    return Object.keys(bases).map(function (id) { return Object.assign({ id: id }, bases[id]); })
+      .filter(function (b) { return b && b.code; }).sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+  }
+  function baseListVisible() { return baseListAll().filter(function (b) { return !b.hidden; }); }
+  function baseDisplayName(b) { return b.name || ('Áo ' + b.code); }
+  function baseImgList(pr, baseId) {
+    var ov = pr && pr.baseImages && pr.baseImages[baseId];
+    if (!ov) return [];
+    var arr = Array.isArray(ov) ? ov : Object.keys(ov).map(function (k) { return ov[k]; });
+    var out = [];
+    arr.forEach(function (u) { u = String(u || '').trim(); if (u && out.indexOf(u) === -1) out.push(u); });
+    return out;
+  }
+  function withBaseVariants(real) {
+    var out = Object.assign({}, real);
+    baseListAll().forEach(function (b) {
+      Object.keys(real).forEach(function (pid) {
+        var pr = real[pid];
+        if (!pr || pr.section === 'other') return;                 // chỉ các hình in mới có nhiều loại áo
+        var v = Object.assign({}, pr);
+        v.baseOf = pid; v.baseId = b.id; v.baseCode = b.code; v.baseHidden = !!b.hidden;
+        v.name = String(pr.name || '') + ' · ' + b.code;
+        // Để trống giá / màu / size ở loại áo = dùng GIỐNG từng hình in (như A55). Điền thì loại áo đó dùng giá / màu riêng.
+        var ownPrice = Number(b.price) > 0 || !!b.tiers;
+        v.price = Number(b.price) > 0 ? Number(b.price) : (ownPrice ? 0 : (Number(pr.price) || 0));
+        v.tiers = ownPrice ? (b.tiers || null) : (pr.tiers || null);
+        v.colors = (b.colors && b.colors.length) ? b.colors.slice() : (pr.colors || []).slice();
+        v.sizeNote = b.sizeNote || pr.sizeNote || '';
+        // Ảnh riêng của loại áo (VD người mẫu mặc áo trễ vai): có thì dùng, chưa có thì tạm dùng ảnh A55
+        var ovImgs = baseImgList(pr, b.id);
+        if (ovImgs.length) { v.imageUrl = ovImgs[0]; v.images = ovImgs.slice(1); v.ownImages = true; }
+        out[pid + '~' + b.id] = v;
+      });
+    });
+    return out;
+  }
+  function rebuildProducts() { products = withBaseVariants(productsReal); }
+  function viewKeyOf(pr) { return pr && pr.baseOf ? 'b:' + pr.baseId : sectionOf(pr || {}); }
+  function viewKeyOfId(pid) {
+    var pr = products[pid];
+    if (pr) return viewKeyOf(pr);
+    var i = String(pid).indexOf('~');
+    return i > 0 ? 'b:' + String(pid).slice(i + 1) : 'a55';
+  }
+  function viewLabel(key) {
+    if (key && key.indexOf('b:') === 0) { var b = bases[key.slice(2)]; return 'Mẫu ' + (b ? b.code : key.slice(2).toUpperCase()) + ' in'; }
+    return sectionLabel(key);
+  }
+  function workViews() {
+    var v = [{ key: 'a55' }];
+    baseListAll().forEach(function (b) { v.push({ key: 'b:' + b.id }); });
+    v.push({ key: 'other' });
+    return v;
+  }
+  // Tab "mục / loại áo" dùng chung cho tab Đơn may và Tổng hợp: chỉ hiện khi có từ 2 mục trở lên
   function sectionTabsState(plist, current) {
-    var cnt = { a55: 0, other: 0 };
-    plist.forEach(function (p) { cnt[sectionOf(p)]++; });
-    var both = cnt.a55 > 0 && cnt.other > 0;
+    var cnt = {};
+    plist.forEach(function (pr) { var k = viewKeyOf(pr); cnt[k] = (cnt[k] || 0) + 1; });
+    var views = workViews().filter(function (v) { return cnt[v.key] > 0; });
     var sel = current;
-    if (!both) sel = (cnt.other > 0 && cnt.a55 === 0) ? 'other' : 'a55';
-    else if (!cnt[sel]) sel = 'a55';
-    return { both: both, selected: sel };
+    if (!cnt[sel]) sel = views.length ? views[0].key : 'a55';
+    return { both: views.length > 1, selected: sel, views: views };
   }
   function renderSectionTabs(boxId, state, counts, onPick) {
     var box = $(boxId);
     if (!state.both) { box.classList.add('hidden'); box.innerHTML = ''; return; }
     box.classList.remove('hidden');
-    box.innerHTML = SECTIONS.map(function (x) {
-      return '<button class="gs-tab' + (state.selected === x.key ? ' active' : '') + '" data-sec="' + x.key + '">' + esc(x.label) + '<span class="gs-count">' + (counts[x.key] || 0) + '</span></button>';
+    box.innerHTML = state.views.map(function (x) {
+      return '<button class="gs-tab' + (state.selected === x.key ? ' active' : '') + '" data-sec="' + esc(x.key) + '">' + esc(viewLabel(x.key)) + '<span class="gs-count">' + (counts[x.key] || 0) + '</span></button>';
     }).join('');
     box.querySelectorAll('.gs-tab').forEach(function (t) { t.addEventListener('click', function () { onPick(t.dataset.sec); }); });
   }
@@ -1022,6 +1099,7 @@
   // Chỉ đổi cách HIỂN THỊ, tên lưu trong dữ liệu giữ nguyên.
   function displayName(p) {
     var raw = String((p && p.name) || '').trim();
+    if (p && p.baseOf && p.baseCode) { var sfx = ' · ' + p.baseCode; if (raw.slice(-sfx.length) === sfx) raw = raw.slice(0, -sfx.length).trim(); }
     var m = /^\s*([A-Za-z]{1,2})\s*[-_.]?\s*(\d+)\s*[-_.:)]*\s*(.*)$/.exec(raw);
     if (!m) return { code: '', title: raw };
     var title = String(m[3] || '').trim();
@@ -1391,7 +1469,7 @@
     eachLeadContribution(function (lid, lead, k, it, d, uid) {
       if (dates.indexOf(d) === -1) return;
       var p = products[it.pid];
-      if (secKey && sectionOf(p) !== secKey) return;
+      if (secKey && viewKeyOf(p) !== secKey) return;
       var q = sumQuantitiesForColors(it.quantities, colorsOf(p));
       if (q <= 0) return;
       stats[uid] = stats[uid] || { leads: 0, qty: 0 };
@@ -1448,6 +1526,8 @@
   var guestFilters = { category: '', season: '', sleeve: '' };
   var guestSearch = '';
   var guestSection = 'a55';
+  var guestBase = 'a55';           // loại áo khách đang chọn để in (a55 = mặc định)
+  var DEFAULT_BASE_NAME = 'Áo A55';
 
   function guestAvailableOptions(plist) {
     var out = {};
@@ -1473,7 +1553,14 @@
 
   function renderGuestProducts() {
     // Chỉ hiển thị mẫu không bị ẩn và không phải mẫu đang chờ duyệt
-    var all = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
+    var visBases = baseListVisible();
+    if (guestBase !== 'a55' && !visBases.some(function (b) { return b.id === guestBase; })) guestBase = 'a55';
+    // Hình in hiện theo loại áo đang chọn (A55 = mẫu thật; loại khác = mẫu ảo cùng hình, giá & màu của loại áo đó)
+    var all = productListAll().filter(function (p) {
+      if (p.hidden || p.status === 'pending_approval' || p.baseHidden) return false;
+      if (p.baseOf) return p.baseId === guestBase;
+      return !(guestBase !== 'a55' && sectionOf(p) === 'a55');
+    });
     // Sắp xếp theo số H tăng dần: H1, H2, H3 ... H10, H11 ... (mẫu không có số H xếp cuối, theo thứ tự thêm vào)
     all.sort(function (a, b) { return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0)); });
 
@@ -1507,6 +1594,25 @@
       tabsBox.innerHTML = '';
     }
 
+    // Công tắc loại áo (chỉ hiện khi có từ 2 loại áo trở lên và đang xem các hình in)
+    var baseBar = $('guestBaseBar');
+    if (visBases.length && secCount.a55 > 0 && (guestSection === 'a55' || searching)) {
+      var pickedBy = {};
+      Object.keys(guestCart).forEach(function (key) {
+        var cp = products[key];
+        if (!cp || sectionOf(cp) !== 'a55') return;
+        var bk = cp.baseOf ? cp.baseId : 'a55', n = 0;
+        Object.keys(guestCart[key]).forEach(function (c) { n += guestCart[key][c]; });
+        pickedBy[bk] = (pickedBy[bk] || 0) + n;
+      });
+      var baseOpts = [{ id: 'a55', label: DEFAULT_BASE_NAME }].concat(visBases.map(function (b) { return { id: b.id, label: baseDisplayName(b) }; }));
+      baseBar.classList.remove('hidden');
+      baseBar.innerHTML = '<div class="gb-title">Chọn loại áo để in:</div><div class="gb-opts">' + baseOpts.map(function (o) {
+        return '<button class="gb-opt' + (guestBase === o.id ? ' active' : '') + '" data-base="' + esc(o.id) + '">' + esc(o.label) + (pickedBy[o.id] ? '<span class="gb-n">' + pickedBy[o.id] + '</span>' : '') + '</button>';
+      }).join('') + '</div>';
+      baseBar.querySelectorAll('.gb-opt').forEach(function (btn) { btn.addEventListener('click', function () { guestBase = btn.dataset.base; renderGuestProducts(); }); });
+    } else { baseBar.classList.add('hidden'); baseBar.innerHTML = ''; }
+
     // Thanh lọc: chỉ hiện những lựa chọn thực sự có mẫu (không có nút lọc "chết")
     var avail = guestAvailableOptions(scope);
     PRODUCT_ATTRS.forEach(function (a) {
@@ -1536,7 +1642,7 @@
       var cartChanged = false;
       Object.keys(guestCart).forEach(function (pid) {
         var gp = products[pid];
-        if (!gp || gp.hidden || gp.status === 'pending_approval' || gp.soldOut) { delete guestCart[pid]; cartChanged = true; return; }
+        if (!gp || gp.hidden || gp.status === 'pending_approval' || gp.soldOut || gp.baseHidden) { delete guestCart[pid]; cartChanged = true; return; }
         var gcols = colorsOf(gp);
         Object.keys(guestCart[pid]).forEach(function (c) { if (gcols.indexOf(c) === -1 || !(guestCart[pid][c] > 0)) { delete guestCart[pid][c]; cartChanged = true; } });
         if (!Object.keys(guestCart[pid]).length) { delete guestCart[pid]; cartChanged = true; }
@@ -1677,7 +1783,7 @@
     var added = 0;
     Object.keys(lead.items || {}).forEach(function (k) {
       var it = lead.items[k], pr = products[it.pid];
-      if (!pr || pr.hidden || pr.status === 'pending_approval' || pr.soldOut) return;
+      if (!pr || pr.hidden || pr.status === 'pending_approval' || pr.soldOut || pr.baseHidden) return;
       var cols = colorsOf(pr), q = {};
       Object.keys(it.quantities || {}).forEach(function (c) {
         var v = Number(it.quantities[c]) || 0;
@@ -2298,10 +2404,10 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
-  var PRESERVE_FIELD_IDS = ['newAcctPhone', 'extraImagesInput', 'editExtraImagesInput', 'priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
+  var PRESERVE_FIELD_IDS = ['newBaseCode', 'newBaseName', 'newBasePrice', 'newBaseColors', 'newBaseSize', 'newAcctPhone', 'extraImagesInput', 'editExtraImagesInput', 'priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
   function snapshotFormState() {
     var snap = {};
-    PRESERVE_FIELD_IDS.forEach(function (id) {
+    PRESERVE_FIELD_IDS.concat(baseListAll().map(function (b) { return 'editBaseImg_' + b.id; })).forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
       var isTextLike = el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'password' || el.type === 'search');
@@ -2446,10 +2552,11 @@
       .then(function () { toast('Đã tạo tài khoản!'); renderAccounts(); });
   }
 
-  function productList() {
+  function productListAll() {       // gồm cả mẫu ảo theo loại áo nền
     return Object.keys(products).map(function (id) { return Object.assign({ id: id }, products[id]); })
       .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
   }
+  function productList() { return productListAll().filter(function (pr) { return !pr.baseOf; }); }     // chỉ mẫu thật
   function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
 
   function sumQuantitiesForColors(quantities, colors) {
@@ -2504,7 +2611,7 @@
     if (!configOk) { $('shopGrid').innerHTML = setupWarningHtml(); return; }
     renderOrderDateControls();
     // Ẩn các mẫu bị ẩn và các mẫu đang chờ duyệt
-    var plist = productList().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
+    var plist = productListAll().filter(function (p) { return !p.hidden && p.status !== 'pending_approval'; });
     var today = todayStr();
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     var scopeNote = selectedOrderDate === 'all' ? 'Tất cả các ngày chưa in' : (selectedOrderDate === today ? 'Hôm nay ' + fmtDate(today) : 'Ngày ' + fmtDate(selectedOrderDate));
@@ -2522,10 +2629,10 @@
     var secState = sectionTabsState(plist, orderSection);
     orderSection = secState.selected;
     orderSectionActive = secState.both ? orderSection : null;
-    var orderSecCounts = { a55: 0, other: 0 };
-    plist.forEach(function (p) { orderSecCounts[sectionOf(p)]++; });
+    var orderSecCounts = {};
+    plist.forEach(function (p) { var vk = viewKeyOf(p); orderSecCounts[vk] = (orderSecCounts[vk] || 0) + 1; });
     renderSectionTabs('orderSectionTabs', secState, orderSecCounts, function (sec) { orderSection = sec; renderOrderList(); });
-    if (secState.both) plist = plist.filter(function (p) { return sectionOf(p) === orderSection; });
+    if (secState.both) plist = plist.filter(function (p) { return viewKeyOf(p) === orderSection; });
     renderLeadSummaryPanel(activeDates, orderSectionActive);
     plist.sort(function (a, b) {
       if (totals[b.id] !== totals[a.id]) return totals[b.id] - totals[a.id];
@@ -2615,7 +2722,7 @@
     var container = $('myOrdersToday');
     var activeDates = selectedOrderDate === 'all' ? availableDates() : [selectedOrderDate];
     var rows = [];
-    productList().filter(function (p) { return !orderSectionActive || sectionOf(p) === orderSectionActive; }).forEach(function (p) {
+    productListAll().filter(function (p) { return !orderSectionActive || viewKeyOf(p) === orderSectionActive; }).forEach(function (p) {
       var q = {}, total = 0;
       var colors = colorsOf(p);
       activeDates.forEach(function (d) {
@@ -2726,8 +2833,8 @@
   function dayGrandTotal(d) {
     var t = 0;
     var dayNode = orders[d] || {};
-    productList().forEach(function (p) {
-      if (aggSectionFilter && sectionOf(p) !== aggSectionFilter) return;
+    productListAll().forEach(function (p) {
+      if (aggSectionFilter && viewKeyOf(p) !== aggSectionFilter) return;
       var node = dayNode[p.id];
       if (!node) return;
       var colors = colorsOf(p);
@@ -2742,7 +2849,7 @@
       var en = printArchive[aid];
       if (!en || en.date !== d) return;
       if (!aggSectionFilter || !en.items) { t += (en.grandTotal || 0); return; }
-      (en.items || []).forEach(function (it) { if (sectionOf(products[it.productId] || {}) === aggSectionFilter) t += (it.totalQty || 0); });
+      (en.items || []).forEach(function (it) { if (viewKeyOfId(it.productId) === aggSectionFilter) t += (it.totalQty || 0); });
     });
     return t;
   }
@@ -2772,7 +2879,7 @@
     if (!isManager()) return;
     var summaryEl = $('aggSummary'), prodEl = $('aggProducts');
     if (!configOk) { summaryEl.innerHTML = ''; prodEl.innerHTML = ''; return; }
-    var plist = productList();
+    var plist = productListAll();
     var secState0 = sectionTabsState(plist, aggSection);
     aggSection = secState0.selected;
     aggSectionFilter = secState0.both ? aggSection : null;
@@ -2798,10 +2905,10 @@
     });
 
     // Tab mục: số trên tab = số mẫu có đơn; tổng / số mẫu / số sale bên dưới tính theo mục đang xem
-    var aggSecCounts = { a55: 0, other: 0 };
-    plist.forEach(function (p) { if (byProduct[p.id]) aggSecCounts[sectionOf(p)]++; });
+    var aggSecCounts = {};
+    plist.forEach(function (p) { if (byProduct[p.id]) { var vk = viewKeyOf(p); aggSecCounts[vk] = (aggSecCounts[vk] || 0) + 1; } });
     renderSectionTabs('aggSectionTabs', secState0, aggSecCounts, function (sec) { aggSection = sec; renderAgg(); });
-    var scopedList = secState0.both ? plist.filter(function (p) { return sectionOf(p) === aggSection; }) : plist;
+    var scopedList = secState0.both ? plist.filter(function (p) { return viewKeyOf(p) === aggSection; }) : plist;
     var scopedBy = {};
     grandTotal = 0; peopleSet = {};
     scopedList.forEach(function (p) {
@@ -2820,7 +2927,7 @@
     filteredList.sort(function (a, b) {
       return (byProduct[b.id].totalQty || 0) - (byProduct[a.id].totalQty || 0);
     });
-    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate) + (secState0.both ? ' · ' + sectionLabel(aggSection) : ''), datesUsed: dates };
+    lastAggSnapshot = { filteredList: filteredList, byProduct: byProduct, grandTotal: grandTotal, dateLabel: fmtDate(selectedAggDate) + (secState0.both ? ' · ' + viewLabel(aggSection) : ''), datesUsed: dates };
     renderWorkshopTable();
 
     if (!Object.keys(scopedBy).length) { prodEl.innerHTML = '<div class="empty">Chưa có đơn may nào cho ' + esc(fmtDate(selectedAggDate).toLowerCase()) + '.</div>'; return; }
@@ -3297,6 +3404,7 @@
     el.innerHTML =
       syncCardHtml +
       bulkImgCardHtml +
+      (isManager() ? baseCardHtml() : '') +
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
         '<div class="img-preview-side" id="newImgPreviewBox"><div class="pv-placeholder">🖼️ Xem trước ảnh</div></div>' +
@@ -3345,6 +3453,7 @@
         renderManage();
       });
     });
+    if (isManager()) bindBaseCard(el);
     var bulkImgBtn = $('bulkImgBtn');
     if (bulkImgBtn) bulkImgBtn.addEventListener('click', openBulkImageModal);
     var sheetSyncBtn = $('sheetSyncBtn');
@@ -3393,7 +3502,7 @@
         : '<div class="mli-attrs-text">' + esc([priceSummary(p), p.soldOut ? 'Tạm hết' : '', sectionLabel(sectionOf(p)), attrTagsText(p)].filter(Boolean).join(' · ')) + '</div>';
       return '<div class="manage-list-item' + (hidden || isPending ? ' is-hidden' : '') + '">' +
         (p.imageUrl ? '<img data-lightbox="' + esc(p.imageUrl) + '" src="' + esc(p.imageUrl) + '">' : '<div class="pc-thumb placeholder" style="width:44px;height:44px;">–</div>') +
-        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + (imagesOf(p).length > 1 ? ' <span class="mli-multi">' + IMAGES_ICON_SVG + ' ' + imagesOf(p).length + ' ảnh</span>' : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + attrsHtml + ownerNote + '</div>' +
+        '<div class="mli-info"><div class="mli-name">' + esc(p.name) + tagStatus + (imagesOf(p).length > 1 ? ' <span class="mli-multi">' + IMAGES_ICON_SVG + ' ' + imagesOf(p).length + ' ảnh</span>' : '') + (isManager() && p.section !== 'other' ? baseListAll().filter(function (b) { return baseImgList(p, b.id).length; }).map(function (b) { return ' <span class="mli-multi">' + esc(b.code) + ': ảnh riêng</span>'; }).join('') : '') + '</div><div class="mli-colors">' + colors.join(', ') + '</div>' + attrsHtml + ownerNote + '</div>' +
         '<div class="mli-actions">' + actions + '</div></div>';
     }).join('');
 
@@ -3665,7 +3774,7 @@
   }
 
   // =============== DÁN LINK ẢNH HÀNG LOẠT: mỗi dòng "MÃ link1 link2 ..." ===============
-  var bulkImgDraft = { text: '', keepOld: false };
+  var bulkImgDraft = { text: '', keepOld: false, target: 'a55' };
   function copyTextToClipboard(text, done) {
     function fallback() {
       var ta = document.createElement('textarea');
@@ -3717,10 +3826,11 @@
     res.entries.forEach(function (en) { en.urls.sort(function (a, b) { return (ord[a] || 0) - (ord[b] || 0); }); });   // ảnh A12.jpg lên trước A12-2.jpg
     return res;
   }
-  function buildBulkImagePlan(entries, keepOld) {
+  function buildBulkImagePlan(entries, keepOld, target) {
+    target = target || 'a55';
     var byCode = {};
     productList().forEach(function (p) { var c = codeOf(p.name); if (c) (byCode[c.prefix + c.num] = byCode[c.prefix + c.num] || []).push(p); });
-    var plan = { apply: [], same: [], missing: [], noPerm: [], noLinks: [], dup: [] };
+    var plan = { apply: [], same: [], missing: [], noPerm: [], noLinks: [], dup: [], target: target };
     entries.forEach(function (en) {
       var ps = byCode[en.code];
       if (!ps || !ps.length) { plan.missing.push(en.code); return; }
@@ -3728,10 +3838,11 @@
       if (ps.length > 1) plan.dup.push(en.code);
       ps.forEach(function (pr) {
         if (!canEditProduct(pr)) { plan.noPerm.push(en.code); return; }
-        var cur = imagesOf(pr), seen = {}, list = [];
+        if (target !== 'a55' && (!isManager() || pr.section === 'other')) { plan.noPerm.push(en.code); return; }
+        var cur = target === 'a55' ? imagesOf(pr) : baseImgList(pr, target), seen = {}, list = [];
         (keepOld ? cur.concat(en.urls) : en.urls).forEach(function (u) { if (!seen[u]) { seen[u] = 1; list.push(u); } });
         list = list.slice(0, 10);
-        var row = { pid: pr.id, code: en.code, name: pr.name, list: list, before: cur.length };
+        var row = { pid: pr.id, code: en.code, name: pr.name, list: list, before: cur.length, target: target };
         if (list.join('|') === cur.join('|')) plan.same.push(row); else plan.apply.push(row);
       });
     });
@@ -3740,6 +3851,7 @@
   function applyBulkImagePlan(plan) {
     var updates = {};
     plan.apply.forEach(function (r) {
+      if (r.target && r.target !== 'a55') { updates['products/' + r.pid + '/baseImages/' + r.target] = r.list; return; }
       updates['products/' + r.pid + '/imageUrl'] = r.list[0];
       updates['products/' + r.pid + '/images'] = r.list.length > 1 ? r.list.slice(1) : null;
     });
@@ -3752,14 +3864,22 @@
   }
   function openBulkImageModal() {
     if (!canManageProducts()) return;
-    var noImg = productList().filter(function (pr) { return canEditProduct(pr) && !imagesOf(pr).length; })
+    var tgt = (isManager() && baseListAll().some(function (b) { return b.id === bulkImgDraft.target; })) ? bulkImgDraft.target : 'a55';
+    bulkImgDraft.target = tgt;
+    var tgtBase = tgt === 'a55' ? null : bases[tgt];
+    var noImg = productList().filter(function (pr) { return canEditProduct(pr) && (tgtBase ? (pr.section !== 'other' && !baseImgList(pr, tgt).length) : !imagesOf(pr).length); })
       .sort(function (a, b) { return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0)); });
     var noImgCodes = noImg.map(function (pr) { var c = codeOf(pr.name); return c ? c.prefix + c.num : ''; }).filter(Boolean);
+    var targetHtml = (isManager() && baseListAll().length)
+      ? '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:10px;">Gắn ảnh cho: <select id="bulkTarget" style="margin-left:6px;"><option value="a55"' + (tgt === 'a55' ? ' selected' : '') + '>Ảnh chính của mẫu (A55)</option>' +
+        baseListAll().map(function (b) { return '<option value="' + esc(b.id) + '"' + (tgt === b.id ? ' selected' : '') + '>Ảnh riêng cho ' + esc(baseDisplayName(b)) + ' (trống = dùng ảnh A55)</option>'; }).join('') + '</select></label>'
+      : '';
     bulkModalShell(
+      targetHtml +
       '<p class="img-hint">Mỗi dòng 1 mã kèm link ảnh. Mẫu có nhiều ảnh thì để nhiều link cùng dòng (link đầu là ảnh chính). Ví dụ:</p>' +
       '<pre class="bulk-example">A1 https://i.postimg.cc/abc/a1.jpg\nA2 https://i.postimg.cc/def/a2.jpg https://i.postimg.cc/def/a2-2.jpg\nH12: https://i.imgur.com/xyz.jpg</pre>' +
       '<p class="img-hint">Dán thẳng từ Excel / Google Sheet (cột mã + cột link) cũng được. Link nào có <b>tên file là mã</b> (ví dụ …/A12.jpg, ảnh thứ 2: …/A12-2.jpg) thì không cần ghi mã, app tự nhận.</p>' +
-      (noImgCodes.length ? '<div class="bulk-missing"><div><b>' + noImgCodes.length + '</b> mã đang chưa có ảnh: <span class="bm-list">' + esc(noImgCodes.slice(0, 40).join(', ')) + (noImgCodes.length > 40 ? '…' : '') + '</span></div>' +
+      (noImgCodes.length ? '<div class="bulk-missing"><div><b>' + noImgCodes.length + '</b> mã đang chưa có ' + (tgtBase ? 'ảnh riêng cho ' + esc(tgtBase.code) + ' (đang dùng ảnh A55)' : 'ảnh') + ': <span class="bm-list">' + esc(noImgCodes.slice(0, 40).join(', ')) + (noImgCodes.length > 40 ? '…' : '') + '</span></div>' +
         '<button class="btn ghost small" id="bulkCopyCodesBtn">📋 Sao chép danh sách mã chưa có ảnh</button></div>' : '') +
       '<textarea id="bulkImgText" class="sheet-paste" rows="9" placeholder="Dán danh sách vào đây (Ctrl+V)">' + esc(bulkImgDraft.text) + '</textarea>' +
       '<label class="print-only-toggle" style="margin-bottom:10px;"><input type="checkbox" id="bulkKeepOld"' + (bulkImgDraft.keepOld ? ' checked' : '') + '> Giữ ảnh cũ, chỉ thêm ảnh mới vào sau</label>' +
@@ -3768,8 +3888,13 @@
     if (copyBtn) copyBtn.addEventListener('click', function () {
       copyTextToClipboard(noImgCodes.map(function (c) { return c + ' '; }).join('\n'), function () { toast('Đã sao chép ' + noImgCodes.length + ' mã — dán vào Excel/Ghi chú rồi điền link bên cạnh.'); });
     });
+    var tgtSel = $('bulkTarget');
+    if (tgtSel) tgtSel.addEventListener('change', function () {
+      bulkImgDraft = { text: $('bulkImgText').value, keepOld: $('bulkKeepOld').checked, target: tgtSel.value };
+      openBulkImageModal();
+    });
     $('bulkPreviewBtn').addEventListener('click', function () {
-      bulkImgDraft = { text: $('bulkImgText').value, keepOld: $('bulkKeepOld').checked };
+      bulkImgDraft = { text: $('bulkImgText').value, keepOld: $('bulkKeepOld').checked, target: tgt };
       showBulkImagePreview();
     });
   }
@@ -3779,8 +3904,9 @@
       toast(parsed.bad.length ? parsed.bad[0] : 'Chưa đọc được dòng nào — mỗi dòng cần có mã (VD A1) và link ảnh.');
       return;
     }
-    var plan = buildBulkImagePlan(parsed.entries, bulkImgDraft.keepOld);
-    var html = '<div class="sp-block"><div class="sp-title">✅ Sẽ cập nhật ảnh cho: <b>' + plan.apply.length + '</b> mẫu</div>' +
+    var plan = buildBulkImagePlan(parsed.entries, bulkImgDraft.keepOld, bulkImgDraft.target);
+    var tgtB = plan.target !== 'a55' ? bases[plan.target] : null;
+    var html = '<div class="sp-block"><div class="sp-title">✅ Sẽ cập nhật ảnh ' + (tgtB ? 'riêng cho <b>' + esc(tgtB.code) + '</b> ' : '') + 'cho: <b>' + plan.apply.length + '</b> mẫu</div>' +
       plan.apply.slice(0, 30).map(function (r) {
         return '<div class="sp-row bulk-row"><img class="sp-thumb" src="' + esc(r.list[0]) + '" alt=""><span>' + esc(r.name) + '</span><span class="sp-meta">' + r.list.length + ' ảnh' + (r.before ? ' (trước: ' + r.before + ')' : '') + '</span></div>';
       }).join('') + (plan.apply.length > 30 ? '<div class="sp-more">…và ' + (plan.apply.length - 30) + ' mẫu nữa</div>' : '') + '</div>';
@@ -3799,10 +3925,88 @@
     $('bulkApplyBtn').addEventListener('click', function () {
       var btn = $('bulkApplyBtn'); btn.disabled = true; btn.textContent = 'Đang cập nhật…';
       applyBulkImagePlan(plan).then(function () {
-        bulkImgDraft = { text: '', keepOld: false };
+        bulkImgDraft = { text: '', keepOld: false, target: plan.target };
         toast('Đã cập nhật ảnh cho ' + plan.apply.length + ' mẫu.');
         closeSheetModal();
       }).catch(function (e) { btn.disabled = false; btn.textContent = 'Áp dụng'; toast('Lỗi: ' + e.message); });
+    });
+  }
+
+  // =============== QUẢN LÝ LOẠI ÁO NỀN (A55 mặc định + các loại thêm như A57) ===============
+  function parseColorList(text) {
+    var seen = {}, out = [];
+    String(text || '').split(/[,;\n]+/).forEach(function (c) { var nc = normalizeColorName(c.trim()); if (nc && !seen[nc]) { seen[nc] = 1; out.push(nc); } });
+    return out;
+  }
+  function baseCardHtml() {
+    var rows = baseListAll().map(function (b) {
+      var priceTxt = b.tiers && b.tiers.p10 ? [b.tiers.p10, b.tiers.p100, b.tiers.p1000].join('/') : (b.price || '');
+      return '<div class="base-row" data-id="' + esc(b.id) + '">' +
+        '<div class="br-head"><b>' + esc(b.code) + '</b><span class="br-sub">in lên ' + esc(baseDisplayName(b)) + '</span>' +
+        '<label class="br-hide"><input type="checkbox" class="base-hide" data-id="' + esc(b.id) + '"' + (b.hidden ? ' checked' : '') + '> Ẩn với khách</label></div>' +
+        '<div class="br-fields">' +
+          '<label>Tên hiển thị<input type="text" class="base-field" data-id="' + esc(b.id) + '" data-key="name" value="' + esc(b.name || '') + '" placeholder="Áo ' + esc(b.code) + '"></label>' +
+          '<label>Giá (trống = giống A55)<input type="text" class="base-field" data-id="' + esc(b.id) + '" data-key="price" value="' + esc(String(priceTxt)) + '" placeholder="Trống = giống A55"></label>' +
+          '<label>Màu (trống = giống A55)<input type="text" class="base-field" data-id="' + esc(b.id) + '" data-key="colors" value="' + esc((b.colors || []).join(', ')) + '" placeholder="Trống = giống A55"></label>' +
+          '<label>Size / ghi chú<input type="text" class="base-field" data-id="' + esc(b.id) + '" data-key="sizeNote" value="' + esc(b.sizeNote || '') + '" placeholder="Không bắt buộc"></label>' +
+        '</div></div>';
+    }).join('');
+    return '<div class="manage-form base-card"><h2>👕 Loại áo nền để in</h2>' +
+      '<p class="img-hint" style="margin:-4px 0 12px;">Mỗi hình in (H1, H2…) in được lên nhiều loại áo. <b>A55</b> là loại mặc định, dùng giá và màu riêng của từng hình như hiện nay. Thêm loại mới (ví dụ A57 trễ vai) thì khách chọn loại áo ở đầu trang. <b>Giá, màu, size để trống = giống từng hình như A55</b>; chỉ điền khi loại áo đó khác. Đơn may và bản in xưởng tự tách theo loại áo.</p>' +
+      '<div class="base-row base-default"><div class="br-head"><b>A55</b><span class="br-sub">loại mặc định — giá và màu theo từng hình</span></div></div>' + rows +
+      '<div class="base-add"><div class="br-head"><b>Thêm loại áo mới</b></div><div class="br-fields">' +
+        '<label>Mã loại áo<input type="text" id="newBaseCode" maxlength="8" placeholder="VD: A57"></label>' +
+        '<label>Tên hiển thị (khách thấy)<input type="text" id="newBaseName" placeholder="VD: Áo trễ vai A57"></label>' +
+        '<label>Giá — để trống = giống A55<input type="text" id="newBasePrice" placeholder="Trống = giống A55"></label>' +
+        '<label>Màu — để trống = giống A55<input type="text" id="newBaseColors" placeholder="Trống = giống A55"></label>' +
+        '<label>Size / ghi chú<input type="text" id="newBaseSize" placeholder="Không bắt buộc"></label>' +
+      '</div><button class="btn primary" id="addBaseBtn">Thêm loại áo</button></div></div>';
+  }
+  function bindBaseCard(root) {
+    root.querySelectorAll('.base-field').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        if (!isManager()) return;
+        var id = inp.dataset.id, key = inp.dataset.key, b = bases[id];
+        if (!b) return;
+        var upd = {};
+        if (key === 'price') {
+          var pr = parsePriceInput(inp.value);
+          if (pr.error) { toast(pr.error); return; }
+          upd.price = pr.price > 0 ? pr.price : 0; upd.tiers = pr.tiers || null;
+        } else if (key === 'colors') {
+          var cols = parseColorList(inp.value);
+          upd.colors = cols.length ? cols : null;          // để trống = giống màu của từng hình (A55)
+        } else if (key === 'name') upd.name = inp.value.trim() || null;
+        else upd.sizeNote = inp.value.trim() || null;
+        db.ref('bases/' + id).update(upd).then(function () { toast('Đã lưu loại áo ' + b.code + '.'); }).catch(function (e) { toast('Lỗi: ' + e.message); });
+      });
+    });
+    root.querySelectorAll('.base-hide').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        if (!isManager()) return;
+        db.ref('bases/' + cb.dataset.id).update({ hidden: cb.checked ? true : null })
+          .then(function () { toast(cb.checked ? 'Đã ẩn loại áo này với khách (đơn cũ vẫn giữ).' : 'Khách thấy lại loại áo này.'); });
+      });
+    });
+    var addBtn = $('addBaseBtn');
+    if (addBtn) addBtn.addEventListener('click', function () {
+      if (!isManager()) return;
+      var code = ($('newBaseCode').value || '').trim().toUpperCase();
+      if (!/^[A-Z0-9]{1,8}$/.test(code)) { toast('Mã loại áo chỉ gồm chữ và số, tối đa 8 ký tự (VD: A57).'); return; }
+      if (code === 'A55') { toast('A55 là loại mặc định, không cần thêm.'); return; }
+      var id = code.toLowerCase();
+      if (bases[id]) { toast('Đã có loại áo ' + code + ' rồi.'); return; }
+      var pr = parsePriceInput($('newBasePrice').value);
+      if (pr.error) { toast(pr.error); return; }
+      var cols = parseColorList($('newBaseColors').value);
+      var rec = { code: code, name: ($('newBaseName').value || '').trim() || ('Áo ' + code), price: pr.price > 0 ? pr.price : 0, createdAt: Date.now() };
+      if (cols.length) rec.colors = cols;
+      if (pr.tiers) rec.tiers = pr.tiers;
+      var sz = ($('newBaseSize').value || '').trim(); if (sz) rec.sizeNote = sz;
+      db.ref('bases/' + id).set(rec).then(function () {
+        ['newBaseCode', 'newBaseName', 'newBasePrice', 'newBaseColors', 'newBaseSize'].forEach(function (k) { $(k).value = ''; });
+        toast('Đã thêm loại áo ' + code + ' — khách chọn được ở đầu trang.');
+      }).catch(function (e) { toast('Lỗi: ' + e.message); });
     });
   }
 
@@ -3890,6 +4094,9 @@
         '</div>' +
       '</div>' +
       '<div class="field-row"><label>Các màu</label><input type="text" id="editColorsInput" value="' + esc(colors.join(', ')) + '"></div>' +
+      (isManager() && p.section !== 'other' ? baseListAll().map(function (b) {
+        return '<div class="field-row"><label>Ảnh riêng cho ' + esc(baseDisplayName(b)) + ' — mỗi link 1 dòng, <b>để trống = dùng ảnh A55</b></label><textarea id="editBaseImg_' + esc(b.id) + '" class="extra-img-input" rows="2" placeholder="https://...">' + esc(baseImgList(p, b.id).join('\n')) + '</textarea></div>';
+      }).join('') : '') +
       '<div class="field-row"><label>Ảnh thêm — mỗi link 1 dòng</label><textarea id="editExtraImagesInput" class="extra-img-input" rows="3" placeholder="https://...&#10;https://...">' + esc(imagesOf(p).slice(1).join('\n')) + '</textarea></div>' +
       '<div style="display:flex; gap:8px;">' +
       '<button class="btn primary" id="saveEditBtn" data-pid="' + esc(p.id) + '">Lưu</button>' +
@@ -3916,8 +4123,20 @@
     var exEdit = parseImageLinks(($('editExtraImagesInput') || {}).value);
     if (exEdit.bad) { toast('Ảnh thêm: có dòng không phải link (phải bắt đầu bằng http...). Mỗi link 1 dòng.'); return; }
     var extrasEdit = exEdit.links.filter(function (u) { return u !== imageUrl; });
+    var upd = { name: name, imageUrl: imageUrl, colors: colors, images: extrasEdit.length ? extrasEdit : null };
+    if (isManager() && products[pid].section !== 'other') {
+      var badBase = false;
+      baseListAll().forEach(function (b) {
+        var el = $('editBaseImg_' + b.id);
+        if (!el) return;
+        var r = parseImageLinks(el.value);
+        if (r.bad) badBase = true;
+        upd['baseImages/' + b.id] = r.links.length ? r.links : null;      // trống = quay lại dùng ảnh A55
+      });
+      if (badBase) { toast('Ảnh riêng cho loại áo: có dòng không phải link (phải bắt đầu bằng http...).'); return; }
+    }
     var btn = $('saveEditBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu…'; }
-    db.ref('products/' + pid).update({ name: name, imageUrl: imageUrl, colors: colors, images: extrasEdit.length ? extrasEdit : null })
+    db.ref('products/' + pid).update(upd)
       .then(function () { editingProductId = null; toast('Đã cập nhật mẫu.'); renderManage(); })
       .catch(function (e) { if (btn) { btn.disabled = false; btn.textContent = 'Lưu'; } toast('Lỗi: ' + e.message); });
   }
@@ -4047,9 +4266,24 @@
     });
 
     db.ref('products').on('value', function (snap) {
-      products = normalizeProductsData(snap.val() || {});
+      productsReal = normalizeProductsData(snap.val() || {});
+      rebuildProducts();
       rebuildOrders();
 
+      requestRender();
+    });
+
+    db.ref('bases').on('value', function (snap) {
+      var raw = snap.val() || {};
+      bases = {};
+      Object.keys(raw).forEach(function (id) {
+        var b = raw[id] || {};
+        var seen = {}, cols = [];
+        (b.colors || []).forEach(function (c) { var nc = normalizeColorName(c); if (nc && !seen[nc]) { seen[nc] = 1; cols.push(nc); } });
+        bases[id] = Object.assign({}, b, { colors: cols });
+      });
+      rebuildProducts();
+      rebuildOrders();
       requestRender();
     });
 
