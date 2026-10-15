@@ -542,6 +542,24 @@
   .tool-content { display: none; }
   .tool-wrap.is-open .tool-content { display: block; margin-top: 8px; }
   .tool-content .manage-form { margin-bottom: 0; }
+  .cat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .cat-tile { position: relative; height: 116px; padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; cursor: pointer; background: var(--paper-raised); text-align: left; font-family: var(--font-body); display: block; }
+  .cat-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cat-noimg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--ink-soft); background: var(--paper); }
+  .cat-cap { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(33,31,26,.68); color: #fff; padding: 6px 10px 7px; display: flex; flex-direction: column; gap: 1px; }
+  .cat-kick { font-size: 11px; opacity: .85; }
+  .cat-name { font-weight: 700; font-size: 14px; line-height: 1.25; }
+  .cat-sub { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; opacity: .92; }
+  .cat-tile.active { border-color: #d63a2f; box-shadow: 0 0 0 2px rgba(214,58,47,.25); }
+  .cat-on { position: absolute; top: 8px; left: 8px; background: #d63a2f; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+  .cat-picked { position: absolute; top: 8px; right: 8px; background: #d63a2f; color: #fff; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; box-shadow: 0 2px 6px rgba(214,58,47,.45); }
+  .cat-tiles.searching .cat-tile { opacity: .55; }
+  .cover-row { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); }
+  .cover-prev { width: 96px; height: 54px; flex: 0 0 auto; border-radius: 8px; overflow: hidden; background: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink-soft); border: 1px solid var(--line); }
+  .cover-prev img { width: 100%; height: 100%; object-fit: cover; }
+  .cover-fields { flex: 1; min-width: 0; }
+  .cover-name { font-size: 13.5px; margin-bottom: 4px; }
+  .cover-input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -705,6 +723,7 @@
   <main class="wrap" style="padding-bottom:120px;">
     <p class="subtitle" style="margin-bottom:16px;">Chọn mẫu và nhập số lượng dự kiến. Tư vấn viên sẽ liên hệ lại qua Zalo để xác nhận và gửi cọc.</p>
     <div class="guest-filters">
+      <div class="cat-tiles hidden" id="guestCatTiles"></div>
       <div class="gs-tabs hidden" id="guestSectionTabs"></div>
       <div class="gs-bases hidden" id="guestBaseBar"></div>
       <input type="search" id="guestSearchInput" class="guest-search" placeholder="🔍 Tìm theo mã hoặc tên (VD: 12, H12, chuột)" autocomplete="off">
@@ -1029,6 +1048,7 @@
   // ---- Tab theo mục (Mẫu A55 in / Các mẫu khác) dùng chung cho tab Đơn may và Tổng hợp; chỉ hiện khi cả 2 mục đều có mẫu ----
   // ---------- LOẠI ÁO NỀN: các hình in H dùng chung, mỗi loại áo (A55 mặc định, A57…) có giá & màu riêng ----------
   // Mỗi (hình × loại áo) là một "mẫu ảo" có id "<idHình>~<idLoạiÁo>" nên giỏ hàng, đơn, tổng hợp, in xưởng đều tự tách theo loại áo.
+  var covers = {};           // /covers/{khoá mục}: link ảnh bìa (banner) của từng mục trên trang khách; trống = tự lấy ảnh mẫu đầu tiên
   var bases = {};            // /bases/{id}: {code, name, price, tiers, colors[], sizeNote, hidden, createdAt}
   var productsReal = {};     // mẫu thật lấy từ Firebase (products = mẫu thật + mẫu ảo theo loại áo)
   function baseListAll() {
@@ -1068,6 +1088,30 @@
     });
     return out;
   }
+  // Các mục khách chọn ở đầu trang: Áo A55, các loại áo khác (A57…), Áo quần khác. Mỗi mục là 1 banner có ảnh bìa.
+  function categorySets() {
+    var vis = productListAll().filter(function (p) { return !(p.hidden || p.status === 'pending_approval' || p.baseHidden); });
+    var realA55 = vis.filter(function (p) { return !p.baseOf && sectionOf(p) === 'a55'; });
+    var realOther = vis.filter(function (p) { return !p.baseOf && sectionOf(p) === 'other'; });
+    var vb = baseListVisible(), out = [];
+    if (realA55.length) {
+      if (vb.length) {
+        out.push({ key: 'a55', title: DEFAULT_BASE_NAME, kicker: 'Mẫu in hình', list: realA55, base: 'a55' });
+        vb.forEach(function (b) {
+          var l = vis.filter(function (p) { return p.baseOf && p.baseId === b.id; });
+          if (l.length) out.push({ key: 'b_' + b.id, title: baseDisplayName(b), kicker: 'Mẫu in hình', list: l, base: b.id });
+        });
+      } else out.push({ key: 'a55', title: guestSectionLabel('a55'), kicker: '', list: realA55, base: 'a55' });
+    }
+    if (realOther.length) out.push({ key: 'other', title: guestSectionLabel('other'), kicker: '', list: realOther, section: 'other' });
+    return out;
+  }
+  function autoCoverOf(cs) {
+    var l = cs.list.slice().sort(function (a, b) { return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0)); });
+    for (var i = 0; i < l.length; i++) { var im = imagesOf(l[i])[0]; if (im) return im; }
+    return '';
+  }
+  function coverOf(cs) { return (covers[cs.key] && /^https?:\/\//i.test(covers[cs.key])) ? covers[cs.key] : autoCoverOf(cs); }
   function rebuildProducts() { products = withBaseVariants(productsReal); }
   function viewKeyOf(pr) { return pr && pr.baseOf ? 'b:' + pr.baseId : sectionOf(pr || {}); }
   function viewKeyOfId(pid) {
@@ -1584,8 +1628,47 @@
     var mixedSearch = bothSections && searching;
     var scope = (bothSections && !searching) ? all.filter(function (p) { return sectionOf(p) === guestSection; }) : all;
 
+    // Banner chọn mục (có ảnh bìa): hiện khi có từ 2 mục trở lên; khi đó ẩn hàng tab và công tắc loại áo cũ
+    var catSets = categorySets();
+    var tilesOn = catSets.length >= 2;
+    var tilesBox = $('guestCatTiles');
+    if (tilesOn) {
+      var activeCat = guestSection === 'other' ? 'other' : (guestBase === 'a55' ? 'a55' : 'b_' + guestBase);
+      tilesBox.classList.remove('hidden');
+      tilesBox.classList.toggle('searching', searching);
+      var pickedByCat = {};
+      Object.keys(guestCart).forEach(function (pk) {
+        var cp = products[pk];
+        if (!cp) return;
+        var ck = cp.baseOf ? 'b_' + cp.baseId : (sectionOf(cp) === 'other' ? 'other' : 'a55'), n = 0;
+        Object.keys(guestCart[pk]).forEach(function (c) { n += guestCart[pk][c]; });
+        pickedByCat[ck] = (pickedByCat[ck] || 0) + n;
+      });
+      tilesBox.innerHTML = catSets.map(function (cs) {
+        var cv = coverOf(cs), on = activeCat === cs.key && !searching;
+        return '<button type="button" class="cat-tile' + (on ? ' active' : '') + '" data-cat="' + esc(cs.key) + '">' +
+          (cv ? '<img src="' + esc(cv) + '" alt="">' : '<span class="cat-noimg">Chưa có ảnh bìa</span>') +
+          (on ? '<span class="cat-on">Đang xem</span>' : '') +
+          (pickedByCat[cs.key] ? '<span class="cat-picked">Đã chọn ' + pickedByCat[cs.key] + ' áo</span>' : '') +
+          '<span class="cat-cap">' + (cs.kicker ? '<span class="cat-kick">' + esc(cs.kicker) + '</span>' : '') +
+          '<span class="cat-name">' + esc(cs.title) + '</span>' +
+          '<span class="cat-sub"><span>' + cs.list.length + ' mẫu</span><span>Xem mẫu ›</span></span></span></button>';
+      }).join('');
+      tilesBox.querySelectorAll('.cat-tile').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var cs = catSets.filter(function (x) { return x.key === btn.dataset.cat; })[0];
+          if (!cs) return;
+          if (cs.section === 'other') guestSection = 'other'; else { guestSection = 'a55'; guestBase = cs.base; }
+          guestFilters = { category: '', season: '', sleeve: '' };
+          guestSearch = ''; $('guestSearchInput').value = '';
+          renderGuestProducts();
+          var gridTop = $('guestGrid'); if (gridTop && gridTop.scrollIntoView) { try { gridTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
+        });
+      });
+    } else { tilesBox.classList.add('hidden'); tilesBox.innerHTML = ''; }
+
     var tabsBox = $('guestSectionTabs');
-    if (bothSections) {
+    if (bothSections && !tilesOn) {
       tabsBox.classList.remove('hidden');
       tabsBox.classList.toggle('searching', searching);
       tabsBox.innerHTML = SECTIONS.map(function (x) {
@@ -1606,7 +1689,7 @@
 
     // Công tắc loại áo (chỉ hiện khi có từ 2 loại áo trở lên và đang xem các hình in)
     var baseBar = $('guestBaseBar');
-    if (visBases.length && secCount.a55 > 0 && (guestSection === 'a55' || searching)) {
+    if (!tilesOn && visBases.length && secCount.a55 > 0 && (guestSection === 'a55' || searching)) {
       var pickedBy = {};
       Object.keys(guestCart).forEach(function (key) {
         var cp = products[key];
@@ -3418,6 +3501,7 @@
         (isManager() ? toolWrap('sync', 'Cập nhật mã từ bảng giá', 'Lấy giá 3 bậc từ Google Sheet', syncCardHtml) : '') +
         toolWrap('bulk', 'Dán link ảnh hàng loạt', 'Gắn nhiều ảnh cùng lúc', bulkImgCardHtml) +
         (isManager() ? toolWrap('base', 'Loại áo nền để in', baseSummary, baseCardHtml()) : '') +
+        (isManager() ? toolWrap('covers', 'Ảnh bìa các mục', 'Banner chọn mục trên trang khách', coversCardHtml()) : '') +
       '</div>' +
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
@@ -3468,6 +3552,7 @@
       });
     });
     if (isManager()) bindBaseCard(el);
+    if (isManager()) bindCoversCard(el);
     el.querySelectorAll('.tool-bar').forEach(function (bar) {
       function toggleTool() {
         var wrap = bar.parentNode, key = wrap.dataset.tool;
@@ -3963,6 +4048,30 @@
     String(text || '').split(/[,;\n]+/).forEach(function (c) { var nc = normalizeColorName(c.trim()); if (nc && !seen[nc]) { seen[nc] = 1; out.push(nc); } });
     return out;
   }
+  function coversCardHtml() {
+    var sets = categorySets();
+    var rows = sets.map(function (cs) {
+      var ov = covers[cs.key] || '', shown = coverOf(cs);
+      return '<div class="cover-row"><div class="cover-prev">' + (shown ? '<img src="' + esc(shown) + '" alt="">' : '<span>Chưa có</span>') + '</div>' +
+        '<div class="cover-fields"><div class="cover-name"><b>' + esc(cs.title) + '</b> <span class="img-hint" style="display:inline;">' + (cs.kicker ? esc(cs.kicker) + ' · ' : '') + cs.list.length + ' mẫu</span></div>' +
+        '<input type="text" class="cover-input" data-key="' + esc(cs.key) + '" value="' + esc(ov) + '" placeholder="Dán link ảnh bìa — trống = tự lấy ảnh mẫu đầu tiên"></div></div>';
+    }).join('');
+    return '<div class="manage-form cover-card"><h2>Ảnh bìa các mục</h2>' +
+      '<p class="img-hint" style="margin:-4px 0 12px;">Khách thấy mỗi mục là một banner có ảnh bìa, bấm vào là hiện các mã trong mục đó. Muốn dùng ảnh banner tự thiết kế thì dán link vào đây (nên dùng ảnh ngang, khoảng 600×300). Để trống thì app tự lấy ảnh của mẫu đầu tiên trong mục.</p>' +
+      (rows || '<div class="empty">Chưa có mục nào.</div>') + '</div>';
+  }
+  function bindCoversCard(root) {
+    root.querySelectorAll('.cover-input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        if (!isManager()) return;
+        var v = inp.value.trim();
+        if (v && !/^https?:\/\/\S+$/i.test(v)) { toast('Link ảnh phải bắt đầu bằng http hoặc https.'); return; }
+        db.ref('covers/' + inp.dataset.key).set(v || null)
+          .then(function () { toast(v ? 'Đã lưu ảnh bìa.' : 'Đã bỏ ảnh bìa riêng, dùng ảnh mẫu đầu tiên.'); })
+          .catch(function (e) { toast('Lỗi: ' + e.message); });
+      });
+    });
+  }
   var manageToolOpen = {};   // công cụ nào đang mở (giữ nguyên khi dữ liệu cập nhật)
   function toolWrap(key, label, summary, cardHtml) {
     var open = !!manageToolOpen[key];
@@ -4302,6 +4411,11 @@
       rebuildProducts();
       rebuildOrders();
 
+      requestRender();
+    });
+
+    db.ref('covers').on('value', function (snap) {
+      covers = snap.val() || {};
       requestRender();
     });
 
