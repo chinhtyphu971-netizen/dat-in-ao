@@ -3936,7 +3936,7 @@
     } catch (e) { return null; }
   }
   // Đọc văn bản dán vào. Hiểu 3 kiểu: "A1 link link", "A1: link", hoặc mã 1 dòng rồi các link ở các dòng dưới. Dán thẳng từ Excel / Google Sheet (cột mã + cột link) cũng được.
-  function parseBulkImageText(text) {
+  function parseBulkImageText(text, knownCodes) {
     var res = { entries: [], bad: [] }, byCode = {}, cur = null, ord = {};
     String(text || '').split(/\r?\n/).forEach(function (line, idx) {
       var t = line.trim();
@@ -3960,6 +3960,18 @@
           if (byCode[cu.code].indexOf(u) === -1) { byCode[cu.code].push(u); ord[u] = cu.order; }
         });
         if (unmatched) res.bad.push('Dòng ' + (idx + 1) + ': có link nhưng chưa có mã (và tên file trong link không phải là mã).');
+        return;
+      } else if (knownCodes) {
+        // Đang trong khối của 1 mã: link nào có tên file là MỘT MÃ KHÁC đang có trên app thì thuộc về mã đó, không gộp nhầm vào mã phía trên
+        urls.forEach(function (u) {
+          var cu = codeFromUrl(u);
+          if (cu && cu.code !== cur && knownCodes[cu.code]) {
+            cur = cu.code;
+            if (!byCode[cur]) { byCode[cur] = []; res.entries.push({ code: cur, urls: byCode[cur] }); }
+            ord[u] = cu.order;
+          }
+          if (byCode[cur].indexOf(u) === -1) byCode[cur].push(u);
+        });
         return;
       }
       urls.forEach(function (u) { if (byCode[cur].indexOf(u) === -1) byCode[cur].push(u); });
@@ -4040,7 +4052,9 @@
     });
   }
   function showBulkImagePreview() {
-    var parsed = parseBulkImageText(bulkImgDraft.text);
+    var knownCodes = {};
+    productList().forEach(function (pr) { var kc = codeOf(pr.name); if (kc) knownCodes[kc.prefix + kc.num] = true; });
+    var parsed = parseBulkImageText(bulkImgDraft.text, knownCodes);
     if (!parsed.entries.length) {
       toast(parsed.bad.length ? parsed.bad[0] : 'Chưa đọc được dòng nào — mỗi dòng cần có mã (VD A1) và link ảnh.');
       return;
