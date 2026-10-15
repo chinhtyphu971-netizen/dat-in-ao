@@ -554,6 +554,9 @@
   .cat-on { position: absolute; top: 8px; left: 8px; background: #d63a2f; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
   .cat-picked { position: absolute; top: 8px; right: 8px; background: #d63a2f; color: #fff; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; box-shadow: 0 2px 6px rgba(214,58,47,.45); }
   .cat-tiles.searching .cat-tile { opacity: .55; }
+  .staff-tiles { margin-bottom: 12px; }
+  .staff-tiles .cat-tile { height: 92px; }
+  .staff-tiles .cat-name { font-size: 13.5px; }
   .cover-row { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); }
   .cover-prev { width: 96px; height: 54px; flex: 0 0 auto; border-radius: 8px; overflow: hidden; background: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink-soft); border: 1px solid var(--line); }
   .cover-prev img { width: 100%; height: 100%; object-fit: cover; }
@@ -789,7 +792,7 @@
         <div class="sp-status" id="salePhoneStatus"></div>
       </div>
 
-      <div class="gs-tabs hidden" id="orderSectionTabs"></div>
+      <div class="cat-tiles staff-tiles hidden" id="orderSectionTabs"></div>
       <div class="agg-date-bar"><label>Xem theo:</label><select id="orderDateSelect"></select></div>
       <p class="day-note" id="orderDayNote"></p>
       <div id="leadSummaryPanel"></div>
@@ -822,7 +825,7 @@
 
     <!-- TAB: TỔNG HỢP (QUẢN LÝ) -->
     <section class="view" id="view-agg">
-      <div class="gs-tabs hidden" id="aggSectionTabs"></div>
+      <div class="cat-tiles staff-tiles hidden" id="aggSectionTabs"></div>
       <div class="agg-date-bar"><label>Xem theo:</label><select id="aggDateSelect"></select>
         <label class="print-only-toggle"><input type="checkbox" id="printOnlyUnprinted" checked> Chỉ in mẫu chưa in</label>
         <label class="print-only-toggle"><input type="checkbox" id="printResetAfter" checked> Lưu &amp; đặt lại về 0 sau khi in</label>
@@ -1139,14 +1142,29 @@
     if (!cnt[sel]) sel = views.length ? views[0].key : 'a55';
     return { both: views.length > 1, selected: sel, views: views };
   }
-  function renderSectionTabs(boxId, state, counts, onPick) {
+  // Ảnh bìa của từng mục ở phía nhân viên: ảnh quản lý đã đặt, chưa đặt thì lấy ảnh mẫu đầu tiên của mục
+  function coverForView(vk) {
+    var ck = vk.indexOf('b:') === 0 ? 'b_' + vk.slice(2) : vk;
+    if (covers[ck] && /^https?:\/\//i.test(covers[ck])) return covers[ck];
+    var l = productListAll().filter(function (pr) { return viewKeyOf(pr) === vk; })
+      .sort(function (a, b) { return compareByCode(a, b) || ((a.createdAt || 0) - (b.createdAt || 0)); });
+    for (var k = 0; k < l.length; k++) { var im = imagesOf(l[k])[0]; if (im) return im; }
+    return '';
+  }
+  // Banner chọn mục (Mẫu A55 in / Mẫu A57 in / Các mẫu khác) cho tab Đơn may và Tổng hợp
+  function renderSectionTabs(boxId, state, counts, onPick, unit) {
     var box = $(boxId);
-    if (!state.both) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-    box.classList.remove('hidden');
+    if (!state.both) { box.className = 'cat-tiles staff-tiles hidden'; box.innerHTML = ''; return; }
+    box.className = 'cat-tiles staff-tiles';
     box.innerHTML = state.views.map(function (x) {
-      return '<button class="gs-tab' + (state.selected === x.key ? ' active' : '') + '" data-sec="' + esc(x.key) + '">' + esc(viewLabel(x.key)) + '<span class="gs-count">' + (counts[x.key] || 0) + '</span></button>';
+      var cv = coverForView(x.key), on = state.selected === x.key;
+      return '<button type="button" class="cat-tile' + (on ? ' active' : '') + '" data-sec="' + esc(x.key) + '">' +
+        (cv ? '<img src="' + esc(cv) + '" alt="">' : '<span class="cat-noimg">Chưa có ảnh bìa</span>') +
+        (on ? '<span class="cat-on">Đang xem</span>' : '') +
+        '<span class="cat-cap"><span class="cat-name">' + esc(viewLabel(x.key)) + '</span>' +
+        '<span class="cat-sub"><span>' + (counts[x.key] || 0) + ' ' + (unit || 'mẫu') + '</span><span>Xem ›</span></span></span></button>';
     }).join('');
-    box.querySelectorAll('.gs-tab').forEach(function (t) { t.addEventListener('click', function () { onPick(t.dataset.sec); }); });
+    box.querySelectorAll('.cat-tile').forEach(function (t) { t.addEventListener('click', function () { onPick(t.dataset.sec); }); });
   }
 
   // Hiển thị tên mẫu gọn: tách mã ("H22", "A1") thành nhãn riêng + phần tên sạch (bỏ dấu - . _ thừa, tên IN HOA TOÀN BỘ thì đổi sang chữ thường có hoa đầu từ).
@@ -3000,7 +3018,7 @@
     // Tab mục: số trên tab = số mẫu có đơn; tổng / số mẫu / số sale bên dưới tính theo mục đang xem
     var aggSecCounts = {};
     plist.forEach(function (p) { if (byProduct[p.id]) { var vk = viewKeyOf(p); aggSecCounts[vk] = (aggSecCounts[vk] || 0) + 1; } });
-    renderSectionTabs('aggSectionTabs', secState0, aggSecCounts, function (sec) { aggSection = sec; renderAgg(); });
+    renderSectionTabs('aggSectionTabs', secState0, aggSecCounts, function (sec) { aggSection = sec; renderAgg(); }, 'mẫu có đơn');
     var scopedList = secState0.both ? plist.filter(function (p) { return viewKeyOf(p) === aggSection; }) : plist;
     var scopedBy = {};
     grandTotal = 0; peopleSet = {};
