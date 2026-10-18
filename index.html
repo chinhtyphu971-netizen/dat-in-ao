@@ -579,6 +579,31 @@
   .cover-fields { flex: 1; min-width: 0; }
   .cover-name { font-size: 13.5px; margin-bottom: 4px; }
   .cover-input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .it-chips { display: inline-flex; gap: 4px; margin-right: 6px; vertical-align: 1px; }
+  .it-base { background: var(--denim); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+  .it-base.alt { background: #d63a2f; }
+  .it-code { background: #eef2f6; color: var(--denim); border: 1px solid #cfd9e4; font-size: 11px; font-weight: 700; padding: 0 8px; border-radius: 999px; }
+  .lead-group { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: var(--denim); background: #eef2f6; padding: 4px 10px; border-radius: 8px; margin: 10px 0 4px; }
+  .modal-sheet.ms-compact { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+  .ms-compact .modal-head { margin-bottom: 8px; flex: 0 0 auto; }
+  .ms-compact .ms-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .ms-compact .ms-footer { flex: 0 0 auto; padding: 10px 0 calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--paper-raised); }
+  .ms-compact .ms-footer .ms-subtotal { margin: 0 0 8px; min-height: 0; text-align: center; }
+  .ms-compact .ms-image, .ms-compact .gal-main .ms-image { max-height: min(190px, 24dvh); }
+  .ms-compact .gal-thumbs { padding: 6px 0 0; }
+  .ms-compact .gal-thumb { width: 44px; height: 44px; }
+  .ms-compact .ms-price { margin: 6px 0 0; }
+  .ms-compact .ms-size { margin: 4px 0; }
+  .ms-compact .ms-section-label { margin: 8px 0 0; }
+  .ms-compact .qty-color-row { padding: 5px 0; }
+  .ms-compact .qty-stepper { gap: 8px; }
+  .ms-compact .qty-stepper button { width: 34px; height: 34px; font-size: 17px; }
+  .ms-compact .qty-stepper input { width: 48px; padding: 5px; }
+  .ms-compact .ms-tiers { margin: 6px 0 2px; }
+  .ms-compact .ms-tier { padding: 5px 4px; }
+  .ms-compact .ms-tier-note { margin-bottom: 2px; }
+  #msGuestSaveBtn.is-idle { background: var(--paper); color: var(--ink-soft); border: 1px dashed var(--line); box-shadow: none; }
+  #msGuestSaveBtn.is-remove { background: #fff; color: var(--stitch); border: 1px solid var(--stitch); }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -1180,6 +1205,41 @@
         '<span class="cat-sub"><span>' + (counts[x.key] || 0) + ' ' + (unit || 'mẫu') + '</span><span class="cat-go' + (on ? ' on' : '') + '">' + (on ? 'Đang xem ✓' : 'Xem ›') + '</span></span></span></button>';
     }).join('');
     box.querySelectorAll('.cat-tile').forEach(function (t) { t.addEventListener('click', function () { onPick(t.dataset.sec); }); });
+  }
+
+  // ---- Dòng hàng trong đơn: [loại áo] [mã hình] tên hình — VD: [A55] [H15] Hello Kitty Chữ ----
+  function itemParts(it) {
+    var pid = String(it.pid || ''), pr = products[pid];
+    var rawName = String(it.name || '').trim();
+    var baseCode = '';
+    if (pr && pr.baseOf) baseCode = pr.baseCode || '';
+    else if (pid.indexOf('~') > -1) { var bid = pid.split('~')[1]; baseCode = (bases[bid] && bases[bid].code) || bid.toUpperCase(); }
+    else if (!pr) { var bm = /\s*·\s*([A-Za-z0-9]+)\s*$/.exec(rawName); if (bm) baseCode = bm[1].toUpperCase(); }
+    var cleanName = rawName.replace(/\s*·\s*[A-Za-z0-9]+\s*$/, '');
+    var dn = displayName(pr || { name: cleanName });
+    if (!baseCode && (pr ? sectionOf(pr) === 'a55' : /^H/i.test(dn.code || ''))) baseCode = 'A55';   // hình in mặc định in trên áo A55
+    return { base: baseCode, code: dn.code, title: dn.title };
+  }
+  function baseNameByCode(code) {
+    if (code === 'A55') return DEFAULT_BASE_NAME;
+    var b = Object.keys(bases).map(function (k) { return bases[k]; }).filter(function (x) { return x.code === code; })[0];
+    return b ? baseDisplayName(b) : 'Áo ' + code;
+  }
+  function itemChipsHtml(pt) {
+    return ((pt.base || pt.code) ? '<span class="it-chips">' +
+      (pt.base ? '<span class="it-base' + (pt.base !== 'A55' ? ' alt' : '') + '">' + esc(pt.base) + '</span>' : '') +
+      (pt.code ? '<span class="it-code">' + esc(pt.code) + '</span>' : '') + '</span>' : '');
+  }
+  // Xếp: áo A55 trước, rồi các loại áo khác (A57…), cuối cùng là mẫu ngoài mục in; trong mỗi nhóm theo mã tăng dần
+  function sortOrderItems(items) {
+    var arr = items.map(function (it) { return { it: it, pt: itemParts(it) }; });
+    arr.sort(function (a, b) {
+      var ra = a.pt.base === 'A55' ? 0 : (a.pt.base ? 1 : 2), rb = b.pt.base === 'A55' ? 0 : (b.pt.base ? 1 : 2);
+      if (ra !== rb) return ra - rb;
+      if (a.pt.base !== b.pt.base) return a.pt.base < b.pt.base ? -1 : 1;
+      return compareByCode({ name: a.pt.code || a.pt.title }, { name: b.pt.code || b.pt.title });
+    });
+    return arr;
   }
 
   // Hiển thị tên mẫu gọn: tách mã ("H22", "A1") thành nhãn riêng + phần tên sạch (bỏ dấu - . _ thừa, tên IN HOA TOÀN BỘ thì đổi sang chữ thường có hoa đầu từ).
@@ -1883,11 +1943,10 @@
       var lead = guestMyLeads[en.id];
       if (lead === null) return '';
       if (lead === undefined) return '<div class="gho-card"><div class="gho-time">' + esc(new Date(en.t).toLocaleString('vi-VN')) + '</div><div class="img-hint">Đang tải…</div></div>';
-      var itemsHtml = Object.keys(lead.items || {}).map(function (k) {
-        var it = lead.items[k], pr = products[it.pid], nm = it.name;
-        if (pr) { var dn = displayName(pr); nm = (dn.code ? dn.code + ' ' : '') + dn.title; }
+      var itemsHtml = sortOrderItems(Object.keys(lead.items || {}).map(function (k) { return lead.items[k]; })).map(function (x) {
+        var it = x.it;
         var b = Object.keys(it.quantities || {}).filter(function (c) { return it.quantities[c] > 0; }).map(function (c) { return esc(c) + ' ×' + it.quantities[c]; }).join(', ');
-        return '<div class="gho-item"><div><b>' + esc(nm) + '</b><div class="gho-colors">' + b + '</div></div><b>' + (it.total || 0) + ' áo</b></div>';
+        return '<div class="gho-item"><div>' + itemChipsHtml(x.pt) + '<b>' + esc(x.pt.title) + '</b><div class="gho-colors">' + b + '</div></div><b>' + (it.total || 0) + ' áo</b></div>';
       }).join('');
       return '<div class="gho-card' + (lead.deletedAt ? ' is-cancel' : '') + '">' +
         '<div class="gho-top"><div class="gho-time">' + esc(new Date(lead.createdAt || en.t).toLocaleString('vi-VN')) + (en.saleName ? ' · TVV ' + esc(en.saleName) : '') + '</div>' +
@@ -1942,8 +2001,9 @@
     if (p.soldOut) { toast('Mẫu này đang tạm hết hàng.'); return; }
     var colors = colorsOf(p);
     var cartP = guestCart[pid] || {};
-    var html = '<div class="modal-sheet">' +
+    var html = '<div class="modal-sheet ms-compact">' +
       '<div class="modal-head"><h2>' + nameHtml(p) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
+      '<div class="ms-body">' +
       galleryHtml(p) +
       (tiersOf(p)
         ? '<div class="ms-tiers">' + tiersOf(p).map(function (t) { return '<div class="ms-tier" data-min="' + t.min + '"><div class="mt-min">Từ ' + t.min + ' áo</div><div class="mt-price">' + fmtVnd(t.price) + '</div></div>'; }).join('') + '</div>' +
@@ -1959,8 +2019,11 @@
           '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
           '</div>';
       }).join('') + '</div>' +
+      '</div>' +
+      '<div class="ms-footer">' +
       (priceOf(p) ? '<div class="ms-subtotal" id="msSubtotal"></div>' : '') +
       '<button class="btn primary full" id="msGuestSaveBtn">Lưu vào giỏ</button>' +
+      '</div>' +
       '</div>';
     $('productModal').innerHTML = html;
     $('productModal').classList.remove('hidden');
@@ -1968,9 +2031,16 @@
 
     $('msGuestCloseBtn').addEventListener('click', function () { $('productModal').classList.add('hidden'); });
     function updateGuestSubtotal() {
-      var box = $('msSubtotal'); if (!box) return;
       var qty = 0;
       $('productModal').querySelectorAll('.qty-color-row .qc-input').forEach(function (inp) { qty += Math.max(0, Math.floor(Number(inp.value) || 0)); });
+      // Nút Lưu luôn hiện ở đáy cửa sổ và nói rõ việc sẽ làm, để người mới khỏi lúng túng
+      var saveBtn = $('msGuestSaveBtn');
+      if (saveBtn) {
+        saveBtn.classList.toggle('is-idle', qty === 0 && !guestCart[pid]);
+        saveBtn.classList.toggle('is-remove', qty === 0 && !!guestCart[pid]);
+        saveBtn.textContent = qty > 0 ? 'Lưu vào giỏ · ' + qty + ' áo' : (guestCart[pid] ? 'Bỏ mẫu này khỏi giỏ' : 'Chọn số lượng ở trên rồi bấm Lưu');
+      }
+      var box = $('msSubtotal'); if (!box) return;
       var tiers = tiersOf(p);
       var unit = unitPriceFor(p, qty);
       if (tiers) {
@@ -2003,6 +2073,7 @@
         var val = Math.max(0, Math.floor(Number(row.querySelector('.qc-input').value) || 0));
         if (val > 0) { q[c] = val; hasAny = true; }
       });
+      if (!hasAny && !guestCart[pid]) { toast('Bấm dấu + để chọn số lượng theo màu, rồi bấm Lưu vào giỏ.'); return; }
       if (hasAny) guestCart[pid] = q; else delete guestCart[pid];
       $('productModal').classList.add('hidden');
       renderGuestProducts();
@@ -2032,11 +2103,12 @@
 
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>Xác nhận gửi đơn đặt</h2><button class="ms-close" id="msCartCloseBtn">✕</button></div>' +
-      '<div class="lead-items">' + items.map(function (it) {
+      '<div class="lead-items">' + sortOrderItems(items).map(function (x) {
+        var it = x.it;
         var b = Object.keys(it.quantities).map(function (c) { return esc(c) + '×' + it.quantities[c]; }).join(', ');
         return '<div class="lead-item-row">' +
           (it.imageUrl ? '<img src="' + esc(it.imageUrl) + '">' : '') +
-          '<div style="flex:1;"><b>' + esc(it.name) + '</b><br><span style="font-size:12px;color:var(--ink-soft);">' + b + '</span></div>' +
+          '<div style="flex:1;">' + itemChipsHtml(x.pt) + '<b>' + esc(x.pt.title) + '</b><br><span style="font-size:12px;color:var(--ink-soft);">' + b + '</span></div>' +
           '<div style="text-align:right;"><b>' + it.total + ' áo</b>' + (it.amount > 0 ? '<div class="li-amount">' + fmtVnd(it.amount) + '</div>' : '') + '</div></div>';
       }).join('') + '</div>' +
       '<div style="font-weight:700;text-align:right;margin-bottom:14px;font-size:16px;">Tổng cộng: <span style="color:var(--stitch);font-size:20px;">' + grand + '</span> áo</div>' +
@@ -2145,13 +2217,24 @@
       var isBilled = !!lead.billed;
       var isPrinted = !!lead.printed;
       var canDelete = isManager() || lead.saleId === currentUser.id;
-      var itemsHtml = (lead.items || []).map(function (it) {
-        var p = products[it.pid];
+      var sortedItems = sortOrderItems(lead.items || []);
+      var groupTotals = {};
+      sortedItems.forEach(function (x) { var gk = x.pt.base || '_other'; groupTotals[gk] = (groupTotals[gk] || 0) + (Number(x.it.total) || 0); });
+      var showGroups = Object.keys(groupTotals).length > 1;       // đơn có từ 2 loại áo trở lên thì chia nhóm cho dễ nhìn
+      var lastGroup = null;
+      var itemsHtml = sortedItems.map(function (x) {
+        var it = x.it, pt = x.pt, p = products[it.pid];
         var img = (p && p.imageUrl) || it.imageUrl;
         var b = Object.keys(it.quantities || {}).map(function (c) { return esc(c) + ' × ' + it.quantities[c]; }).join(', ');
-        return '<div class="lead-item-row">' +
+        var gk = pt.base || '_other', head = '';
+        if (showGroups && gk !== lastGroup) {
+          lastGroup = gk;
+          var gname = gk === '_other' ? 'Áo quần khác' : baseNameByCode(gk);
+          head = '<div class="lead-group"><span>' + esc(gname) + '</span><span>' + groupTotals[gk] + ' áo</span></div>';
+        }
+        return head + '<div class="lead-item-row">' +
           (img ? '<img class="wt-thumb" data-lightbox="' + esc(img) + '" src="' + esc(img) + '">' : '') +
-          '<div style="flex:1;"><b>' + esc(it.name) + '</b>: ' + b + '</div>' +
+          '<div style="flex:1;">' + itemChipsHtml(pt) + '<b>' + esc(pt.title) + '</b>: ' + b + '</div>' +
           '<div style="text-align:right;"><b>' + it.total + ' áo</b>' + (it.amount > 0 ? '<div class="li-amount">' + fmtVnd(it.amount) + '</div>' : '') + '</div></div>';
       }).join('');
 
