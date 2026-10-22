@@ -962,6 +962,55 @@
     projectId: "dat-in-ao",
   };
 
+  // =============== KHÔNG VÀO ĐƯỢC? Hiện lời giải thích thay vì trang trắng ===============
+  var APP_BOOT_AT = Date.now();
+  var firstDataLoaded = false;      // đã nhận được dữ liệu từ Firebase lần đầu
+  var fatalKind = '';
+  function hideFatal() { var b = document.getElementById('fatalBox'); if (b) b.parentNode.removeChild(b); fatalKind = ''; }
+  function showFatal(kind, detail) {
+    if (fatalKind === kind) return;
+    hideFatal();
+    fatalKind = kind;
+    var guest = /[?&]sale=/.test(location.search);
+    var titles = { sdk: 'Không tải được thư viện kết nối', denied: 'Hệ thống không cho đọc dữ liệu', timeout: 'Chưa nhận được dữ liệu', db: 'Lỗi kết nối dữ liệu', js: 'Trang gặp lỗi khi mở' };
+    var staffTips = {
+      sdk: ['Máy không tải được thư viện của Google (Firebase). Thường do mạng bị chặn hoặc trình duyệt chặn.', 'Thử: tắt VPN và trình chặn quảng cáo; đổi giữa wifi và 4G; mở bằng Chrome hoặc Safari (đừng mở trong Zalo, Facebook); rồi bấm "Tải lại trang".'],
+      denied: ['Firebase từ chối cho đọc dữ liệu (PERMISSION_DENIED).', 'Quản lý vào Firebase Console → Realtime Database → tab Rules, kiểm tra quy tắc đang cho phép đọc và ghi (cách cũ: ".read": true, ".write": true), và nhớ bấm Publish.'],
+      timeout: ['Đã chờ hơn 12 giây mà chưa có dữ liệu nào về.', 'Kiểm tra mạng của máy này; hoặc dự án Firebase "dat-in-ao" đang bị tạm dừng / đường dẫn databaseURL trong file bị sai.'],
+      db: ['Kết nối tới dữ liệu bị gián đoạn.', 'Thử tải lại trang; nếu vẫn bị thì gửi mã chẩn đoán bên dưới cho người hỗ trợ.'],
+      js: ['Trang bị lỗi ngay khi mở nên chưa hiện được.', 'Chụp màn hình này (có cả mã chẩn đoán) gửi cho người hỗ trợ. Có thể file index.html vừa up lên GitHub bị sai hoặc chưa đủ.']
+    };
+    var guestMsg = 'Trang chưa tải được. Bạn thử tải lại, hoặc đổi giữa wifi và 4G rồi mở lại link bằng Chrome hoặc Safari nhé. Nếu vẫn chưa được, bạn nhắn tư vấn viên giúp.';
+    var diag = 'kind=' + kind + (detail ? ' | ' + detail : '') + ' | online=' + (navigator.onLine ? 'có' : 'không') + ' | ' + new Date().toLocaleString('vi-VN') + ' | ' + String(navigator.userAgent).slice(0, 90);
+    var box = document.createElement('div');
+    box.id = 'fatalBox';
+    box.setAttribute('style', 'position:fixed;inset:0;z-index:99999;background:#f2efe8;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;');
+    var tips = guest ? '<p style="margin:0 0 14px;line-height:1.55;">' + guestMsg + '</p>' : staffTips[kind].map(function (t) { return '<p style="margin:0 0 10px;line-height:1.55;">' + t + '</p>'; }).join('');
+    box.innerHTML = '<div style="background:#fff;border:1px solid #d9d4c7;border-radius:14px;padding:22px;max-width:460px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.12);color:#211f1a;font-size:14.5px;">' +
+      '<div style="font-size:18px;font-weight:700;margin-bottom:12px;">' + titles[kind] + '</div>' + tips +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px;"><button id="fatalReload" style="padding:10px 18px;border-radius:999px;border:none;background:#33506e;color:#fff;font-weight:700;font-size:14px;cursor:pointer;">Tải lại trang</button>' +
+      '<button id="fatalCopy" style="padding:10px 18px;border-radius:999px;border:1px solid #d9d4c7;background:#fff;font-weight:600;font-size:14px;cursor:pointer;">Sao chép mã chẩn đoán</button></div>' +
+      '<div style="font-size:11.5px;color:#7a7568;word-break:break-all;">Mã chẩn đoán: ' + diag.replace(/</g, '&lt;') + '</div></div>';
+    document.body.appendChild(box);
+    document.getElementById('fatalReload').onclick = function () { location.reload(); };
+    document.getElementById('fatalCopy').onclick = function () {
+      try { navigator.clipboard.writeText(diag); this.textContent = 'Đã sao chép'; } catch (e) { this.textContent = 'Không sao chép được — chụp màn hình giúp em'; }
+    };
+  }
+  // Lỗi JS xảy ra lúc đang mở trang (trước khi có dữ liệu) -> báo rõ thay vì để trang trắng
+  window.addEventListener('error', function (e) {
+    if (firstDataLoaded || Date.now() - APP_BOOT_AT > 30000) return;
+    if (e.filename && e.filename.indexOf(location.origin) !== 0) return;       // lỗi từ tiện ích/trang khác: bỏ qua
+    showFatal('js', String(e.message || '').slice(0, 120) + (e.lineno ? ' (dòng ' + e.lineno + ')' : ''));
+  });
+  setTimeout(function () { if (!firstDataLoaded) showFatal('timeout', ''); }, 12000);
+  function onDbListenError(err) {
+    var code = err && err.code ? String(err.code) : '', msg = err && err.message ? String(err.message).slice(0, 100) : '';
+    if (!firstDataLoaded) showFatal(/PERMISSION/i.test(code + msg) ? 'denied' : 'db', code + (msg ? ': ' + msg : ''));
+    else if (typeof toast === 'function') toast('Không đọc được một phần dữ liệu (' + (code || 'lỗi') + ').');
+  }
+  var sdkMissing = typeof firebase === 'undefined';
+
   var DEFAULT_COLORS = ['Đen', 'Trắng', 'Vàng', 'Xanh', 'Hồng'];
 
   // ---- Phân loại mẫu để khách lọc: Loại / Mùa / Tay áo. Muốn thêm lựa chọn mới chỉ cần sửa danh sách này. ----
@@ -1368,7 +1417,19 @@
 
   var configOk = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE') === -1;
   var db = null;
-  if (configOk) { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.database(); }
+  if (configOk && sdkMissing) { showFatal('sdk', 'firebase is not defined'); configOk = false; }
+  if (configOk) {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    (function () {                                   // mọi db.ref(...).on(...) tự có hàm báo lỗi khi bị từ chối / mất kết nối
+      var origRef = db.ref.bind(db);
+      db.ref = function (path) {
+        var r = (path === undefined) ? origRef() : origRef(path);
+        if (r && typeof r.on === 'function') { var o = r.on.bind(r); r.on = function (evt, cb, errCb) { return o(evt, cb, errCb || onDbListenError); }; }
+        return r;
+      };
+    })();
+  }
 
   var products = {};
   var orders = {};        // số liệu đang dùng để hiển thị/tổng hợp = tự nhập + khách đặt qua link
@@ -4535,6 +4596,8 @@
     });
 
     db.ref('products').on('value', function (snap) {
+      firstDataLoaded = true;
+      if (fatalKind === 'timeout' || fatalKind === 'db' || fatalKind === 'js') hideFatal();      // dữ liệu đã về được = trang dùng được, tắt thông báo
       productsReal = normalizeProductsData(snap.val() || {});
       rebuildProducts();
       rebuildOrders();
@@ -4609,7 +4672,7 @@
     });
     }
     if (isGuestMode) watchGuestOrders();
-  } else {
+  } else if (!sdkMissing) {
     $('authScreen').classList.remove('hidden');
     $('authScreen').querySelector('.auth-card').innerHTML = setupWarningHtml();
   }
