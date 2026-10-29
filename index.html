@@ -4244,60 +4244,78 @@
     String(text || '').split(/[,;\n]+/).forEach(function (c) { var nc = normalizeColorName(c.trim()); if (nc && !seen[nc]) { seen[nc] = 1; out.push(nc); } });
     return out;
   }
-  // ---------- DANH SÁCH MÃ: chép tất cả các mã, cách nhau bằng dấu phẩy ----------
-  var codesToolState = { scope: 'a55', only: 'all', onlyVisible: true };
-  function buildCodeList(scope, only, onlyVisible) {
+  // ---------- DANH SÁCH MÃ: chép tất cả mã (kèm tên), cách nhau bằng dấu phẩy ----------
+  var codesToolState = { scope: 'a55', only: 'all', onlyVisible: true, fmt: 'codename', sep: 'comma' };
+  function buildCodeList(st) {
     var list = productList().filter(function (p) {
-      if (scope === 'a55' && p.section === 'other') return false;
-      if (scope === 'other' && p.section !== 'other') return false;
-      if (onlyVisible && (p.hidden || p.status === 'pending_approval')) return false;
-      if (only === 'noimg' && imagesOf(p).length) return false;
-      if (only === 'noprice' && (priceOf(p) || tiersOf(p))) return false;
+      if (st.scope === 'a55' && p.section === 'other') return false;
+      if (st.scope === 'other' && p.section !== 'other') return false;
+      if (st.onlyVisible && (p.hidden || p.status === 'pending_approval')) return false;
+      if (st.only === 'noimg' && imagesOf(p).length) return false;
+      if (st.only === 'noprice' && (priceOf(p) || tiersOf(p))) return false;
       return true;
     });
-    var codes = [], seen = {}, noCode = 0;
+    var rows = [], seen = {}, noCode = 0;
     list.forEach(function (p) {
-      var c = codeOf(p.name);
-      if (!c) { noCode++; return; }
-      var k = c.prefix + c.num;
-      if (!seen[k]) { seen[k] = 1; codes.push({ k: k, prefix: c.prefix, num: c.num }); }
+      var c = codeOf(p.name), raw = String(p.name || '').trim().replace(/\s+/g, ' ');
+      // Tách mã và tên nhưng GIỮ NGUYÊN chữ (tên in hoa như "TO FALL BE AFRAID" là chữ in trên áo); chỉ chuẩn hoá dấu ngăn cách
+      var sp = /^([A-Za-z]{1,2})\s*[-_.]?\s*(\d+)\s*[-_.:)]*\s*(.*)$/.exec(raw);
+      var dn = sp ? { code: sp[1].toUpperCase() + sp[2], title: (sp[3] || '').trim() } : { code: '', title: raw };
+      if (!c) noCode++;
+      if (st.fmt === 'code') {                       // chỉ mã
+        if (!c) return;
+        var k = c.prefix + c.num;
+        if (seen[k]) return;
+        seen[k] = 1;
+        rows.push({ prefix: c.prefix, num: c.num, text: dn.code || k });      // giữ nguyên số 0 đầu (H00)
+      } else if (st.fmt === 'rawname') {             // tên gốc như đã lưu
+        rows.push({ prefix: c ? c.prefix : '~', num: c ? c.num : 0, text: raw });
+      } else {                                       // mã - tên (gọn, đồng nhất)
+        rows.push({ prefix: c ? c.prefix : '~', num: c ? c.num : 0, text: dn.code ? (dn.title ? dn.code + ' - ' + dn.title : dn.code) : dn.title });
+      }
     });
-    codes.sort(function (a, b) { return a.prefix < b.prefix ? -1 : (a.prefix > b.prefix ? 1 : a.num - b.num); });
-    return { text: codes.map(function (c) { return c.k; }).join(', '), count: codes.length, noCode: noCode };
+    rows.sort(function (a, b) { return a.prefix < b.prefix ? -1 : (a.prefix > b.prefix ? 1 : (a.num - b.num || (a.text < b.text ? -1 : 1))); });
+    return { text: rows.map(function (r) { return r.text; }).join(st.sep === 'line' ? '\n' : ', '), count: rows.length, noCode: noCode, fmt: st.fmt };
+  }
+  function codesCountText(r) {
+    return '<b>' + r.count + '</b> ' + (r.fmt === 'code' ? 'mã' : 'mẫu') + (r.noCode ? (r.fmt === 'code' ? ' · ' + r.noCode + ' mẫu chưa có mã trong tên (không liệt kê)' : ' · ' + r.noCode + ' mẫu chưa có mã (xếp ở cuối)') : '');
   }
   function codesCardHtml() {
     var st = codesToolState;
     if (!isManager()) st.scope = 'a55';
-    var r = buildCodeList(st.scope, st.only, st.onlyVisible);
+    var r = buildCodeList(st);
+    function opt(v, cur, label) { return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + label + '</option>'; }
     return '<div class="manage-form codes-card"><h2>Danh sách mã</h2>' +
-      '<p class="img-hint" style="margin:-4px 0 10px;">Chép ra tất cả các mã, cách nhau bằng dấu phẩy — dán thẳng vào Zalo, bài đăng hay Excel.</p>' +
+      '<p class="img-hint" style="margin:-4px 0 10px;">Chép ra tất cả các mã kèm tên, cách nhau bằng dấu phẩy — dán thẳng vào Zalo, bài đăng hay Excel.</p>' +
       '<div class="codes-controls">' +
-        (isManager() ? '<label>Mục <select id="codesScope"><option value="a55"' + (st.scope === 'a55' ? ' selected' : '') + '>Mẫu in (H…)</option><option value="other"' + (st.scope === 'other' ? ' selected' : '') + '>Các mẫu khác</option><option value="all"' + (st.scope === 'all' ? ' selected' : '') + '>Tất cả</option></select></label>' : '') +
-        '<label>Lọc <select id="codesOnly"><option value="all"' + (st.only === 'all' ? ' selected' : '') + '>Tất cả các mã</option><option value="noimg"' + (st.only === 'noimg' ? ' selected' : '') + '>Mã chưa có ảnh</option><option value="noprice"' + (st.only === 'noprice' ? ' selected' : '') + '>Mã chưa có giá</option></select></label>' +
+        (isManager() ? '<label>Mục <select id="codesScope">' + opt('a55', st.scope, 'Mẫu in (H…)') + opt('other', st.scope, 'Các mẫu khác') + opt('all', st.scope, 'Tất cả') + '</select></label>' : '') +
+        '<label>Kiểu <select id="codesFmt">' + opt('codename', st.fmt, 'Mã - Tên (H1 - Em Bé Nhảy Dù)') + opt('code', st.fmt, 'Chỉ mã (H1, H2…)') + opt('rawname', st.fmt, 'Tên gốc như đã lưu') + '</select></label>' +
+        '<label>Nối bằng <select id="codesSep">' + opt('comma', st.sep, 'Dấu phẩy') + opt('line', st.sep, 'Xuống dòng') + '</select></label>' +
+        '<label>Lọc <select id="codesOnly">' + opt('all', st.only, 'Tất cả') + opt('noimg', st.only, 'Mã chưa có ảnh') + opt('noprice', st.only, 'Mã chưa có giá') + '</select></label>' +
         '<label class="codes-check"><input type="checkbox" id="codesVisible"' + (st.onlyVisible ? ' checked' : '') + '> Chỉ mẫu đang hiển thị cho khách</label>' +
       '</div>' +
-      '<textarea id="codesText" class="codes-text" rows="4" readonly>' + esc(r.text) + '</textarea>' +
+      '<textarea id="codesText" class="codes-text" rows="6" readonly>' + esc(r.text) + '</textarea>' +
       '<div class="codes-foot"><span id="codesCount" class="img-hint" style="margin:0;">' + codesCountText(r) + '</span><button class="btn primary small" id="codesCopyBtn">Sao chép</button></div></div>';
   }
-  function codesCountText(r) { return '<b>' + r.count + '</b> mã' + (r.noCode ? ' · ' + r.noCode + ' mẫu chưa có mã trong tên (không liệt kê)' : ''); }
   function bindCodesCard(root) {
     var box = root.querySelector('.codes-card');
     if (!box) return;
+    var last = { count: 0 };
     function refresh() {
       var st = codesToolState;
       if ($('codesScope')) st.scope = $('codesScope').value;
-      st.only = $('codesOnly').value;
-      st.onlyVisible = $('codesVisible').checked;
-      var r = buildCodeList(st.scope, st.only, st.onlyVisible);
-      $('codesText').value = r.text;
-      $('codesCount').innerHTML = codesCountText(r);
+      st.fmt = $('codesFmt').value; st.sep = $('codesSep').value; st.only = $('codesOnly').value; st.onlyVisible = $('codesVisible').checked;
+      last = buildCodeList(st);
+      $('codesText').value = last.text;
+      $('codesCount').innerHTML = codesCountText(last);
     }
-    ['codesScope', 'codesOnly', 'codesVisible'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('change', refresh); });
+    last = buildCodeList(codesToolState);
+    ['codesScope', 'codesFmt', 'codesSep', 'codesOnly', 'codesVisible'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('change', refresh); });
     $('codesText').addEventListener('focus', function () { this.select(); });
     $('codesCopyBtn').addEventListener('click', function () {
       var txt = $('codesText').value;
-      if (!txt) { toast('Không có mã nào để sao chép.'); return; }
-      copyTextToClipboard(txt, function () { toast('Đã sao chép ' + (txt.split(', ').length) + ' mã.'); });
+      if (!txt) { toast('Không có gì để sao chép.'); return; }
+      copyTextToClipboard(txt, function () { toast('Đã sao chép ' + last.count + (last.fmt === 'code' ? ' mã.' : ' mẫu.')); });
     });
   }
   function coversCardHtml() {
