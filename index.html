@@ -609,6 +609,7 @@
   .codes-check { font-weight: 500 !important; }
   .codes-text { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6; font-family: var(--font-body); background: var(--paper); color: var(--ink); resize: vertical; }
   .codes-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
+  .sheet-csv-input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -3993,25 +3994,41 @@
     $('productModal').classList.remove('hidden');
     $('sheetCloseBtn').addEventListener('click', closeSheetModal);
   }
+  var priceSheetCsv = '';       // link CSV "Xuất bản lên web" của bảng giá (quản lý dán một lần, lưu ở Firebase settings/priceSheetCsv)
+  var sheetAttempts = [];       // lý do từng lần lấy thất bại (để hiện cho anh biết đúng nguyên nhân)
+  function sheetFailReason(e) {
+    var m = String((e && e.message) || e || '');
+    if (e && e.name === 'AbortError') return 'quá 12 giây Google không trả lời';
+    if (/^PARSE:/.test(m)) return 'tải được ' + m.slice(6) + ' dòng nhưng không thấy dòng tiêu đề có cột 10SP / 100SP (bảng đổi cấu trúc?)';
+    if (/^HTTP 40[13]/.test(m)) return m + ' — Google từ chối: bảng chưa chia sẻ công khai';
+    if (/^HTTP 404/.test(m)) return m + ' — không thấy bảng (sai mã bảng hoặc đã xoá)';
+    if (/^HTTP/.test(m)) return m;
+    return 'trình duyệt/Google không cho đọc trực tiếp (hoặc mất mạng) — ' + m.slice(0, 40);
+  }
   function fetchSheetRows() {
-    if (typeof fetch === 'undefined') return Promise.reject(new Error('trình duyệt không hỗ trợ'));
-    var urls = [
-      'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/gviz/tq?tqx=out:csv&gid=' + PRICE_SHEET.gid,
-      'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/export?format=csv&gid=' + PRICE_SHEET.gid
-    ];
+    sheetAttempts = [];
+    if (typeof fetch === 'undefined') { sheetAttempts.push({ name: 'trình duyệt', err: 'không hỗ trợ fetch' }); return Promise.reject(new Error('no fetch')); }
+    var urls = [];
+    if (priceSheetCsv) urls.push({ name: 'link xuất bản', url: priceSheetCsv });
+    urls.push({ name: 'export', url: 'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/export?format=csv&gid=' + PRICE_SHEET.gid });
+    urls.push({ name: 'gviz', url: 'https://docs.google.com/spreadsheets/d/' + PRICE_SHEET.id + '/gviz/tq?tqx=out:csv&gid=' + PRICE_SHEET.gid });
     function tryUrl(i) {
       if (i >= urls.length) return Promise.reject(new Error('không lấy được'));
       var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
       var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 12000) : null;
-      return fetch(urls[i], ctrl ? { signal: ctrl.signal } : {}).then(function (res) {
+      return fetch(urls[i].url, ctrl ? { signal: ctrl.signal } : {}).then(function (res) {
         if (timer) clearTimeout(timer);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.text();
       }).then(function (text) {
         var rows = parseDelimited(text);
-        if (!sheetToItems(rows).items.length) throw new Error('không đọc được mẫu nào');
+        if (!sheetToItems(rows).items.length) throw new Error('PARSE:' + rows.length);
         return rows;
-      }).catch(function () { if (timer) clearTimeout(timer); return tryUrl(i + 1); });
+      }).catch(function (e) {
+        if (timer) clearTimeout(timer);
+        sheetAttempts.push({ name: urls[i].name, err: sheetFailReason(e) });
+        return tryUrl(i + 1);
+      });
     }
     return tryUrl(0);
   }
@@ -4022,18 +4039,31 @@
       .catch(function () { showSheetFallback(); });
   }
   function showSheetFallback(msg) {
+    var attemptsHtml = sheetAttempts.length
+      ? '<div class="sp-more" style="margin:-4px 0 10px;">Chi tiết: ' + sheetAttempts.map(function (a) { return '<b>' + esc(a.name) + '</b>: ' + esc(a.err); }).join(' · ') + '</div>'
+      : '';
     sheetModalShell(
-      '<p class="img-hint" style="color:var(--stitch);">' + esc(msg || 'Không lấy trực tiếp được từ Google Sheet (trình duyệt chặn, hoặc bảng chưa chia sẻ công khai).') + '</p>' +
+      '<p class="img-hint" style="color:var(--stitch);">' + esc(msg || 'Không lấy trực tiếp được từ Google Sheet.') + '</p>' + attemptsHtml +
       '<p class="img-hint"><b>Cách 1 (nên dùng):</b> mở <a href="' + PRICE_SHEET_URL + '" target="_blank" rel="noopener">bảng giá sỉ</a> → bấm vào 1 ô → Ctrl+A → Ctrl+C → dán vào ô dưới → bấm "Đọc dữ liệu".</p>' +
       '<textarea id="sheetPasteBox" class="sheet-paste" placeholder="Dán dữ liệu bảng giá sỉ vào đây (Ctrl+V)"></textarea>' +
       '<button class="btn primary full" id="sheetPasteBtn">Đọc dữ liệu đã dán</button>' +
       '<p class="img-hint" style="margin-top:16px;"><b>Cách 2:</b> dùng bản chụp bảng giá ngày 09/10/2026 (' + (SHEET_SNAPSHOT_ROWS.length - 1) + ' mẫu, giá 10/100/1000):</p>' +
-      '<button class="btn ghost full" id="sheetSnapshotBtn">Dùng bản chụp bảng giá</button>');
+      '<button class="btn ghost full" id="sheetSnapshotBtn">Dùng bản chụp bảng giá</button>' +
+      '<p class="img-hint" style="margin-top:16px;"><b>Cách 3 (làm một lần, sau đó app tự lấy được):</b> mở bảng giá → Tệp → Chia sẻ → <b>Xuất bản lên web</b> (Publish to web) → chọn trang "Bảng Giá Sỉ" và định dạng <b>.csv</b> → Xuất bản → chép link dán vào ô dưới.</p>' +
+      '<input type="text" id="sheetCsvLink" class="sheet-csv-input" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" value="' + esc(priceSheetCsv) + '">' +
+      '<button class="btn ghost full" id="sheetCsvBtn" style="margin-top:8px;">Lưu link và lấy dữ liệu</button>');
     $('sheetPasteBtn').addEventListener('click', function () {
       var rows = parseDelimited($('sheetPasteBox').value);
       showSheetPreview(rows, 'Dữ liệu anh vừa dán');
     });
     $('sheetSnapshotBtn').addEventListener('click', function () { showSheetPreview(SHEET_SNAPSHOT_ROWS, 'Bản chụp bảng giá 09/10/2026'); });
+    $('sheetCsvBtn').addEventListener('click', function () {
+      var v = $('sheetCsvLink').value.trim();
+      if (v && !(/^https:\/\/docs\.google\.com\/spreadsheets\/\S+/i.test(v) && /(output=csv|\/pub)/i.test(v))) { toast('Link xuất bản phải bắt đầu bằng https://docs.google.com/spreadsheets/… và kết thúc kiểu …/pub?output=csv'); return; }
+      priceSheetCsv = v;
+      db.ref('settings/priceSheetCsv').set(v || null).catch(function () {});
+      openSheetSync();
+    });
   }
   function showSheetPreview(rows, sourceLabel) {
     if (!isManager()) return;
@@ -4714,6 +4744,7 @@
     });
 
     if (!isGuestMode) {   // khách không cần (và không tải) dữ liệu đơn / in của người khác
+      db.ref('settings/priceSheetCsv').on('value', function (snap) { priceSheetCsv = snap.val() || ''; });
     db.ref('orders').on('value', function (snap) {
       ordersRaw = normalizeOrdersData(snap.val() || {});
       rebuildOrders();
