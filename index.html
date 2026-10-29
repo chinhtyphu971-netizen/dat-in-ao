@@ -4245,7 +4245,8 @@
     return out;
   }
   // ---------- DANH SÁCH MÃ: chép tất cả mã (kèm tên), cách nhau bằng dấu phẩy ----------
-  var codesToolState = { scope: 'a55', only: 'all', onlyVisible: true, fmt: 'codename', sep: 'comma' };
+  var CUSTOM_PRINT_LABEL = 'IN THEO YÊU CẦU KHÁCH';      // H00: không phải mẫu có sẵn, là dòng mặc định ở đầu danh sách mã in
+  var codesToolState = { scope: 'a55', only: 'all', onlyVisible: true, fmt: 'codename', sep: 'comma', h00: true };
   function buildCodeList(st) {
     var list = productList().filter(function (p) {
       if (st.scope === 'a55' && p.section === 'other') return false;
@@ -4271,14 +4272,20 @@
       } else if (st.fmt === 'rawname') {             // tên gốc như đã lưu
         rows.push({ prefix: c ? c.prefix : '~', num: c ? c.num : 0, text: raw });
       } else {                                       // mã - tên (gọn, đồng nhất)
-        rows.push({ prefix: c ? c.prefix : '~', num: c ? c.num : 0, text: dn.code ? (dn.title ? dn.code + ' - ' + dn.title : dn.code) : dn.title });
+        rows.push({ prefix: c ? c.prefix : '~', num: c ? c.num : 0, text: dn.code ? (dn.title ? dn.code + '_' + dn.title : dn.code) : dn.title });      // định dạng chung: H1_Tên (gạch dưới, không khoảng trắng)
       }
     });
+    // Mặc định có H00 = IN THEO YÊU CẦU KHÁCH ở đầu (trừ khi đã có mẫu mang mã H00, hoặc đang lọc thiếu ảnh/giá, hoặc xem riêng "Các mẫu khác")
+    var addedH00 = false;
+    if (st.h00 && st.only === 'all' && st.scope !== 'other' && !rows.some(function (r) { return r.prefix === 'H' && r.num === 0; })) {
+      rows.push({ prefix: 'H', num: 0, text: st.fmt === 'code' ? 'H00' : 'H00_' + CUSTOM_PRINT_LABEL });
+      addedH00 = true;
+    }
     rows.sort(function (a, b) { return a.prefix < b.prefix ? -1 : (a.prefix > b.prefix ? 1 : (a.num - b.num || (a.text < b.text ? -1 : 1))); });
-    return { text: rows.map(function (r) { return r.text; }).join(st.sep === 'line' ? '\n' : ', '), count: rows.length, noCode: noCode, fmt: st.fmt };
+    return { text: rows.map(function (r) { return r.text; }).join(st.sep === 'line' ? '\n' : ', '), count: rows.length, noCode: noCode, fmt: st.fmt, addedH00: addedH00 };
   }
   function codesCountText(r) {
-    return '<b>' + r.count + '</b> ' + (r.fmt === 'code' ? 'mã' : 'mẫu') + (r.noCode ? (r.fmt === 'code' ? ' · ' + r.noCode + ' mẫu chưa có mã trong tên (không liệt kê)' : ' · ' + r.noCode + ' mẫu chưa có mã (xếp ở cuối)') : '');
+    return '<b>' + r.count + '</b> ' + (r.fmt === 'code' ? 'mã' : 'mẫu') + (r.addedH00 ? ' (gồm H00 mặc định)' : '') + (r.noCode ? (r.fmt === 'code' ? ' · ' + r.noCode + ' mẫu chưa có mã trong tên (không liệt kê)' : ' · ' + r.noCode + ' mẫu chưa có mã (xếp ở cuối)') : '');
   }
   function codesCardHtml() {
     var st = codesToolState;
@@ -4286,13 +4293,14 @@
     var r = buildCodeList(st);
     function opt(v, cur, label) { return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + label + '</option>'; }
     return '<div class="manage-form codes-card"><h2>Danh sách mã</h2>' +
-      '<p class="img-hint" style="margin:-4px 0 10px;">Chép ra tất cả các mã kèm tên, cách nhau bằng dấu phẩy — dán thẳng vào Zalo, bài đăng hay Excel.</p>' +
+      '<p class="img-hint" style="margin:-4px 0 10px;">Chép ra tất cả các mã kèm tên theo dạng H1_Tên, cách nhau bằng dấu phẩy — dán thẳng vào Zalo, bài đăng hay Excel.</p>' +
       '<div class="codes-controls">' +
         (isManager() ? '<label>Mục <select id="codesScope">' + opt('a55', st.scope, 'Mẫu in (H…)') + opt('other', st.scope, 'Các mẫu khác') + opt('all', st.scope, 'Tất cả') + '</select></label>' : '') +
-        '<label>Kiểu <select id="codesFmt">' + opt('codename', st.fmt, 'Mã - Tên (H1 - Em Bé Nhảy Dù)') + opt('code', st.fmt, 'Chỉ mã (H1, H2…)') + opt('rawname', st.fmt, 'Tên gốc như đã lưu') + '</select></label>' +
+        '<label>Kiểu <select id="codesFmt">' + opt('codename', st.fmt, 'Mã_Tên (H1_Em Bé Nhảy Dù)') + opt('code', st.fmt, 'Chỉ mã (H1, H2…)') + opt('rawname', st.fmt, 'Tên gốc như đã lưu') + '</select></label>' +
         '<label>Nối bằng <select id="codesSep">' + opt('comma', st.sep, 'Dấu phẩy') + opt('line', st.sep, 'Xuống dòng') + '</select></label>' +
         '<label>Lọc <select id="codesOnly">' + opt('all', st.only, 'Tất cả') + opt('noimg', st.only, 'Mã chưa có ảnh') + opt('noprice', st.only, 'Mã chưa có giá') + '</select></label>' +
         '<label class="codes-check"><input type="checkbox" id="codesVisible"' + (st.onlyVisible ? ' checked' : '') + '> Chỉ mẫu đang hiển thị cho khách</label>' +
+        '<label class="codes-check"><input type="checkbox" id="codesH00"' + (st.h00 ? ' checked' : '') + '> Thêm H00_' + CUSTOM_PRINT_LABEL + ' ở đầu</label>' +
       '</div>' +
       '<textarea id="codesText" class="codes-text" rows="6" readonly>' + esc(r.text) + '</textarea>' +
       '<div class="codes-foot"><span id="codesCount" class="img-hint" style="margin:0;">' + codesCountText(r) + '</span><button class="btn primary small" id="codesCopyBtn">Sao chép</button></div></div>';
@@ -4304,13 +4312,13 @@
     function refresh() {
       var st = codesToolState;
       if ($('codesScope')) st.scope = $('codesScope').value;
-      st.fmt = $('codesFmt').value; st.sep = $('codesSep').value; st.only = $('codesOnly').value; st.onlyVisible = $('codesVisible').checked;
+      st.fmt = $('codesFmt').value; st.sep = $('codesSep').value; st.only = $('codesOnly').value; st.onlyVisible = $('codesVisible').checked; st.h00 = $('codesH00').checked;
       last = buildCodeList(st);
       $('codesText').value = last.text;
       $('codesCount').innerHTML = codesCountText(last);
     }
     last = buildCodeList(codesToolState);
-    ['codesScope', 'codesFmt', 'codesSep', 'codesOnly', 'codesVisible'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('change', refresh); });
+    ['codesScope', 'codesFmt', 'codesSep', 'codesOnly', 'codesVisible', 'codesH00'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('change', refresh); });
     $('codesText').addEventListener('focus', function () { this.select(); });
     $('codesCopyBtn').addEventListener('click', function () {
       var txt = $('codesText').value;
