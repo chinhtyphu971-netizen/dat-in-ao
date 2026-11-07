@@ -610,6 +610,9 @@
   .codes-text { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6; font-family: var(--font-body); background: var(--paper); color: var(--ink); resize: vertical; }
   .codes-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
   .sheet-csv-input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .shop-card.is-shortcut { border: 2px solid var(--denim); }
+  .shop-card.is-shortcut .btn.primary { width: 100%; background: var(--denim); }
+  .sc-badge-in { position: absolute; top: 7px; left: 7px; background: var(--denim); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: .03em; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -1765,6 +1768,28 @@
     renderGuestProducts();
   }
 
+  // Mã loại áo in (A55, A57…) hiện trong mục "Áo quần khác"; khách bấm vào là chuyển sang mục in hình của đúng loại áo đó
+  function shortcutBaseKeyOf(p) {
+    if (!p || p.baseOf || sectionOf(p) !== 'other') return '';
+    var c = codeOf(p.name);
+    if (!c) return '';
+    var code = c.prefix + c.num;
+    if (code === 'A55') return 'a55';
+    var b = baseListVisible().filter(function (x) { return x.code === code; })[0];
+    return b ? 'b_' + b.id : '';
+  }
+  function makeShortcutProduct(cs) {
+    var code = cs.key === 'a55' ? 'A55' : ((bases[cs.key.slice(2)] || {}).code || cs.key.slice(2).toUpperCase());
+    var title = /in hình/i.test(cs.title) ? cs.title : cs.title + ' — in hình';
+    return { id: '__base_' + cs.key, name: code + '-' + title, imageUrl: coverOf(cs), colors: [], section: 'other', isShortcut: true, goto: cs.key, count: cs.list.length, createdAt: 0 };
+  }
+  function guestGoToCategory(key) {
+    if (key === 'other') guestSection = 'other';
+    else { guestSection = 'a55'; guestBase = key === 'a55' ? 'a55' : key.slice(2); }
+    guestFilters = { category: '', season: '', sleeve: '' };
+    guestSearch = ''; $('guestSearchInput').value = '';
+    renderGuestProducts();
+  }
   function renderGuestProducts() {
     // Chỉ hiển thị mẫu không bị ẩn và không phải mẫu đang chờ duyệt
     var visBases = baseListVisible();
@@ -1889,6 +1914,19 @@
     });
 
     var plist = scope.filter(function (p) { return productMatchesFilters(p, guestFilters) && productMatchesSearch(p, guestSearch); });
+    var shortcutPool = 0;
+    if (tilesOn) {
+      var shortcutKeys = {};
+      scope.forEach(function (sp0) { var k0 = shortcutBaseKeyOf(sp0); if (k0) shortcutKeys[k0] = true; });
+      var extraCards = [];
+      catSets.forEach(function (cs) {
+        if (cs.key === 'other' || shortcutKeys[cs.key]) return;
+        shortcutPool++;
+        var sp = makeShortcutProduct(cs);
+        if (searching ? productMatchesSearch(sp, guestSearch) : (guestSection === 'other' && !guestFiltersActive())) extraCards.push(sp);
+      });
+      plist = extraCards.concat(plist);
+    }
     if (Object.keys(products).length) {
       var cartChanged = false;
       Object.keys(guestCart).forEach(function (pid) {
@@ -1911,7 +1949,7 @@
     if (!all.length) { countEl.innerHTML = ''; grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">Chưa có mẫu nào trên hệ thống.</div>'; return; }
 
     if (guestFiltersActive()) {
-      countEl.innerHTML = 'Hiển thị <b>' + plist.length + '</b> / ' + scope.length + ' mẫu' + (mixedSearch ? ' (tìm trong tất cả các mục)' : '') + ' · <button class="gf-clear" id="guestClearFiltersBtn">Xoá bộ lọc</button>';
+      countEl.innerHTML = 'Hiển thị <b>' + plist.length + '</b> / ' + (scope.length + (searching ? shortcutPool : 0)) + ' mẫu' + (mixedSearch ? ' (tìm trong tất cả các mục)' : '') + ' · <button class="gf-clear" id="guestClearFiltersBtn">Xoá bộ lọc</button>';
       $('guestClearFiltersBtn').addEventListener('click', clearGuestFilters);
     } else {
       countEl.innerHTML = '';
@@ -1925,6 +1963,16 @@
     }
 
     grid.innerHTML = plist.map(function (p) {
+      var gotoKey = p.isShortcut ? p.goto : shortcutBaseKeyOf(p);
+      if (gotoKey) {
+        var gcs = catSets.filter(function (x) { return x.key === gotoKey; })[0];
+        var gimg = p.isShortcut ? p.imageUrl : (imagesOf(p)[0] || '');
+        return '<div class="shop-card is-shortcut" data-pid="' + esc(p.id) + '" data-goto="' + esc(gotoKey) + '">' +
+          '<div class="sc-imgwrap">' + (gimg ? '<img src="' + esc(gimg) + '" alt="">' : '<div class="pc-thumb placeholder" style="width:100%;height:100%;border-radius:0;">In hình</div>') + '<span class="sc-badge-in">IN HÌNH</span></div>' +
+          '<div class="sc-body"><div class="sc-name">' + nameHtml(p) + '</div>' +
+          '<div class="sc-sub"><span>' + (gcs ? gcs.list.length + ' hình in' : 'Các hình in') + '</span></div>' +
+          '<button class="btn primary small" style="margin-top:6px;">Bấm để chọn hình in ›</button></div></div>';
+      }
       var cartP = guestCart[p.id] || {};
       var totalP = 0;
       Object.keys(cartP).forEach(function (c) { totalP += cartP[c]; });
@@ -1951,6 +1999,7 @@
       card.addEventListener('click', function () {
         var wrapEl = card.querySelector('.sc-imgwrap');
         if (wrapEl && wrapEl.dataset.swiped) return;
+        if (card.dataset.goto) { guestGoToCategory(card.dataset.goto); return; }
         openGuestProductModal(card.dataset.pid);
       });
     });
