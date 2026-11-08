@@ -613,6 +613,22 @@
   .shop-card.is-shortcut { border: 2px solid var(--denim); }
   .shop-card.is-shortcut .btn.primary { width: 100%; background: var(--denim); }
   .sc-badge-in { position: absolute; top: 7px; left: 7px; background: var(--denim); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: .03em; }
+  .guide-strip { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+  .guide-link { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; padding: 4px 0; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--denim); cursor: pointer; text-align: left; }
+  .guide-link.is-new { background: #fff6dc; border: 1px solid #ecd48a; color: #855302; border-radius: 999px; padding: 7px 14px 7px 8px; }
+  .guide-q { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--denim); color: #fff; font-size: 12px; font-weight: 700; }
+  .guide-link.is-new .guide-q { background: #d6a52c; }
+  .guide-x { border: none; background: none; color: var(--ink-soft); font-size: 14px; cursor: pointer; padding: 4px 6px; }
+  .help-steps { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+  .help-step { display: flex; gap: 12px; align-items: flex-start; }
+  .help-num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; background: var(--stitch); color: #fff; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); }
+  .help-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+  .help-text { font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); }
+  .help-text b { color: var(--ink); }
+  .ct-guide { background: #fff6dc; color: #855302; border-color: #ecd48a; cursor: pointer; }
+  .ct-guide.is-new { background: #ffe9a8; border-color: #d6a52c; }
+  .help-who { background: #eef2f6; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; color: var(--ink-soft); }
+  .help-who b { color: var(--denim); }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -774,7 +790,8 @@
     </div>
   </header>
   <main class="wrap" style="padding-bottom:120px;">
-    <p class="subtitle" style="margin-bottom:16px;">Chọn mẫu và nhập số lượng dự kiến. Tư vấn viên sẽ liên hệ lại qua Zalo để xác nhận và gửi cọc.</p>
+    <p class="subtitle" style="margin-bottom:10px;">Chọn mẫu và nhập số lượng dự kiến. Tư vấn viên sẽ liên hệ lại qua Zalo để xác nhận và gửi cọc.</p>
+    <div class="guide-strip" id="guestGuideStrip"><button type="button" class="guide-link" id="guestHelpBtn"><span class="guide-q">?</span> Cách đặt hàng chỉ 4 bước — xem hướng dẫn ›</button></div>
     <div class="guest-filters">
       <div class="cat-tiles hidden" id="guestCatTiles"></div>
       <div class="gs-tabs hidden" id="guestSectionTabs"></div>
@@ -835,6 +852,7 @@
           Link gửi khách chọn mẫu của bạn: <b id="saleLinkUrl">Đang tải...</b>
         </div>
         <button class="btn ghost small" id="copySaleLinkBtn">📋 Sao chép</button>
+        <button class="btn primary small" id="copySaleMsgBtn">📩 Chép link + hướng dẫn</button>
       </div>
       <div class="sale-phone-box">
         <label for="salePhoneInput">📞 Số điện thoại / Zalo của bạn — <b>hiện cho khách</b> để gọi hoặc nhắn khi cần hỏi:</label>
@@ -958,6 +976,7 @@
 <div class="modal-overlay hidden" id="archiveModal"></div>
 <div class="modal-overlay hidden" id="guestCartModal"></div>
 <div class="modal-overlay hidden" id="guestHistoryModal"></div>
+<div class="modal-overlay hidden" id="guestHelpModal"></div>
 <div id="printArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -1350,6 +1369,7 @@
   // Biểu tượng Zalo (ô vuông xanh, khung chat trắng, chữ Zalo) và biểu tượng gọi điện — vẽ bằng SVG nên không phụ thuộc emoji của từng máy
   var ZALO_ICON_SVG = '<svg class="ct-ico" viewBox="0 0 48 48" width="28" height="28" aria-hidden="true"><rect width="48" height="48" rx="11" fill="#0068ff"/><path d="M24 9C14.6 9 8 15 8 22.6c0 4.1 1.9 7.7 5 10.2-.2 2-.9 3.9-2.2 5.6 3.1-.3 5.8-1.5 7.7-3.1 1.7.5 3.6.8 5.5.8 9.4 0 16-6 16-13.5S33.4 9 24 9z" fill="#fff"/><text x="24" y="26.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="13" fill="#0068ff">Zalo</text></svg>';
   var PHONE_ICON_SVG = '<svg class="ct-ico" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/></svg>';
+  var GUIDE_ICON_SVG = '<svg class="ct-ico" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity=".2"/><path d="M9.4 9.3a2.7 2.7 0 115.2.8c0 1.8-2.6 2.1-2.6 3.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1.2" fill="currentColor"/></svg>';
   function contactHtml(u) {
     var ph = u && u.phone ? String(u.phone) : '';
     if (!ph) return '';
@@ -1730,8 +1750,9 @@
       $('guestSaleName').textContent = 'Chung (Hệ thống)';
     }
     var contactHtmlStr = contactHtml(saleUser);
-    $('guestContact').innerHTML = contactHtmlStr;
-    $('guestContact').classList.toggle('hidden', !contactHtmlStr);
+    $('guestContact').innerHTML = contactHtmlStr + '<button type="button" class="ct-btn ct-guide">' + GUIDE_ICON_SVG + 'Hướng dẫn đặt hàng</button>';
+    $('guestContact').classList.remove('hidden');
+    updateGuestGuideStrip();
     renderGuestProducts();
   }
 
@@ -2098,6 +2119,47 @@
   }
   $('guestHistoryBtn').addEventListener('click', openGuestHistory);
   $('guestHistoryModal').addEventListener('click', function (e) { if (e.target === $('guestHistoryModal')) closeGuestHistory(); });
+
+  // ---------- HƯỚNG DẪN ĐẶT HÀNG cho khách (4 bước) ----------
+  var GUEST_HELP_KEY = 'guest_help_seen_v1';
+  function guestHelpSeen() { try { return localStorage.getItem(GUEST_HELP_KEY) === '1'; } catch (e) { return false; } }
+  function markGuestHelpSeen() { try { localStorage.setItem(GUEST_HELP_KEY, '1'); } catch (e) {} updateGuestGuideStrip(); }
+  function updateGuestGuideStrip() {
+    var seen = guestHelpSeen();
+    var strip = $('guestGuideStrip'), btn = $('guestHelpBtn');
+    if (strip) strip.classList.toggle('hidden', seen);              // đã xem hướng dẫn rồi thì ẩn dải nhắc (nút ở đầu trang vẫn còn)
+    if (btn) btn.classList.toggle('is-new', !seen);
+    document.querySelectorAll('.ct-guide').forEach(function (b) { b.classList.toggle('is-new', !seen); });
+  }
+  function openGuestHelp() {
+    var steps = [
+      ['Chọn mục và mẫu', 'Bấm một banner ở đầu trang (Mẫu in hình hoặc Áo quần khác), rồi <b>bấm vào mẫu</b> bạn thích. Gõ mã (VD H12) vào ô tìm cho nhanh.'],
+      ['Chọn số lượng theo màu', 'Bấm dấu <b>+</b> ở từng màu bạn cần, rồi bấm <b>"Lưu vào giỏ"</b>. Mua càng nhiều giá càng rẻ (giá sỉ tự tính).'],
+      ['Gửi đơn', 'Chọn thêm mẫu khác nếu muốn. Xong bấm nút đỏ <b>"Xem giỏ & Gửi đơn"</b> ở dưới màn hình, nhập <b>tên + số Zalo</b> rồi bấm gửi.'],
+      ['Chờ tư vấn viên nhắn', 'Tư vấn viên sẽ nhắn Zalo để xác nhận và gửi thông tin cọc. Bạn xem lại đơn ở nút <b>"Đơn đã đặt"</b> trên đầu trang.']
+    ];
+    var saleU = users[saleRefId] || {};
+    var salePhone = saleU.phone ? fmtPhone(saleU.phone) : '';
+    if (salePhone) steps[3][1] = 'Tư vấn viên <b>' + esc(saleU.name) + '</b> sẽ nhắn Zalo cho bạn để xác nhận và gửi thông tin cọc. Cần gấp bạn gọi hoặc nhắn Zalo số <b>' + esc(salePhone) + '</b>. Bạn xem lại đơn ở nút <b>"Đơn đã đặt"</b> trên đầu trang.';
+    else if (saleU.name) steps[3][1] = 'Tư vấn viên <b>' + esc(saleU.name) + '</b> sẽ nhắn Zalo cho bạn để xác nhận và gửi thông tin cọc. Bạn xem lại đơn ở nút <b>"Đơn đã đặt"</b> trên đầu trang.';
+    steps[2][1] = 'Chọn thêm mẫu khác nếu muốn. Xong bấm nút đỏ <b>"Xem giỏ & Gửi đơn"</b> ở dưới màn hình, nhập <b>tên + số Zalo của bạn</b>' + (saleU.name ? ' (tư vấn viên ' + esc(saleU.name) + ' sẽ nhắn đúng số này)' : '') + ' rồi bấm gửi.';
+    var contact = contactHtml(saleU);
+    $('guestHelpModal').innerHTML = '<div class="modal-sheet"><div class="modal-head"><h2>Cách đặt hàng — 4 bước</h2><button class="ms-close" id="ghlpClose">✕</button></div>' +
+      (saleU.name ? '<div class="help-who">Bạn đang đặt qua tư vấn viên <b>' + esc(saleU.name) + '</b>' + (salePhone ? ' · ' + esc(salePhone) : '') + '</div>' : '') +
+      '<div class="help-steps">' + steps.map(function (st, i) {
+        return '<div class="help-step"><div class="help-num">' + (i + 1) + '</div><div><div class="help-title">' + st[0] + '</div><div class="help-text">' + st[1] + '</div></div></div>';
+      }).join('') + '</div>' +
+      (contact ? '<div class="ct-box">Cần hỏi gì? Gọi hoặc nhắn tư vấn viên' + (saleU.name ? ' <b>' + esc(saleU.name) + '</b>' : '') + ':<div class="ct-row">' + contact + '</div></div>' : '') +
+      '<button class="btn primary full" id="ghlpOk" style="margin-top:14px;">Đã hiểu, bắt đầu chọn mẫu</button></div>';
+    $('guestHelpModal').classList.remove('hidden');
+    function close() { $('guestHelpModal').classList.add('hidden'); markGuestHelpSeen(); }
+    $('ghlpClose').addEventListener('click', close);
+    $('ghlpOk').addEventListener('click', close);
+  }
+  $('guestHelpBtn').addEventListener('click', openGuestHelp);
+  $('guestContact').addEventListener('click', function (e) { var g = e.target.closest ? e.target.closest('.ct-guide') : null; if (g) openGuestHelp(); });
+  $('guestHelpModal').addEventListener('click', function (e) { if (e.target === $('guestHelpModal')) { $('guestHelpModal').classList.add('hidden'); markGuestHelpSeen(); } });
+  updateGuestGuideStrip();
 
   function updateGuestCartBar() {
     var grand = 0;
@@ -2696,6 +2758,17 @@
       db.ref('users/' + currentUser.id).update({ phone: ph || null })
         .then(function () { toast(ph ? 'Đã lưu số ' + fmtPhone(ph) + ' — khách sẽ thấy trên link của bạn.' : 'Đã xoá số liên hệ.'); })
         .catch(function (e) { toast('Lỗi: ' + e.message); });
+    };
+    $('copySaleMsgBtn').onclick = function () {
+      var me = users[currentUser.id] || {};
+      var msg = 'Chào anh/chị ạ. Em là ' + currentUser.name + ', tư vấn viên bên em. Anh/chị chọn mẫu và số lượng theo link này nhé:\n' + baseLink + '\n\n' +
+        'Cách đặt (chỉ 1 phút):\n' +
+        '1. Bấm vào mẫu anh/chị thích (gõ mã như H12 vào ô tìm cho nhanh)\n' +
+        '2. Bấm dấu + ở từng màu cần, rồi bấm "Lưu vào giỏ" (mua nhiều giá càng rẻ)\n' +
+        '3. Bấm nút đỏ "Xem giỏ & Gửi đơn" ở dưới, nhập tên và số Zalo rồi gửi\n' +
+        '4. Em sẽ nhắn Zalo xác nhận và gửi thông tin cọc ạ\n' +
+        (me.phone ? '\nCần hỏi gì anh/chị cứ gọi hoặc nhắn Zalo em: ' + fmtPhone(me.phone) : '');
+      copyTextToClipboard(msg, function () { toast('Đã chép link + hướng dẫn — dán vào Zalo gửi khách.'); });
     };
     $('copySaleLinkBtn').onclick = function () {
       if (navigator.clipboard) {
