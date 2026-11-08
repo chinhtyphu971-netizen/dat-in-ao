@@ -1729,6 +1729,12 @@
     return p[2] + '/' + p[1] + '/' + p[0] + (dstr === todayStr() ? ' (hôm nay)' : '');
   }
   function isManager() { return !!(currentUser && currentUser.role === 'manager'); }
+  // 🧾 Ai được bấm "Lên hoá đơn": Sale phụ trách đơn; Quản lý thì đơn của chính mình + đơn "Chung" (khách đặt qua link chung, chưa gắn Sale)
+  function canMakeInvoice(lead) {
+    if (!lead || !currentUser || lead.deletedAt) return false;
+    if (lead.saleId === currentUser.id) return true;
+    return isManager() && (!lead.saleId || lead.saleId === 'unknown' || !users[lead.saleId]);
+  }
   function canManageProducts() { return !!(currentUser && (currentUser.role === 'manager' || currentUser.role === 'product_manager')); }
   function canEditProduct(p) { return !!(currentUser && (currentUser.role === 'manager' || (currentUser.role === 'product_manager' && p.createdBy === currentUser.id && p.section !== 'other'))); }
   function roleLabel(role) { return role === 'manager' ? 'Quản lý' : (role === 'product_manager' ? 'Người thêm mẫu' : 'Nhân viên'); }
@@ -2442,7 +2448,7 @@
               '<input type="checkbox" class="lead-printed-chk" data-lid="' + esc(lead.id) + '"' + (isPrinted ? ' checked' : '') + '> ' +
               (isPrinted ? '🖨️ Đã đặt in' : 'Đã đặt in') +
             '</label>' +
-            (!isBilled && currentUser && lead.saleId === currentUser.id ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : '') +
+            (!isBilled && canMakeInvoice(lead) ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : '') +
             (canDelete ? '<button class="btn danger small" data-action="delete-lead" data-lid="' + esc(lead.id) + '">🗑️ Xoá</button>' : '') +
           '</div>' +
           '</div>';
@@ -2527,7 +2533,7 @@
     container.querySelectorAll('[data-action="make-invoice"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid, lead = customerLeads[lid];
-        if (!lead || !currentUser || lead.saleId !== currentUser.id) { toast('Chỉ Sale phụ trách đơn này mới lên hoá đơn được.'); return; }
+        if (!lead || !canMakeInvoice(lead)) { toast('Chỉ Sale phụ trách đơn này (hoặc Quản lý với đơn chung / đơn của mình) mới lên hoá đơn được.'); return; }
         var items = (lead.items || []).map(function (it) {
           var pt = itemParts(it);
           return { base: pt.base || '', code: pt.code || '', title: pt.title || '', name: it.name || '', quantities: it.quantities || {}, total: it.total || 0, price: it.price || 0 };
