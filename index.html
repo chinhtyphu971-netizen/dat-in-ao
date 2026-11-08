@@ -629,6 +629,11 @@
   .ct-guide.is-new { background: #ffe9a8; border-color: #d6a52c; }
   .help-who { background: #eef2f6; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; color: var(--ink-soft); }
   .help-who b { color: var(--denim); }
+  .bell-now { font-size: 13.5px; margin-bottom: 10px; }
+  .bell-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .bell-upload { cursor: pointer; }
+  .bell-vol { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; }
+  .bell-vol input { flex: 1; max-width: 220px; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -989,7 +994,6 @@
     databaseURL: "https://dat-in-ao-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "dat-in-ao",
   };
-  var REPORT_APP_URL = 'https://bao-cao-doanh-so.vercel.app/'; // app Báo cáo doanh số (nút 🧾 Lên hoá đơn)
 
   // =============== KHÔNG VÀO ĐƯỢC? Hiện lời giải thích thay vì trang trắng ===============
   var APP_BOOT_AT = Date.now();
@@ -1544,10 +1548,39 @@
   window.addEventListener('click', autoUnlockAudio);
   window.addEventListener('touchstart', autoUnlockAudio);
 
-  function playOrderBell() {
-    if (!isSoundEnabled) return;
+  // ---- Chuông báo đơn do QUẢN LÝ tải lên (lưu ở Firebase settings/notifySound, máy nào của nhân viên cũng dùng chung) ----
+  var notifySoundCfg = null;       // { name, data (data URL), size, volume, updatedAt, updatedBy }
+  var customBellBuffer = null, customBellKey = '';
+  function dataUrlToArrayBuffer(dataUrl) {
+    var b64 = String(dataUrl).split(',')[1] || '';
+    var bin = atob(b64), len = bin.length, bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  function loadCustomBell() {
+    var cfg = notifySoundCfg;
+    if (!cfg || !cfg.data) { customBellBuffer = null; customBellKey = ''; return; }
+    var key = (cfg.updatedAt || 0) + ':' + (cfg.size || 0);
+    if (key === customBellKey) return;
+    customBellKey = key; customBellBuffer = null;
     try {
       var ctx = getAudioContext();
+      ctx.decodeAudioData(dataUrlToArrayBuffer(cfg.data), function (buf) { if (customBellKey === key) customBellBuffer = buf; }, function () { customBellBuffer = null; });
+    } catch (e) { customBellBuffer = null; }
+  }
+  function playOrderBell(force) {
+    if (!isSoundEnabled && !force) return;
+    try {
+      var ctx = getAudioContext();
+      if (customBellBuffer) {
+        var bsrc = ctx.createBufferSource();
+        bsrc.buffer = customBellBuffer;
+        var bgain = ctx.createGain();
+        bgain.gain.value = Math.min(1, Math.max(0.1, Number(notifySoundCfg && notifySoundCfg.volume) || 1));
+        bsrc.connect(bgain); bgain.connect(ctx.destination);
+        bsrc.start(0);
+        return;
+      }
       var now = ctx.currentTime;
 
       // Hồi chuông 1
@@ -1729,12 +1762,6 @@
     return p[2] + '/' + p[1] + '/' + p[0] + (dstr === todayStr() ? ' (hôm nay)' : '');
   }
   function isManager() { return !!(currentUser && currentUser.role === 'manager'); }
-  // 🧾 Ai được bấm "Lên hoá đơn": Sale phụ trách đơn; Quản lý thì đơn của chính mình + đơn "Chung" (khách đặt qua link chung, chưa gắn Sale)
-  function canMakeInvoice(lead) {
-    if (!lead || !currentUser || lead.deletedAt) return false;
-    if (lead.saleId === currentUser.id) return true;
-    return isManager() && (!lead.saleId || lead.saleId === 'unknown' || !users[lead.saleId]);
-  }
   function canManageProducts() { return !!(currentUser && (currentUser.role === 'manager' || currentUser.role === 'product_manager')); }
   function canEditProduct(p) { return !!(currentUser && (currentUser.role === 'manager' || (currentUser.role === 'product_manager' && p.createdBy === currentUser.id && p.section !== 'other'))); }
   function roleLabel(role) { return role === 'manager' ? 'Quản lý' : (role === 'product_manager' ? 'Người thêm mẫu' : 'Nhân viên'); }
@@ -2435,7 +2462,7 @@
       } else {
         actionsHtml = '<div class="lead-actions">' +
           '<div style="font-size:12.5px;color:var(--ink-soft);">' +
-            (isBilled ? '🟢 <i>Đã ghi vào hoá đơn' + (lead.billedInvoice ? ' (HĐ ' + esc(lead.billedInvoice) + ')' : '') + '</i>' : (lead.invoiceNumber ? '🧾 <b>Đã lên HĐ ' + esc(lead.invoiceNumber) + '</b> · <i>chờ khách cọc</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>')) +
+            (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>') +
             (lead.autoCount ? (isBilled ? ' · 📤 <b>Đã rút khỏi đơn may</b>' : ' · 📥 <b>Đang cộng trong đơn may</b>') : '') +
             (isPrinted ? ' · 🔵 <b>Đã đặt in</b>' : '') +
           '</div>' +
@@ -2448,7 +2475,6 @@
               '<input type="checkbox" class="lead-printed-chk" data-lid="' + esc(lead.id) + '"' + (isPrinted ? ' checked' : '') + '> ' +
               (isPrinted ? '🖨️ Đã đặt in' : 'Đã đặt in') +
             '</label>' +
-            (!isBilled && canMakeInvoice(lead) ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : '') +
             (canDelete ? '<button class="btn danger small" data-action="delete-lead" data-lid="' + esc(lead.id) + '">🗑️ Xoá</button>' : '') +
           '</div>' +
           '</div>';
@@ -2528,22 +2554,6 @@
       });
     });
 
-    // 🧾 Lên hoá đơn: mở app Báo cáo doanh số với hoá đơn ĐIỀN SẴN đơn này (chỉ Sale phụ trách).
-    // Lưu hoá đơn xong, app báo cáo tự tích "Đã ghi vào hoá đơn" ở đây.
-    container.querySelectorAll('[data-action="make-invoice"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var lid = btn.dataset.lid, lead = customerLeads[lid];
-        if (!lead || !canMakeInvoice(lead)) { toast('Chỉ Sale phụ trách đơn này (hoặc Quản lý với đơn chung / đơn của mình) mới lên hoá đơn được.'); return; }
-        var items = (lead.items || []).map(function (it) {
-          var pt = itemParts(it);
-          return { base: pt.base || '', code: pt.code || '', title: pt.title || '', name: it.name || '', quantities: it.quantities || {}, total: it.total || 0, price: it.price || 0 };
-        });
-        var payload = { v: 1, src: 'dat-in-ao', leadId: lid, saleName: currentUser.name || '', customerName: lead.customerName || '', phone: lead.phone || '', note: lead.note || '', items: items };
-        var json = JSON.stringify(payload);
-        var b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        window.open(REPORT_APP_URL + '#nhapdon=' + b64, '_blank');
-      });
-    });
     container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid;
@@ -3830,6 +3840,7 @@
         toolWrap('codes', 'Danh sách mã', 'Chép tất cả mã, cách nhau dấu phẩy', codesCardHtml()) +
         (isManager() ? toolWrap('base', 'Loại áo nền để in', baseSummary, baseCardHtml()) : '') +
         (isManager() ? toolWrap('covers', 'Ảnh bìa các mục', 'Banner chọn mục trên trang khách', coversCardHtml()) : '') +
+        (isManager() ? toolWrap('bell', 'Chuông báo đơn', notifySoundCfg && notifySoundCfg.data ? 'Đang dùng: ' + esc(notifySoundCfg.name || 'chuông') : 'Chuông mặc định', bellCardHtml()) : '') +
       '</div>' +
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
       '<div class="product-form-layout">' +
@@ -3881,6 +3892,7 @@
     });
     if (isManager()) bindBaseCard(el);
     if (isManager()) bindCoversCard(el);
+    if (isManager()) bindBellCard(el);
     bindCodesCard(el);
     el.querySelectorAll('.tool-bar').forEach(function (bar) {
       function toggleTool() {
@@ -4502,6 +4514,58 @@
       copyTextToClipboard(txt, function () { toast('Đã sao chép ' + last.count + (last.fmt === 'code' ? ' mã.' : ' mẫu.')); });
     });
   }
+  function bellCardHtml() {
+    var c = notifySoundCfg, has = !!(c && c.data);
+    return '<div class="manage-form bell-card"><h2>Chuông báo đơn khách</h2>' +
+      '<p class="img-hint" style="margin:-4px 0 10px;">Khi khách gửi đơn, máy của sale (và quản lý) đang mở app sẽ phát chuông này. Tải lên file âm thanh ngắn (mp3, wav, ogg, m4a), tối đa <b>250KB</b> và <b>12 giây</b>. Mỗi người vẫn tự bật/tắt chuông ở thanh bên trái.</p>' +
+      '<div class="bell-now">' + (has ? 'Đang dùng: <b>' + esc(c.name || 'chuông.mp3') + '</b> · ' + Math.round((c.size || 0) / 1024) + 'KB' + (c.updatedBy ? ' · tải lên bởi ' + esc(c.updatedBy) : '') : 'Đang dùng: <b>chuông mặc định</b> của app') + '</div>' +
+      '<div class="bell-actions"><button class="btn ghost small" id="bellPlayBtn">▶ Nghe thử</button>' +
+        '<label class="btn primary small bell-upload">Tải file chuông lên<input type="file" id="bellFile" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" style="display:none"></label>' +
+        (has ? '<button class="btn ghost small" id="bellResetBtn">Dùng lại chuông mặc định</button>' : '') + '</div>' +
+      (has ? '<label class="bell-vol">Âm lượng <input type="range" id="bellVol" min="30" max="100" step="10" value="' + Math.round((Number(c.volume) || 1) * 100) + '"> <span id="bellVolTxt">' + Math.round((Number(c.volume) || 1) * 100) + '%</span></label>' : '') +
+      '</div>';
+  }
+  function bindBellCard(root) {
+    var box = root.querySelector('.bell-card');
+    if (!box) return;
+    $('bellPlayBtn').addEventListener('click', function () { playOrderBell(true); });
+    var rst = $('bellResetBtn');
+    if (rst) rst.addEventListener('click', function () {
+      db.ref('settings/notifySound').remove().then(function () { toast('Đã dùng lại chuông mặc định.'); }).catch(function (e) { toast('Lỗi: ' + e.message); });
+    });
+    var vol = $('bellVol');
+    if (vol) {
+      vol.addEventListener('input', function () { $('bellVolTxt').textContent = vol.value + '%'; });
+      vol.addEventListener('change', function () {
+        db.ref('settings/notifySound/volume').set(Number(vol.value) / 100).then(function () { playOrderBell(true); });
+      });
+    }
+    $('bellFile').addEventListener('change', function () {
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file || !isManager()) return;
+      if (!/^audio\//i.test(file.type || '') && !/\.(mp3|wav|ogg|m4a|aac)$/i.test(file.name || '')) { toast('Hãy chọn file âm thanh (mp3, wav, ogg hoặc m4a).'); return; }
+      if (file.size > 250 * 1024) { toast('File nặng ' + Math.round(file.size / 1024) + 'KB, quá 250KB. Chọn chuông ngắn hơn (khoảng 10 giây mp3 là đủ).'); return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        var data = fr.result, decided = false;
+        function save() {
+          if (decided) return;
+          decided = true;
+          db.ref('settings/notifySound').set({ name: file.name, data: data, size: file.size, volume: (notifySoundCfg && Number(notifySoundCfg.volume)) || 1, updatedAt: Date.now(), updatedBy: currentUser.name })
+            .then(function () { toast('Đã đổi chuông báo đơn — bấm "Nghe thử" để nghe.'); })
+            .catch(function (e) { toast('Lỗi: ' + e.message); });
+        }
+        var a = new Audio();                     // kiểm tra phát được và độ dài
+        a.preload = 'metadata';
+        a.onloadedmetadata = function () { if (a.duration > 12.5) { decided = true; toast('Chuông dài ' + Math.round(a.duration) + ' giây, quá 12 giây. Chọn chuông ngắn hơn.'); } else save(); };
+        a.onerror = function () { if (!decided) { decided = true; toast('Máy này không đọc được file âm thanh đó. Thử mp3 hoặc wav.'); } };
+        a.src = data;
+        setTimeout(save, 3000);                  // trình duyệt không báo độ dài thì vẫn lưu
+      };
+      fr.readAsDataURL(file);
+    });
+  }
   function coversCardHtml() {
     var sets = categorySets();
     var rows = sets.map(function (cs) {
@@ -4891,6 +4955,7 @@
 
     if (!isGuestMode) {   // khách không cần (và không tải) dữ liệu đơn / in của người khác
       db.ref('settings/priceSheetCsv').on('value', function (snap) { priceSheetCsv = snap.val() || ''; });
+      db.ref('settings/notifySound').on('value', function (snap) { notifySoundCfg = snap.val(); loadCustomBell(); if (currentTab === 'manage') requestRender(); });
     db.ref('orders').on('value', function (snap) {
       ordersRaw = normalizeOrdersData(snap.val() || {});
       rebuildOrders();
