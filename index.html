@@ -634,6 +634,8 @@
   .bell-upload { cursor: pointer; }
   .bell-vol { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; }
   .bell-vol input { flex: 1; max-width: 220px; }
+  .cover-default { margin: 0 0 12px; font-size: 13.5px; }
+  .cover-default select { margin-left: 6px; max-width: 100%; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -1798,6 +1800,9 @@
   var guestFilters = { category: '', season: '', sleeve: '' };
   var guestSearch = '';
   var guestSection = 'a55';
+  var guestDefaultCat = 'other';        // mục mở sẵn khi khách mở link (quản lý đổi được ở công cụ "Ảnh bìa các mục")
+  var guestDefaultApplied = false;      // mới áp dụng mục mở sẵn một lần khi tải trang; khách đã tự bấm banner thì không ghi đè
+  var basesLoaded = false, defaultCatLoaded = false;
   var guestBase = 'a55';           // loại áo khách đang chọn để in (a55 = mặc định)
   var DEFAULT_BASE_NAME = 'Áo A55';
 
@@ -1839,6 +1844,7 @@
     return { id: '__base_' + cs.key, name: code + '-' + title, imageUrl: coverOf(cs), colors: [], section: 'other', isShortcut: true, goto: cs.key, count: cs.list.length, createdAt: 0 };
   }
   function guestGoToCategory(key) {
+    guestDefaultApplied = true;
     if (key === 'other') guestSection = 'other';
     else { guestSection = 'a55'; guestBase = key === 'a55' ? 'a55' : key.slice(2); }
     guestFilters = { category: '', season: '', sleeve: '' };
@@ -1846,6 +1852,16 @@
     renderGuestProducts();
   }
   function renderGuestProducts() {
+    if (!guestDefaultApplied && basesLoaded && defaultCatLoaded && Object.keys(products).length) {
+      var dcs = categorySets();
+      if (dcs.length) {
+        guestDefaultApplied = true;
+        if (dcs.length >= 2) {
+          var want = dcs.filter(function (x) { return x.key === guestDefaultCat; })[0] || dcs.filter(function (x) { return x.key === 'other'; })[0] || dcs[0];
+          if (want.section === 'other') guestSection = 'other'; else { guestSection = 'a55'; guestBase = want.base; }
+        }
+      }
+    }
     // Chỉ hiển thị mẫu không bị ẩn và không phải mẫu đang chờ duyệt
     var visBases = baseListVisible();
     if (guestBase !== 'a55' && !visBases.some(function (b) { return b.id === guestBase; })) guestBase = 'a55';
@@ -1897,6 +1913,7 @@
         btn.addEventListener('click', function () {
           var cs = catSets.filter(function (x) { return x.key === btn.dataset.cat; })[0];
           if (!cs) return;
+          guestDefaultApplied = true;
           if (cs.section === 'other') guestSection = 'other'; else { guestSection = 'a55'; guestBase = cs.base; }
           guestFilters = { category: '', season: '', sleeve: '' };
           guestSearch = ''; $('guestSearchInput').value = '';
@@ -4574,11 +4591,19 @@
         '<div class="cover-fields"><div class="cover-name"><b>' + esc(cs.title) + '</b> <span class="img-hint" style="display:inline;">' + (cs.kicker ? esc(cs.kicker) + ' · ' : '') + cs.list.length + ' mẫu</span></div>' +
         '<input type="text" class="cover-input" data-key="' + esc(cs.key) + '" value="' + esc(ov) + '" placeholder="Dán link ảnh bìa — trống = tự lấy ảnh mẫu đầu tiên"></div></div>';
     }).join('');
-    return '<div class="manage-form cover-card"><h2>Ảnh bìa các mục</h2>' +
+    var defSel = '<div class="cover-default"><label>Khi khách mở link, <b>mở sẵn mục</b>: <select id="guestDefaultSel">' + sets.map(function (cs) {
+      return '<option value="' + esc(cs.key) + '"' + (cs.key === guestDefaultCat ? ' selected' : '') + '>' + esc(cs.title) + (cs.kicker ? ' (' + esc(cs.kicker) + ')' : '') + '</option>';
+    }).join('') + '</select></label></div>';
+    return '<div class="manage-form cover-card"><h2>Ảnh bìa các mục</h2>' + defSel +
       '<p class="img-hint" style="margin:-4px 0 12px;">Khách thấy mỗi mục là một banner có ảnh bìa, bấm vào là hiện các mã trong mục đó. Muốn dùng ảnh banner tự thiết kế thì dán link vào đây (nên dùng ảnh ngang, khoảng 600×300). Để trống thì app tự lấy ảnh của mẫu đầu tiên trong mục.</p>' +
       (rows || '<div class="empty">Chưa có mục nào.</div>') + '</div>';
   }
   function bindCoversCard(root) {
+    var dsel = $('guestDefaultSel');
+    if (dsel) dsel.addEventListener('change', function () {
+      if (!isManager()) return;
+      db.ref('settings/guestDefaultCat').set(dsel.value).then(function () { toast('Khách mở link sẽ vào thẳng mục "' + dsel.options[dsel.selectedIndex].text + '".'); }).catch(function (e) { toast('Lỗi: ' + e.message); });
+    });
     root.querySelectorAll('.cover-input').forEach(function (inp) {
       inp.addEventListener('change', function () {
         if (!isManager()) return;
@@ -4939,7 +4964,10 @@
       requestRender();
     });
 
+    db.ref('settings/guestDefaultCat').on('value', function (snap) { guestDefaultCat = snap.val() || 'other'; defaultCatLoaded = true; if (isGuestMode) requestRender(); });
+
     db.ref('bases').on('value', function (snap) {
+      basesLoaded = true;
       var raw = snap.val() || {};
       bases = {};
       Object.keys(raw).forEach(function (id) {
