@@ -989,6 +989,7 @@
     databaseURL: "https://dat-in-ao-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "dat-in-ao",
   };
+  var REPORT_APP_URL = 'https://bao-cao-doanh-so.vercel.app/'; // app Báo cáo doanh số (nút 🧾 Lên hoá đơn)
 
   // =============== KHÔNG VÀO ĐƯỢC? Hiện lời giải thích thay vì trang trắng ===============
   var APP_BOOT_AT = Date.now();
@@ -2428,7 +2429,7 @@
       } else {
         actionsHtml = '<div class="lead-actions">' +
           '<div style="font-size:12.5px;color:var(--ink-soft);">' +
-            (isBilled ? '🟢 <i>Đã ghi vào hoá đơn</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>') +
+            (isBilled ? '🟢 <i>Đã ghi vào hoá đơn' + (lead.billedInvoice ? ' (HĐ ' + esc(lead.billedInvoice) + ')' : '') + '</i>' : (lead.invoiceNumber ? '🧾 <b>Đã lên HĐ ' + esc(lead.invoiceNumber) + '</b> · <i>chờ khách cọc</i>' : '⏳ <i>Chờ cọc và ghi hoá đơn</i>')) +
             (lead.autoCount ? (isBilled ? ' · 📤 <b>Đã rút khỏi đơn may</b>' : ' · 📥 <b>Đang cộng trong đơn may</b>') : '') +
             (isPrinted ? ' · 🔵 <b>Đã đặt in</b>' : '') +
           '</div>' +
@@ -2441,6 +2442,7 @@
               '<input type="checkbox" class="lead-printed-chk" data-lid="' + esc(lead.id) + '"' + (isPrinted ? ' checked' : '') + '> ' +
               (isPrinted ? '🖨️ Đã đặt in' : 'Đã đặt in') +
             '</label>' +
+            (!isBilled && currentUser && lead.saleId === currentUser.id ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : '') +
             (canDelete ? '<button class="btn danger small" data-action="delete-lead" data-lid="' + esc(lead.id) + '">🗑️ Xoá</button>' : '') +
           '</div>' +
           '</div>';
@@ -2520,6 +2522,22 @@
       });
     });
 
+    // 🧾 Lên hoá đơn: mở app Báo cáo doanh số với hoá đơn ĐIỀN SẴN đơn này (chỉ Sale phụ trách).
+    // Lưu hoá đơn xong, app báo cáo tự tích "Đã ghi vào hoá đơn" ở đây.
+    container.querySelectorAll('[data-action="make-invoice"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lid = btn.dataset.lid, lead = customerLeads[lid];
+        if (!lead || !currentUser || lead.saleId !== currentUser.id) { toast('Chỉ Sale phụ trách đơn này mới lên hoá đơn được.'); return; }
+        var items = (lead.items || []).map(function (it) {
+          var pt = itemParts(it);
+          return { base: pt.base || '', code: pt.code || '', title: pt.title || '', name: it.name || '', quantities: it.quantities || {}, total: it.total || 0, price: it.price || 0 };
+        });
+        var payload = { v: 1, src: 'dat-in-ao', leadId: lid, saleName: currentUser.name || '', customerName: lead.customerName || '', phone: lead.phone || '', note: lead.note || '', items: items };
+        var json = JSON.stringify(payload);
+        var b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        window.open(REPORT_APP_URL + '#nhapdon=' + b64, '_blank');
+      });
+    });
     container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid;
