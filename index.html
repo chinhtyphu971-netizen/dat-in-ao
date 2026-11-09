@@ -636,6 +636,15 @@
   .bell-vol input { flex: 1; max-width: 220px; }
   .cover-default { margin: 0 0 12px; font-size: 13.5px; }
   .cover-default select { margin-left: 6px; max-width: 100%; }
+  .qty-sizes { --sz: 3; }
+  .qs-row { display: grid; grid-template-columns: minmax(76px, 1.25fr) repeat(var(--sz), minmax(0, 1fr)); gap: 6px; align-items: center; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .qs-head { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .qs-h { text-align: center; display: flex; flex-direction: column; line-height: 1.2; font-size: 13px; }
+  .qs-h small { font-size: 10.5px; color: var(--ink-soft); font-weight: 500; }
+  .qs-color { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; }
+  .qty-color-row.qs-cell { display: block; padding: 0; border: none; }
+  .qs-cell .qc-input { width: 100%; height: 36px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 15px; font-family: var(--font-body); padding: 0 2px; }
+  .qs-cell .qc-input.has, .qc-input.has { border-color: #d63a2f; color: #d63a2f; font-weight: 700; background: #fffafa; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -1449,7 +1458,7 @@
     return stripVi(p.name).indexOf(stripVi(q)) !== -1;        // gõ chữ -> tìm theo tên, không phân biệt dấu
   }
   var COLOR_SWATCH = { 'Nâu': '#7a5a3c', 'Ghi': '#9a9a96', 'Be': '#e2d3b8', 'Than': '#3b3b3b', 'Xanh dương': '#2f6fb5', 'Hồng nhạt': '#f3cdd6', 'Cam': '#e08a3c', 'Tím': '#8a5fb0', 'Xanh lá': '#4a8a55', 'Đen': '#1a1a1a', 'Trắng': '#f5f5f0', 'Vàng': '#f0c14b', 'Xanh': '#3d6fa8', 'Đỏ': '#b0523f', 'Xám': '#8a8579', 'Hồng': '#e3a8b8', 'Nâu': '#6b4a2f' };
-  function swatchColor(name) { return COLOR_SWATCH[name] || '#9a9382'; }
+  function swatchColor(name) { return COLOR_SWATCH[String(name).split(' · ')[0]] || '#9a9382'; }
 
   var configOk = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE') === -1;
   var db = null;
@@ -1642,9 +1651,12 @@
     });
   }
   function slugKey(name) { return (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
+  var SIZE_SEP = ' · ';          // ô số lượng của mẫu có size: "Đen · M"
   function normalizeColorName(s) {
     s = (s == null ? '' : String(s)).trim();
     if (!s) return s;
+    var ix = s.indexOf(SIZE_SEP);
+    if (ix > -1) return normalizeColorName(s.slice(0, ix)) + SIZE_SEP + s.slice(ix + SIZE_SEP.length).trim().toUpperCase();
     return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
   }
   function normalizeProductsData(raw) {
@@ -2060,7 +2072,7 @@
         '<div class="sc-body">' +
           '<div class="sc-name">' + nameHtml(p) + '</div>' +
           (priceOf(p) ? '<div class="sc-price">' + fmtVnd(priceOf(p)) + '</div>' + (cardTiers ? '<div class="sc-tier-hint">Sỉ giảm đến ' + fmtVnd(cardTiers[cardTiers.length - 1].price) + '</div>' : '') : '') +
-          '<div class="sc-sub"><span>' + colorsOf(p).length + ' màu</span></div>' +
+          '<div class="sc-sub"><span>' + baseColorsOf(p).length + ' màu' + (sizesOf(p).length ? ' · ' + sizesOf(p).length + ' size' : '') + '</span></div>' +
           (tags ? '<div class="sc-attrs">' + esc(tags) + '</div>' : '') +
           (totalP > 0 ? '<div class="sc-picked">Đã chọn: <b>' + totalP + '</b> áo<div class="sc-picked-detail">' + pickedDetail + '</div></div>' : '') +
           '<button class="btn ghost small' + (totalP > 0 ? ' picked' : '') + '" style="margin-top:6px;">' + (p.soldOut ? 'Tạm hết' : (totalP > 0 ? 'Sửa số lượng' : 'Chọn số lượng')) + '</button>' +
@@ -2228,7 +2240,8 @@
     var p = products[pid];
     if (!p) return;
     if (p.soldOut) { toast('Mẫu này đang tạm hết hàng.'); return; }
-    var colors = colorsOf(p);
+    var colors = baseColorsOf(p);
+    var psizes = sizesOf(p);
     var cartP = guestCart[pid] || {};
     var html = '<div class="modal-sheet ms-compact">' +
       '<div class="modal-head"><h2>' + nameHtml(p) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
@@ -2238,16 +2251,26 @@
         ? '<div class="ms-tiers">' + tiersOf(p).map(function (t) { return '<div class="ms-tier" data-min="' + t.min + '"><div class="mt-min">Từ ' + t.min + ' áo</div><div class="mt-price">' + fmtVnd(t.price) + '</div></div>'; }).join('') + '</div>' +
           '<div class="ms-tier-note">Giá sỉ tính theo tổng số áo của mẫu này (cộng tất cả các màu).</div>'
         : (priceOf(p) ? '<div class="ms-price">Giá: <b>' + fmtVnd(priceOf(p)) + '</b> / áo</div>' : '')) +
-      (p.sizeNote ? '<div class="ms-size">📏 Size: ' + esc(p.sizeNote) + '</div>' : '') +
-      '<div class="ms-section-label">Chọn số lượng áo theo màu</div>' +
-      '<div class="qty-color-rows">' + colors.map(function (c) {
-        var v = cartP[c] || 0;
-        return '<div class="qty-color-row" data-color="' + esc(c) + '">' +
-          '<span class="swatch" style="background:' + swatchColor(c) + '"></span>' +
-          '<span class="col-label">' + esc(c) + '</span>' +
-          '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
-          '</div>';
-      }).join('') + '</div>' +
+      (p.sizeNote && !psizes.length ? '<div class="ms-size">📏 Size: ' + esc(p.sizeNote) + '</div>' : '') +
+      '<div class="ms-section-label">' + (psizes.length ? 'Chọn số lượng theo màu và size' : 'Chọn số lượng áo theo màu') + '</div>' +
+      (psizes.length
+        ? '<div class="qty-color-rows qty-sizes" style="--sz:' + psizes.length + '">' +
+          '<div class="qs-row qs-head"><span></span>' + psizes.map(function (z) { return '<span class="qs-h"><b>' + esc(z.key) + '</b>' + (z.note ? '<small>' + esc(z.note) + '</small>' : '') + '</span>'; }).join('') + '</div>' +
+          colors.map(function (c) {
+            return '<div class="qs-row"><span class="qs-color"><span class="swatch" style="background:' + swatchColor(c) + '"></span><span class="col-label">' + esc(c) + '</span></span>' +
+              psizes.map(function (z) {
+                var key = c + SIZE_SEP + z.key, v = cartP[key] || 0;
+                return '<div class="qty-color-row qs-cell" data-color="' + esc(key) + '"><input type="number" inputmode="numeric" class="qc-input" value="' + v + '" min="0" aria-label="' + esc(c + ' size ' + z.key) + '"></div>';
+              }).join('') + '</div>';
+          }).join('') + '</div>'
+        : '<div class="qty-color-rows">' + colors.map(function (c) {
+            var v = cartP[c] || 0;
+            return '<div class="qty-color-row" data-color="' + esc(c) + '">' +
+              '<span class="swatch" style="background:' + swatchColor(c) + '"></span>' +
+              '<span class="col-label">' + esc(c) + '</span>' +
+              '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div>' +
+              '</div>';
+          }).join('') + '</div>') +
       '</div>' +
       '<div class="ms-footer">' +
       (priceOf(p) ? '<div class="ms-subtotal" id="msSubtotal"></div>' : '') +
@@ -2261,7 +2284,11 @@
     $('msGuestCloseBtn').addEventListener('click', function () { $('productModal').classList.add('hidden'); });
     function updateGuestSubtotal() {
       var qty = 0;
-      $('productModal').querySelectorAll('.qty-color-row .qc-input').forEach(function (inp) { qty += Math.max(0, Math.floor(Number(inp.value) || 0)); });
+      $('productModal').querySelectorAll('.qty-color-row .qc-input').forEach(function (inp) {
+        var iv = Math.max(0, Math.floor(Number(inp.value) || 0));
+        qty += iv;
+        inp.classList.toggle('has', iv > 0);
+      });
       // Nút Lưu luôn hiện ở đáy cửa sổ và nói rõ việc sẽ làm, để người mới khỏi lúng túng
       var saveBtn = $('msGuestSaveBtn');
       if (saveBtn) {
@@ -2289,9 +2316,11 @@
     }
     $('productModal').querySelectorAll('.qty-color-row').forEach(function (row) {
       var input = row.querySelector('.qc-input');
-      row.querySelector('[data-action="dec"]').addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); updateGuestSubtotal(); });
-      row.querySelector('[data-action="inc"]').addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; updateGuestSubtotal(); });
+      var decBtn = row.querySelector('[data-action="dec"]'), incBtn = row.querySelector('[data-action="inc"]');
+      if (decBtn) decBtn.addEventListener('click', function () { input.value = Math.max(0, (Number(input.value) || 0) - 1); updateGuestSubtotal(); });
+      if (incBtn) incBtn.addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; updateGuestSubtotal(); });
       input.addEventListener('input', updateGuestSubtotal);
+      input.addEventListener('focus', function () { try { input.select(); } catch (e) {} });
     });
     updateGuestSubtotal();
     $('msGuestSaveBtn').addEventListener('click', function () {
@@ -2851,7 +2880,7 @@
   }
   document.querySelectorAll('.tabs-vertical button').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
 
-  var PRESERVE_FIELD_IDS = ['newBaseCode', 'newBaseName', 'newBasePrice', 'newBaseColors', 'newBaseSize', 'newAcctPhone', 'extraImagesInput', 'editExtraImagesInput', 'priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
+  var PRESERVE_FIELD_IDS = ['editSizeNote', 'newBaseCode', 'newBaseName', 'newBasePrice', 'newBaseColors', 'newBaseSize', 'newAcctPhone', 'extraImagesInput', 'editExtraImagesInput', 'priceInput', 'attr_section', 'attr_category', 'attr_season', 'attr_sleeve', 'nameInput', 'imgUrlInput', 'colorsInput', 'editNameInput', 'editImgUrlInput', 'editColorsInput', 'newAcctName', 'newAcctPin', 'newAcctRole'];
   function snapshotFormState() {
     var snap = {};
     PRESERVE_FIELD_IDS.concat(baseListAll().map(function (b) { return 'editBaseImg_' + b.id; })).forEach(function (id) {
@@ -3004,7 +3033,31 @@
       .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
   }
   function productList() { return productListAll().filter(function (pr) { return !pr.baseOf; }); }     // chỉ mẫu thật
-  function colorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
+  // "S 40-45kg · M 45-55kg · L 55-60kg" -> [{key:'S', note:'40-45kg'}, ...]. CHỈ nhận 4 size S, M, L, XL (như bảng giá sỉ); size khác (XXL, 2XL, FREESIZE…) bỏ qua.
+  // Mẫu nào có size thì khách chọn số lượng theo màu × size.
+  function parseSizes(note) {
+    var txt = String(note || ''), re = /(?:^|[^A-Za-z0-9])(XL|S|M|L)(?![A-Za-z0-9])/g, hits = [], m;
+    while ((m = re.exec(txt)) !== null) hits.push({ key: m[1], start: m.index + m[0].length - m[1].length, end: m.index + m[0].length });
+    var out = [], seen = {};
+    hits.forEach(function (h, i) {
+      if (seen[h.key]) return;
+      seen[h.key] = 1;
+      var seg = txt.slice(h.end, i + 1 < hits.length ? hits[i + 1].start : txt.length);
+      var w = /(\d{2,3})\s*[-–]\s*(\d{2,3})\s*kg?/i.exec(seg);
+      out.push({ key: h.key, note: w ? w[1] + '-' + w[2] + 'kg' : '' });
+    });
+    return out;
+  }
+  function sizesOf(p) { return p ? parseSizes(p.sizeNote) : []; }
+  function baseColorsOf(p) { return (p.colors && p.colors.length) ? p.colors : DEFAULT_COLORS; }
+  // Các "ô số lượng" hợp lệ của mẫu: màu thuần (đơn cũ chưa có size vẫn tính) + màu · size nếu mẫu có size
+  function colorsOf(p) {
+    var base = baseColorsOf(p), sz = sizesOf(p);
+    if (!sz.length) return base;
+    var out = base.slice();
+    base.forEach(function (c) { sz.forEach(function (z) { out.push(c + SIZE_SEP + z.key); }); });
+    return out;
+  }
 
   function sumQuantitiesForColors(quantities, colors) {
     var t = 0;
@@ -3102,7 +3155,7 @@
       '<div class="os-help">Số lượng tự tính từ đơn khách đặt qua link của từng sale. Bấm vào mẫu để xem chi tiết theo màu.</div>';
 
     $('shopGrid').innerHTML = (shownList.length ? shownList.map(function (p) {
-      var colors = colorsOf(p);
+      var colors = baseColorsOf(p);
       var mineTotal = myTotalAcrossDates(p.id, activeDates);
       var totalAll = totals[p.id];     // quản lý: tổng cả đội · sale: chỉ khách của mình
       var printed = productPrintedAcrossDates(p.id, activeDates);
@@ -3932,7 +3985,7 @@
     var listEl = $('productListManage');
     listEl.innerHTML = !shownList.length ? '<div class="empty">' + (sectionList.length ? 'Tất cả mẫu trong mục này đã được phân loại 🎉' : 'Mục này chưa có mẫu nào.') + '</div>' : shownList.map(function (p) {
       if (p.id === editingProductId) return renderEditProductForm(p);
-      var colors = colorsOf(p);
+      var colors = baseColorsOf(p);
       var hidden = !!p.hidden;
       var isPending = p.status === 'pending_approval';
       var editable = canEditProduct(p);
@@ -4134,7 +4187,7 @@
       var newArr = [it.tiers.p10, it.tiers.p100, it.tiers.p1000];
       if (oldArr.join('/') !== newArr.join('/')) diffs.push('giá ' + (oldArr.length ? oldArr.map(fmtNum).join(' / ') : 'chưa có') + ' → ' + newArr.map(fmtNum).join(' / '));
       if (!!p.soldOut !== !!it.soldOut) diffs.push(it.soldOut ? 'chuyển sang "Tạm hết"' : 'có hàng trở lại');
-      if (it.sizeNote && p.sizeNote !== it.sizeNote) diffs.push('size: ' + it.sizeNote);
+      if (it.sizeNote && p.sizeNote !== it.sizeNote) { var szKeys = parseSizes(it.sizeNote).map(function (z) { return z.key; }); diffs.push('size: ' + (szKeys.length ? szKeys.join('/') : it.sizeNote)); }
       if (diffs.length) plan.change.push({ pid: pid, item: it, name: p.name, diffs: diffs }); else plan.same.push(it);
     });
     Object.keys(byCode).forEach(function (cd) { if (!inSheet[cd]) plan.missing.push(products[byCode[cd]].name); });
@@ -4249,7 +4302,7 @@
     function list(arr, max, fn) { return arr.slice(0, max).map(fn).join('') + (arr.length > max ? '<div class="sp-more">…và ' + (arr.length - max) + ' mẫu nữa</div>' : ''); }
     var html = '<p class="img-hint">Nguồn: <b>' + esc(sourceLabel) + '</b> — đọc được <b>' + res.items.length + '</b> mã.</p>' +
       '<div class="sp-block"><div class="sp-title">➕ Thêm mới vào "Các mẫu khác": <b>' + plan.add.length + '</b></div>' +
-        list(plan.add, 12, function (it) { return '<div class="sp-row"><span>' + esc(it.name) + '</span><span class="sp-meta">' + [it.tiers.p10, it.tiers.p100, it.tiers.p1000].map(fmtNum).join(' / ') + '</span></div>'; }) + '</div>' +
+        list(plan.add, 12, function (it) { return '<div class="sp-row"><span>' + esc(it.name) + '</span><span class="sp-meta">' + [it.tiers.p10, it.tiers.p100, it.tiers.p1000].map(fmtNum).join(' / ') + (parseSizes(it.sizeNote).length ? ' · size ' + parseSizes(it.sizeNote).map(function (z) { return z.key; }).join('/') : '') + '</span></div>'; }) + '</div>' +
       '<div class="sp-block"><div class="sp-title">✏️ Đã có trên app — cập nhật giá/tình trạng: <b>' + plan.change.length + '</b></div>' +
         list(plan.change, 30, function (ch) { return '<div class="sp-row"><span>' + esc(ch.name) + '</span><span class="sp-meta">' + esc(ch.diffs.join(' · ')) + '</span></div>'; }) + '</div>' +
       '<div class="sp-block"><div class="sp-title">✔ Không đổi: <b>' + plan.same.length + '</b></div></div>' +
@@ -4697,7 +4750,7 @@
   function openProductReviewModal(pid) {
     var p = products[pid];
     if (!p) return;
-    var colors = colorsOf(p);
+    var colors = baseColorsOf(p);
     var createdText = p.createdAt ? new Date(p.createdAt).toLocaleString('vi-VN') : '';
     // Mẫu do Người thêm mẫu gửi thường chưa có mã: gợi ý mã H tiếp theo của mục A55
     var reviewCodeHint = '';
@@ -4768,7 +4821,7 @@
   }
 
   function renderEditProductForm(p) {
-    var colors = colorsOf(p);
+    var colors = baseColorsOf(p);
     return '<div class="manage-form edit-product-form" data-editing-pid="' + esc(p.id) + '">' +
       '<div class="product-form-layout">' +
         '<div class="img-preview-side" id="editImgPreviewBox">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '">' : '') + '</div>' +
@@ -4778,6 +4831,7 @@
         '</div>' +
       '</div>' +
       '<div class="field-row"><label>Các màu</label><input type="text" id="editColorsInput" value="' + esc(colors.join(', ')) + '"></div>' +
+      (isManager() ? '<div class="field-row"><label>Size khách được chọn — chỉ nhận <b>S, M, L, XL</b> (VD: S 40-45kg · M 45-55kg · L 55-60kg). Để trống = khách không chọn size</label><input type="text" id="editSizeNote" value="' + esc(p.sizeNote || '') + '"></div>' : '') +
       (isManager() && p.section !== 'other' ? baseListAll().map(function (b) {
         return '<div class="field-row"><label>Ảnh riêng cho ' + esc(baseDisplayName(b)) + ' — mỗi link 1 dòng, <b>để trống = dùng ảnh A55</b></label><textarea id="editBaseImg_' + esc(b.id) + '" class="extra-img-input" rows="2" placeholder="https://...">' + esc(baseImgList(p, b.id).join('\n')) + '</textarea></div>';
       }).join('') : '') +
@@ -4808,6 +4862,7 @@
     if (exEdit.bad) { toast('Ảnh thêm: có dòng không phải link (phải bắt đầu bằng http...). Mỗi link 1 dòng.'); return; }
     var extrasEdit = exEdit.links.filter(function (u) { return u !== imageUrl; });
     var upd = { name: name, imageUrl: imageUrl, colors: colors, images: extrasEdit.length ? extrasEdit : null };
+    if (isManager() && $('editSizeNote')) upd.sizeNote = $('editSizeNote').value.trim() || null;
     if (isManager() && products[pid].section !== 'other') {
       var badBase = false;
       baseListAll().forEach(function (b) {
