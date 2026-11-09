@@ -658,6 +658,8 @@
   .qs-size-row .col-label { display: flex; flex-direction: column; line-height: 1.2; }
   .qs-size-row .col-label b { font-size: 17px; }
   .qs-size-row .col-label small { font-size: 11.5px; color: var(--ink-soft); font-weight: 500; }
+  .app-version { margin-top: 10px; font-size: 11px; line-height: 1.35; color: var(--ink-soft); opacity: .85; }
+  .inv-hint { font-size: 12px; color: var(--ink-soft); align-self: center; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -869,6 +871,7 @@
       <span class="role-chip" id="whoRole"></span>
       <button class="sound-sidebar-toggle" id="soundToggleSidebarBtn">🔔 Chuông: Đang bật</button>
       <button id="logoutBtn">Đổi tài khoản</button>
+      <div class="app-version" id="appVersion" title="Phiên bản đang chạy trên máy này">Bản 09/11 16:41 · có 🧾 Lên hoá đơn</div>
     </div>
   </aside>
 
@@ -2562,7 +2565,7 @@
               '<input type="checkbox" class="lead-printed-chk" data-lid="' + esc(lead.id) + '"' + (isPrinted ? ' checked' : '') + '> ' +
               (isPrinted ? '🖨️ Đã đặt in' : 'Đã đặt in') +
             '</label>' +
-            (!isBilled && canMakeInvoice(lead) ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : '') +
+            (!isBilled && canMakeInvoice(lead) ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : (!isBilled ? '<span class="inv-hint">🧾 Do sale phụ trách lên hoá đơn</span>' : '')) +
             (canDelete ? '<button class="btn danger small" data-action="delete-lead" data-lid="' + esc(lead.id) + '">🗑️ Xoá</button>' : '') +
           '</div>' +
           '</div>';
