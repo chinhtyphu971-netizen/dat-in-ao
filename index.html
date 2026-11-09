@@ -645,6 +645,19 @@
   .qty-color-row.qs-cell { display: block; padding: 0; border: none; }
   .qs-cell .qc-input { width: 100%; height: 36px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 15px; font-family: var(--font-body); padding: 0 2px; }
   .qs-cell .qc-input.has, .qc-input.has { border-color: #d63a2f; color: #d63a2f; font-weight: 700; background: #fffafa; }
+  .sz-step { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); margin: 8px 0 6px; }
+  .sz-step b { color: var(--denim); }
+  .qc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .qc-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: #fff; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; color: var(--ink); }
+  .qc-chip.active { border-color: var(--denim); background: var(--denim); color: #fff; }
+  .qc-chip.has:not(.active) { border-color: #d63a2f; }
+  .qc-badge { display: none; background: #d63a2f; color: #fff; font-size: 11px; font-weight: 700; padding: 0 7px; border-radius: 999px; }
+  .qc-chip.has .qc-badge { display: inline-block; }
+  .qc-panel { display: none; }
+  .qc-panel.active { display: block; }
+  .qs-size-row .col-label { display: flex; flex-direction: column; line-height: 1.2; }
+  .qs-size-row .col-label b { font-size: 17px; }
+  .qs-size-row .col-label small { font-size: 11.5px; color: var(--ink-soft); font-weight: 500; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -2243,6 +2256,7 @@
     var colors = baseColorsOf(p);
     var psizes = sizesOf(p);
     var cartP = guestCart[pid] || {};
+    var activeColor = colors.filter(function (c) { return psizes.some(function (z) { return cartP[c + SIZE_SEP + z.key] > 0; }); })[0] || colors[0];
     var html = '<div class="modal-sheet ms-compact">' +
       '<div class="modal-head"><h2>' + nameHtml(p) + '</h2><button class="ms-close" id="msGuestCloseBtn">✕</button></div>' +
       '<div class="ms-body">' +
@@ -2252,16 +2266,20 @@
           '<div class="ms-tier-note">Giá sỉ tính theo tổng số áo của mẫu này (cộng tất cả các màu).</div>'
         : (priceOf(p) ? '<div class="ms-price">Giá: <b>' + fmtVnd(priceOf(p)) + '</b> / áo</div>' : '')) +
       (p.sizeNote && !psizes.length ? '<div class="ms-size">📏 Size: ' + esc(p.sizeNote) + '</div>' : '') +
-      '<div class="ms-section-label">' + (psizes.length ? 'Chọn số lượng theo màu và size' : 'Chọn số lượng áo theo màu') + '</div>' +
+      (psizes.length ? '' : '<div class="ms-section-label">Chọn số lượng áo theo màu</div>') +
       (psizes.length
-        ? '<div class="qty-color-rows qty-sizes" style="--sz:' + psizes.length + '">' +
-          '<div class="qs-row qs-head"><span></span>' + psizes.map(function (z) { return '<span class="qs-h"><b>' + esc(z.key) + '</b>' + (z.note ? '<small>' + esc(z.note) + '</small>' : '') + '</span>'; }).join('') + '</div>' +
+        ? '<div class="sz-pick">' +
+          '<div class="sz-step">① Chọn màu</div>' +
+          '<div class="qc-chips">' + colors.map(function (c) {
+            return '<button type="button" class="qc-chip' + (c === activeColor ? ' active' : '') + '" data-c="' + esc(c) + '"><span class="swatch" style="background:' + swatchColor(c) + '"></span>' + esc(c) + '<span class="qc-badge"></span></button>';
+          }).join('') + '</div>' +
+          '<div class="sz-step" id="szStep2">② Chọn size và số lượng — màu <b>' + esc(activeColor) + '</b></div>' +
           colors.map(function (c) {
-            return '<div class="qs-row"><span class="qs-color"><span class="swatch" style="background:' + swatchColor(c) + '"></span><span class="col-label">' + esc(c) + '</span></span>' +
-              psizes.map(function (z) {
-                var key = c + SIZE_SEP + z.key, v = cartP[key] || 0;
-                return '<div class="qty-color-row qs-cell" data-color="' + esc(key) + '"><input type="number" inputmode="numeric" class="qc-input" value="' + v + '" min="0" aria-label="' + esc(c + ' size ' + z.key) + '"></div>';
-              }).join('') + '</div>';
+            return '<div class="qc-panel' + (c === activeColor ? ' active' : '') + '" data-c="' + esc(c) + '">' + psizes.map(function (z) {
+              var key = c + SIZE_SEP + z.key, v = cartP[key] || 0;
+              return '<div class="qty-color-row qs-size-row" data-color="' + esc(key) + '"><span class="col-label"><b>' + esc(z.key) + '</b>' + (z.note ? '<small>' + esc(z.note) + '</small>' : '') + '</span>' +
+                '<div class="qty-stepper"><button data-action="dec" type="button">−</button><input type="number" class="qc-input" value="' + v + '" min="0"><button data-action="inc" type="button">+</button></div></div>';
+            }).join('') + '</div>';
           }).join('') + '</div>'
         : '<div class="qty-color-rows">' + colors.map(function (c) {
             var v = cartP[c] || 0;
@@ -2289,6 +2307,14 @@
         qty += iv;
         inp.classList.toggle('has', iv > 0);
       });
+      var chipEls = $('productModal').querySelectorAll('.qc-chip');
+      if (chipEls.length) {                       // mẫu có size: mỗi ô màu hiện tổng số áo đã chọn của màu đó
+        $('productModal').querySelectorAll('.qc-panel').forEach(function (pn) {
+          var sum = 0;
+          pn.querySelectorAll('.qc-input').forEach(function (i2) { sum += Math.max(0, Math.floor(Number(i2.value) || 0)); });
+          chipEls.forEach(function (ch) { if (ch.dataset.c === pn.dataset.c) { ch.classList.toggle('has', sum > 0); ch.querySelector('.qc-badge').textContent = sum; } });
+        });
+      }
       // Nút Lưu luôn hiện ở đáy cửa sổ và nói rõ việc sẽ làm, để người mới khỏi lúng túng
       var saveBtn = $('msGuestSaveBtn');
       if (saveBtn) {
@@ -2321,6 +2347,14 @@
       if (incBtn) incBtn.addEventListener('click', function () { input.value = (Number(input.value) || 0) + 1; updateGuestSubtotal(); });
       input.addEventListener('input', updateGuestSubtotal);
       input.addEventListener('focus', function () { try { input.select(); } catch (e) {} });
+    });
+    $('productModal').querySelectorAll('.qc-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var c = chip.dataset.c;
+        $('productModal').querySelectorAll('.qc-chip').forEach(function (x) { x.classList.toggle('active', x.dataset.c === c); });
+        $('productModal').querySelectorAll('.qc-panel').forEach(function (pn) { pn.classList.toggle('active', pn.dataset.c === c); });
+        $('szStep2').innerHTML = '② Chọn size và số lượng — màu <b>' + esc(c) + '</b>';
+      });
     });
     updateGuestSubtotal();
     $('msGuestSaveBtn').addEventListener('click', function () {
