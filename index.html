@@ -660,6 +660,15 @@
   .qs-size-row .col-label small { font-size: 11.5px; color: var(--ink-soft); font-weight: 500; }
   .app-version { margin-top: 10px; font-size: 11px; line-height: 1.35; color: var(--ink-soft); opacity: .85; }
   .inv-hint { font-size: 12px; color: var(--ink-soft); align-self: center; }
+  .cart-min { color: #ffd27a; font-size: 12.5px; font-weight: 600; }
+  .min-box { background: #fff6dc; border: 1px solid #ecd48a; border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; }
+  .mb-title { font-weight: 700; font-size: 14px; color: #855302; margin-bottom: 6px; }
+  .mb-bar { height: 8px; border-radius: 999px; background: #f0e2b5; overflow: hidden; margin-bottom: 8px; }
+  .mb-bar i { display: block; height: 100%; background: #d6a52c; border-radius: 999px; }
+  .mb-text { font-size: 13.5px; line-height: 1.5; margin-bottom: 8px; }
+  #submitLeadBtn.is-locked, .btn.is-locked { background: var(--paper); color: var(--ink-soft); border: 1px dashed var(--line); box-shadow: none; }
+  .lr-chip.st-min { background: #fde6c8; color: #9a4a00; }
+  .lead-min-warn { background: #fff3e4; border: 1px solid #f1c48b; border-radius: 10px; padding: 10px 12px; margin: 10px 0; font-size: 13.5px; line-height: 1.5; color: #7a3d00; }
   .guest-filters { margin-bottom: 14px; }
   .qd-sale { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
   .qd-sale:first-of-type { border-top: none; margin-top: 4px; }
@@ -836,7 +845,7 @@
   
   <!-- THANH GIỎ HÀNG NỔI TO NỔI BẬT -->
   <div class="guest-cart-floating-bar" id="guestCartFloatingBar">
-    <div class="cart-info">Đã chọn: <b id="guestTotalCount">0</b> áo</div>
+    <div class="cart-info">Đã chọn: <b id="guestTotalCount">0</b> áo<span class="cart-min" id="guestMinHint"></span></div>
     <button class="btn-submit-cart" id="guestCheckoutBtn">🛒 Xem giỏ &amp; Gửi đơn</button>
   </div>
 </div>
@@ -871,7 +880,7 @@
       <span class="role-chip" id="whoRole"></span>
       <button class="sound-sidebar-toggle" id="soundToggleSidebarBtn">🔔 Chuông: Đang bật</button>
       <button id="logoutBtn">Đổi tài khoản</button>
-      <div class="app-version" id="appVersion" title="Phiên bản đang chạy trên máy này">Bản 10/11 07:17 · có 🧾 Lên hoá đơn · mã D lên đầu · mã A mới lên trước</div>
+      <div class="app-version" id="appVersion" title="Phiên bản đang chạy trên máy này">Bản 11/11 13:03 · có 🧾 Lên hoá đơn · mã D lên đầu · mã A mới lên trước · đơn tối thiểu</div>
     </div>
   </aside>
 
@@ -914,6 +923,7 @@
           <button class="lead-filter-btn" data-filter="unbilled">Chưa ghi hoá đơn</button>
           <button class="lead-filter-btn" data-filter="billed">Đã ghi hoá đơn</button>
           <button class="lead-filter-btn" data-filter="printed">Đã đặt in</button>
+<button class="lead-filter-btn" data-filter="under" id="leadUnderFilterBtn">⚠ Dưới 500k</button>
           <button class="lead-filter-btn hidden" data-filter="deleted" id="leadDeletedFilterBtn">🗑️ Đã xoá</button>
         </div>
         <p class="img-hint" style="margin-bottom:14px;">
@@ -1837,6 +1847,7 @@
   var guestSection = 'a55';
   var priorityPrefixRaw = 'D';          // mã bắt đầu bằng chữ này được xếp lên ĐẦU danh sách của khách (mùa lạnh: D). "-" = không ưu tiên
   var descPrefixRaw = 'A';              // mã bắt đầu bằng chữ này xếp từ số LỚN xuống NHỎ (mã lớn là mã mới, lên trước). "-" = xếp tăng dần như thường
+  var minOrderAmount = 500000;          // đơn tối thiểu (đ). Dưới mức này: khách không gửi được, sale không lên hoá đơn được. 0 = không giới hạn
   var guestDefaultCat = 'other';        // mục mở sẵn khi khách mở link (quản lý đổi được ở công cụ "Ảnh bìa các mục")
   var guestDefaultApplied = false;      // mới áp dụng mục mở sẵn một lần khi tải trang; khách đã tự bấm banner thì không ghi đè
   var basesLoaded = false, defaultCatLoaded = false;
@@ -1879,6 +1890,26 @@
     var code = cs.key === 'a55' ? 'A55' : ((bases[cs.key.slice(2)] || {}).code || cs.key.slice(2).toUpperCase());
     var title = /in hình/i.test(cs.title) ? cs.title : cs.title + ' — in hình';
     return { id: '__base_' + cs.key, name: code + '-' + title, imageUrl: coverOf(cs), colors: [], section: 'other', isShortcut: true, goto: cs.key, count: cs.list.length, createdAt: 0 };
+  }
+  function fmtShortVnd(n) { return (Number(n) >= 1000 ? Math.round(Number(n) / 1000) + 'k' : String(Number(n) || 0)); }
+  // Tổng tạm tính của giỏ khách (cùng cách tính với màn hình gửi đơn)
+  function guestCartSummary() {
+    var qty = 0, amount = 0, hasUnpriced = false;
+    Object.keys(guestCart).forEach(function (pid) {
+      var gp = products[pid];
+      if (!gp) return;
+      var pt = 0;
+      Object.keys(guestCart[pid]).forEach(function (c) { pt += guestCart[pid][c]; });
+      if (pt > 0) { qty += pt; var u = unitPriceFor(gp, pt); if (u > 0) amount += u * pt; else hasUnpriced = true; }
+    });
+    return { qty: qty, amount: amount, hasUnpriced: hasUnpriced };
+  }
+  // Còn thiếu bao nhiêu để đủ đơn tối thiểu (0 = đủ, hoặc không kiểm tra được vì có mẫu chưa có giá)
+  function minMissing(amount, hasUnpriced) { return (minOrderAmount > 0 && !hasUnpriced && amount < minOrderAmount) ? minOrderAmount - amount : 0; }
+  function leadMinMissing(lead) {
+    var its = lead && lead.items ? (Array.isArray(lead.items) ? lead.items : Object.keys(lead.items).map(function (k) { return lead.items[k]; })) : [];
+    if (!its.length || its.some(function (it) { return !(Number(it.price) > 0); })) return 0;      // đơn cũ / có mẫu chưa có giá: không kiểm tra
+    return minMissing(Number(lead.totalAmount) || 0, false);
   }
   function descPrefixList() { return String(descPrefixRaw || '').toUpperCase().split(/[^A-Z]+/).filter(Boolean); }
   function priorityPrefixList() { return String(priorityPrefixRaw || '').toUpperCase().split(/[^A-Z]+/).filter(Boolean); }
@@ -2280,6 +2311,9 @@
     $('guestTotalCount').classList.toggle('has-items', grand > 0);
     saveGuestCart();
     $('guestCheckoutBtn').classList.toggle('is-empty', grand === 0);
+    var gsum = guestCartSummary(), gmiss = minMissing(gsum.amount, gsum.hasUnpriced);
+    var mh = $('guestMinHint');
+    if (mh) mh.textContent = (grand > 0 && gmiss > 0) ? ' · còn thiếu ' + fmtVnd(gmiss) + ' (tối thiểu ' + fmtVnd(minOrderAmount) + ')' : '';
   }
 
   function openGuestProductModal(pid) {
@@ -2425,6 +2459,7 @@
     });
 
     if (grand === 0) { toast('Bạn chưa chọn số lượng áo nào. Vui lòng bấm vào mẫu để chọn áo.'); return; }
+    var miss = minMissing(grandAmount, hasUnpriced);
 
     var html = '<div class="modal-sheet">' +
       '<div class="modal-head"><h2>Xác nhận gửi đơn đặt</h2><button class="ms-close" id="msCartCloseBtn">✕</button></div>' +
@@ -2439,10 +2474,11 @@
       '<div style="font-weight:700;text-align:right;margin-bottom:14px;font-size:16px;">Tổng cộng: <span style="color:var(--stitch);font-size:20px;">' + grand + '</span> áo</div>' +
       (grandAmount > 0 ? '<div style="text-align:right;margin:-8px 0 14px;"><div style="font-weight:700;font-size:16px;">Tạm tính: <span style="color:var(--stitch);font-size:20px;">' + fmtVnd(grandAmount) + '</span></div>' +
         '<div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">Giá tham khảo' + (hasUnpriced ? ' (chưa gồm mẫu chưa có giá)' : '') + ' — tư vấn viên sẽ xác nhận lại khi chốt đơn.</div></div>' : '') +
+      (miss > 0 ? '<div class="min-box"><div class="mb-title">Đơn tối thiểu ' + fmtVnd(minOrderAmount) + '</div><div class="mb-bar"><i style="width:' + Math.min(100, Math.round(grandAmount / minOrderAmount * 100)) + '%"></i></div><div class="mb-text">Đơn của bạn hiện <b>' + fmtVnd(grandAmount) + '</b>. Bạn <b>chọn thêm khoảng ' + fmtVnd(miss) + '</b> nữa để gửi đơn được nhé.</div><button type="button" class="btn ghost small" id="minAddMore">+ Chọn thêm mẫu</button></div>' : '') +
       '<div class="field-row"><label>Tên của bạn *</label><input type="text" id="leadCustName" placeholder="VD: Anh Nam"></div>' +
       '<div class="field-row"><label>Số điện thoại / Zalo để chốt đơn *</label><input type="text" id="leadCustPhone" placeholder="VD: 0987654321"></div>' +
       '<div class="field-row"><label>Ghi chú (nếu có)</label><textarea id="leadCustNote" rows="2" placeholder="VD: Cần gấp trong tuần này..."></textarea></div>' +
-      '<button class="btn primary full" id="submitLeadBtn" style="font-size:15px;padding:12px;">Gửi yêu cầu đặt hàng</button>' +
+      '<button class="btn primary full' + (miss > 0 ? ' is-locked' : '') + '" id="submitLeadBtn" style="font-size:15px;padding:12px;">' + (miss > 0 ? 'Chưa đủ ' + fmtVnd(minOrderAmount) + ' — chọn thêm ' + fmtVnd(miss) : 'Gửi yêu cầu đặt hàng') + '</button>' +
       '<p class="img-hint" style="text-align:center;margin-top:10px;">Tư vấn viên sẽ kết bạn Zalo để xác nhận và nhận cọc.</p>' +
       guestContactBox() +
       '</div>';
@@ -2453,8 +2489,10 @@
       if (savedContact) { $('leadCustName').value = savedContact.name || ''; $('leadCustPhone').value = savedContact.phone || ''; }
     } catch (e) {}
     $('msCartCloseBtn').addEventListener('click', function () { $('guestCartModal').classList.add('hidden'); });
+    if ($('minAddMore')) $('minAddMore').addEventListener('click', function () { $('guestCartModal').classList.add('hidden'); });
 
     $('submitLeadBtn').addEventListener('click', function () {
+      if (miss > 0) { toast('Đơn tối thiểu ' + fmtVnd(minOrderAmount) + '. Bạn chọn thêm khoảng ' + fmtVnd(miss) + ' nữa rồi gửi đơn nhé.'); return; }
       var name = $('leadCustName').value.trim();
       var phone = $('leadCustPhone').value.trim();
       var note = $('leadCustNote').value.trim();
@@ -2500,6 +2538,9 @@
   function renderLeads() {
     var container = $('leadsList');
     $('leadDeletedFilterBtn').classList.toggle('hidden', !isManager());
+    $('leadUnderFilterBtn').classList.toggle('hidden', !(minOrderAmount > 0));
+    $('leadUnderFilterBtn').textContent = '⚠ Dưới ' + fmtShortVnd(minOrderAmount);
+    if (!(minOrderAmount > 0) && currentLeadFilter === 'under') currentLeadFilter = 'all';
     if (!isManager() && currentLeadFilter === 'deleted') { currentLeadFilter = 'all'; }
 
     var isTrashView = currentLeadFilter === 'deleted';
@@ -2511,6 +2552,7 @@
         if (currentLeadFilter === 'unbilled') return !lead.billed;
         if (currentLeadFilter === 'billed') return !!lead.billed;
         if (currentLeadFilter === 'printed') return !!lead.printed;
+        if (currentLeadFilter === 'under') return !lead.billed && leadMinMissing(lead) > 0;
         return true;
       })
       .sort(function (a, b) {
@@ -2565,6 +2607,7 @@
 
       var cardClass = 'lead-card' + (isBilled ? ' is-billed' : '') + (isPrinted ? ' is-printed' : '') + (isTrashView ? ' is-deleted' : '');
 
+      var leadMiss = (!isTrashView && !isBilled) ? leadMinMissing(lead) : 0;      // còn thiếu bao nhiêu để đủ đơn tối thiểu (phải tính TRƯỚC khi dựng các nút)
       var actionsHtml;
       if (isTrashView) {
         var delTimeStr = lead.deletedAt ? new Date(lead.deletedAt).toLocaleString('vi-VN') : '';
@@ -2588,7 +2631,7 @@
               '<input type="checkbox" class="lead-printed-chk" data-lid="' + esc(lead.id) + '"' + (isPrinted ? ' checked' : '') + '> ' +
               (isPrinted ? '🖨️ Đã đặt in' : 'Đã đặt in') +
             '</label>' +
-            (!isBilled && canMakeInvoice(lead) ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : (!isBilled ? '<span class="inv-hint">🧾 Do sale phụ trách lên hoá đơn</span>' : '')) +
+            (!isBilled && canMakeInvoice(lead) && leadMiss > 0 ? '<button class="btn primary small is-locked" data-action="make-invoice-locked" data-lid="' + esc(lead.id) + '" title="Đơn dưới mức tối thiểu">🧾 Chưa đủ ' + fmtShortVnd(minOrderAmount) + '</button>' : !isBilled && canMakeInvoice(lead) ? '<button class="btn primary small" data-action="make-invoice" data-lid="' + esc(lead.id) + '" title="Mở app Báo cáo doanh số với hoá đơn điền sẵn đơn này">' + (lead.invoiceNumber ? '🧾 Mở HĐ ' + esc(lead.invoiceNumber) : '🧾 Lên hoá đơn') + '</button>' : (!isBilled ? '<span class="inv-hint">🧾 Do sale phụ trách lên hoá đơn</span>' : '')) +
             (canDelete ? '<button class="btn danger small" data-action="delete-lead" data-lid="' + esc(lead.id) + '">🗑️ Xoá</button>' : '') +
           '</div>' +
           '</div>';
@@ -2599,9 +2642,10 @@
       var shortTime = d0 ? pad2(d0.getDate()) + '/' + pad2(d0.getMonth() + 1) + ' ' + pad2(d0.getHours()) + ':' + pad2(d0.getMinutes()) : '';
       var chips = isTrashView
         ? '<span class="lr-chip st-del">🗑️ Đã xoá</span>'
-        : (isBilled ? '<span class="lr-chip st-ok">🟢 Hoá đơn</span>' : '<span class="lr-chip st-wait">⏳ Chờ</span>') + (isPrinted ? '<span class="lr-chip st-print">🔵 Đã in</span>' : '');
+        : (isBilled ? '<span class="lr-chip st-ok">🟢 Hoá đơn</span>' : '<span class="lr-chip st-wait">⏳ Chờ</span>') + (isPrinted ? '<span class="lr-chip st-print">🔵 Đã in</span>' : '') + (!isBilled && leadMinMissing(lead) > 0 ? '<span class="lr-chip st-min">⚠ Dưới ' + fmtShortVnd(minOrderAmount) + '</span>' : '');
       var isOpen = !!expandedLeads[lead.id];
       var phoneDigits = normalizePhone(lead.phone);
+      var minWarn = leadMiss > 0 ? '<div class="lead-min-warn">⚠ Đơn mới <b>' + fmtVnd(lead.totalAmount) + '</b>, chưa đủ <b>' + fmtVnd(minOrderAmount) + '</b> nên <b>chưa lên hoá đơn được</b>. Nhờ khách chọn thêm khoảng <b>' + fmtVnd(leadMiss) + '</b>.<div style="margin-top:8px;"><button class="btn ghost small" data-action="ask-more" data-lid="' + esc(lead.id) + '">📩 Chép lời nhắn xin khách chọn thêm</button></div></div>' : '';
       var contactBtns = validPhone(phoneDigits)
         ? '<div class="lead-contact"><a class="ct-btn ct-call" href="tel:' + esc(phoneDigits) + '">' + PHONE_ICON_SVG + 'Gọi khách</a><a class="ct-btn ct-zalo" href="https://zalo.me/' + esc(phoneDigits) + '" target="_blank" rel="noopener">' + ZALO_ICON_SVG + 'Zalo khách</a></div>'
         : '';
@@ -2622,7 +2666,7 @@
         '<div class="lead-detail">' +
           '<div class="lead-cust-line"><b>' + esc(lead.customerName) + '</b> <span class="lead-phone">📞 ' + esc(lead.phone) + '</span></div>' +
           '<div class="lead-time">Gửi lúc: ' + timeStr + (isManager() ? ' · Sale: <b>' + esc(lead.saleName) + '</b>' : '') + '</div>' +
-          contactBtns +
+          contactBtns + minWarn +
           (lead.note ? '<div class="lead-note">Ghi chú của khách: "' + esc(lead.note) + '"</div>' : '') +
           '<div class="lead-items">' + itemsHtml + '</div>' +
           actionsHtml +
@@ -2674,6 +2718,7 @@
       btn.addEventListener('click', function () {
         var lid = btn.dataset.lid, lead = customerLeads[lid];
         if (!lead || !canMakeInvoice(lead)) { toast('Chỉ Sale phụ trách đơn này (hoặc Quản lý với đơn chung / đơn của mình) mới lên hoá đơn được.'); return; }
+        if (leadMinMissing(lead) > 0) { toast('Đơn dưới ' + fmtVnd(minOrderAmount) + ' chưa lên hoá đơn được. Nhờ khách chọn thêm khoảng ' + fmtVnd(leadMinMissing(lead)) + '.'); return; }
         var sizeNotes = [];
         var items = (lead.items || []).map(function (it) {
           var pt = itemParts(it);
@@ -2702,6 +2747,22 @@
         var json = JSON.stringify(payload);
         var b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         window.open(REPORT_APP_URL + '#nhapdon=' + b64, '_blank');
+      });
+    });
+    container.querySelectorAll('[data-action="make-invoice-locked"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lead = customerLeads[btn.dataset.lid];
+        toast('Đơn dưới ' + fmtVnd(minOrderAmount) + ' chưa lên hoá đơn được' + (lead ? '. Nhờ khách chọn thêm khoảng ' + fmtVnd(leadMinMissing(lead)) + '.' : '.'));
+      });
+    });
+    container.querySelectorAll('[data-action="ask-more"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lead = customerLeads[btn.dataset.lid];
+        if (!lead) return;
+        var miss2 = leadMinMissing(lead);
+        var link2 = window.location.origin + window.location.pathname + (users[lead.saleId] ? '?sale=' + lead.saleId : '');
+        var msg = 'Chào ' + (lead.customerName || 'anh/chị') + ' ạ. Đơn của mình hiện là ' + fmtVnd(lead.totalAmount) + ' (' + (lead.totalQty || 0) + ' áo). Bên em nhận đơn từ ' + fmtVnd(minOrderAmount) + ', mình chọn thêm khoảng ' + fmtVnd(miss2) + ' nữa giúp em nhé. Mình chọn thêm ở link này ạ:\n' + link2;
+        copyTextToClipboard(msg, function () { toast('Đã chép lời nhắn — dán vào Zalo gửi khách.'); });
       });
     });
     container.querySelectorAll('[data-action="delete-lead"]').forEach(function (btn) {
@@ -4013,7 +4074,7 @@
         toolWrap('bulk', 'Dán link ảnh hàng loạt', 'Gắn nhiều ảnh cùng lúc', bulkImgCardHtml) +
         toolWrap('codes', 'Danh sách mã', 'Chép tất cả mã, cách nhau dấu phẩy', codesCardHtml()) +
         (isManager() ? toolWrap('base', 'Loại áo nền để in', baseSummary, baseCardHtml()) : '') +
-        (isManager() ? toolWrap('covers', 'Ảnh bìa các mục', 'Banner chọn mục trên trang khách', coversCardHtml()) : '') +
+        (isManager() ? toolWrap('covers', 'Cài đặt trang khách', 'Ảnh bìa, đơn tối thiểu, thứ tự mã', coversCardHtml()) : '') +
         (isManager() ? toolWrap('bell', 'Chuông báo đơn', notifySoundCfg && notifySoundCfg.data ? 'Đang dùng: ' + esc(notifySoundCfg.name || 'chuông') : 'Chuông mặc định', bellCardHtml()) : '') +
       '</div>' +
       '<div class="manage-form"><h2>Thêm mẫu áo mới</h2>' +
@@ -4753,11 +4814,18 @@
     }).join('') + '</select></label></div>';
     var priSel = '<div class="cover-default">Mã <b>ưu tiên lên đầu</b> danh sách của khách (VD <b>D</b> hoặc <b>D, Q</b>; để trống = xếp bình thường): <input type="text" id="priorityPrefixInput" maxlength="12" style="width:90px;margin-left:6px;" value="' + esc(priorityPrefixList().join(', ')) + '"></div>';
     var descSel = '<div class="cover-default">Mã xếp từ <b>lớn xuống nhỏ</b> (mã lớn là mã mới, lên trước; VD <b>A</b> hoặc <b>A, D</b>; để trống = tăng dần): <input type="text" id="descPrefixInput" maxlength="12" style="width:90px;margin-left:6px;" value="' + esc(descPrefixList().join(', ')) + '"></div>';
-    return '<div class="manage-form cover-card"><h2>Ảnh bìa các mục</h2>' + defSel + priSel + descSel +
+    var minSel = '<div class="cover-default">Đơn tối thiểu (đồng) để khách gửi đơn và sale lên hoá đơn (<b>0</b> = không giới hạn): <input type="number" id="minOrderInput" min="0" step="10000" style="width:130px;margin-left:6px;" value="' + minOrderAmount + '"></div>';
+    return '<div class="manage-form cover-card"><h2>Cài đặt trang khách</h2>' + minSel + defSel + priSel + descSel +
       '<p class="img-hint" style="margin:-4px 0 12px;">Khách thấy mỗi mục là một banner có ảnh bìa, bấm vào là hiện các mã trong mục đó. Muốn dùng ảnh banner tự thiết kế thì dán link vào đây (nên dùng ảnh ngang, khoảng 600×300). Để trống thì app tự lấy ảnh của mẫu đầu tiên trong mục.</p>' +
       (rows || '<div class="empty">Chưa có mục nào.</div>') + '</div>';
   }
   function bindCoversCard(root) {
+    var minInp = $('minOrderInput');
+    if (minInp) minInp.addEventListener('change', function () {
+      if (!isManager()) return;
+      var mv = Math.max(0, Math.round(Number(minInp.value) || 0));
+      db.ref('settings/minOrderAmount').set(mv).then(function () { toast(mv > 0 ? 'Đơn tối thiểu: ' + fmtVnd(mv) + '.' : 'Đã tắt đơn tối thiểu.'); }).catch(function (e) { toast('Lỗi: ' + e.message); });
+    });
     var dpsel = $('descPrefixInput');
     if (dpsel) dpsel.addEventListener('change', function () {
       if (!isManager()) return;
@@ -5137,6 +5205,7 @@
       requestRender();
     });
 
+    db.ref('settings/minOrderAmount').on('value', function (snap) { var mv = snap.val(); minOrderAmount = (mv === null || mv === undefined) ? 500000 : (Number(mv) || 0); if (isGuestMode) { updateGuestCartBar(); } requestRender(); });
     db.ref('settings/descPrefix').on('value', function (snap) { descPrefixRaw = snap.val() || 'A'; requestRender(); });
     db.ref('settings/priorityPrefix').on('value', function (snap) { priorityPrefixRaw = snap.val() || 'D'; requestRender(); });
     db.ref('settings/guestDefaultCat').on('value', function (snap) { guestDefaultCat = snap.val() || 'other'; defaultCatLoaded = true; if (isGuestMode) requestRender(); });
